@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Calendar, User, Target, AlertCircle, CheckCircle, Clock, Archive, Edit, Eye, FileText } from 'lucide-react';
+import { Plus, Search, Filter, Calendar, User, Target, AlertCircle, CheckCircle, Clock, Archive, Edit, Eye, FileText, Star, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -49,6 +49,22 @@ interface ProjetCollaborateur {
     created_at: string;
     updated_at: string;
   } | null;
+  objectifs_collaborateur: {
+    id: string;
+    objectifs: any[];
+    created_at: string;
+    updated_at: string;
+  } | null;
+  evaluation_objectifs: {
+    id: string;
+    auto_evaluation: any;
+    evaluation_referent: any;
+    evaluation_coach: any;
+    statut: string;
+    date_soumission: string | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
 }
 
 interface UserProfile {
@@ -64,6 +80,8 @@ const FichesProjets = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCollaborateurForm, setShowCollaborateurForm] = useState(false);
+  const [showObjectifsForm, setShowObjectifsForm] = useState(false);
+  const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [selectedProjet, setSelectedProjet] = useState<ProjetCollaborateur | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -103,6 +121,17 @@ const FichesProjets = () => {
     satisfaction: 5
   });
 
+  // Form state pour objectifs collaborateur
+  const [objectifsData, setObjectifsData] = useState({
+    objectifs: [{ titre: '', description: '', indicateurs: '', echeance: '' }]
+  });
+
+  // Form state pour évaluation
+  const [evaluationData, setEvaluationData] = useState({
+    auto_evaluation: {} as Record<string, { statut: string; commentaire: string; preuves: string }>,
+    commentaires_generaux: ''
+  });
+
   const statusLabels = {
     brouillon: 'Brouillon',
     en_attente: 'En attente',
@@ -129,6 +158,13 @@ const FichesProjets = () => {
     archivee: <Archive className="w-4 h-4" />,
     retour_demande: <AlertCircle className="w-4 h-4" />
   };
+
+  const objectifStatusOptions = [
+    { value: 'atteint', label: 'Atteint', color: 'text-green-600' },
+    { value: 'partiellement_atteint', label: 'Partiellement atteint', color: 'text-yellow-600' },
+    { value: 'non_atteint', label: 'Non atteint', color: 'text-red-600' },
+    { value: 'pas_eu_occasion', label: 'Pas eu l\'occasion', color: 'text-gray-600' }
+  ];
 
   useEffect(() => {
     getCurrentUser();
@@ -216,24 +252,45 @@ const FichesProjets = () => {
 
       if (collabError) throw collabError;
 
-      // Pour chaque collaboration, vérifier s'il existe une fiche collaborateur
-      const collaborationsWithFiches = await Promise.all(
+      // Pour chaque collaboration, vérifier les fiches et objectifs
+      const collaborationsWithData = await Promise.all(
         (collaborations || []).map(async (collab) => {
+          // Fiche collaborateur
           const { data: ficheCollab } = await supabase
             .from('fiches_collaborateurs')
             .select('id, contenu, statut, created_at, updated_at')
             .eq('collaboration_id', collab.id)
             .maybeSingle();
 
+          // Objectifs collaborateur
+          const { data: objectifsCollab } = await supabase
+            .from('objectifs_collaborateurs')
+            .select('id, objectifs, created_at, updated_at')
+            .eq('collaboration_id', collab.id)
+            .maybeSingle();
+
+          // Évaluation des objectifs
+          let evaluationObjectifs = null;
+          if (objectifsCollab) {
+            const { data: evalData } = await supabase
+              .from('evaluations_objectifs')
+              .select('id, auto_evaluation, evaluation_referent, evaluation_coach, statut, date_soumission, created_at, updated_at')
+              .eq('objectifs_id', objectifsCollab.id)
+              .maybeSingle();
+            evaluationObjectifs = evalData;
+          }
+
           return {
             ...collab,
             projet: collab.projets,
-            fiche_collaborateur: ficheCollab
+            fiche_collaborateur: ficheCollab,
+            objectifs_collaborateur: objectifsCollab,
+            evaluation_objectifs: evaluationObjectifs
           };
         })
       );
 
-      setProjetsCollaborateur(collaborationsWithFiches);
+      setProjetsCollaborateur(collaborationsWithData);
     } catch (err) {
       console.error('Erreur lors du chargement des projets collaborateur:', err);
     }
@@ -256,6 +313,10 @@ const FichesProjets = () => {
 
   const canCreateFiche = () => {
     return currentUserRole && ['referent_projet', 'direction', 'admin'].includes(currentUserRole);
+  };
+
+  const isProjetFini = (projet: ProjetCollaborateur) => {
+    return projet.projet.statut === 'termine';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -327,7 +388,6 @@ const FichesProjets = () => {
       };
 
       if (selectedProjet.fiche_collaborateur) {
-        // Mise à jour
         const { error } = await supabase
           .from('fiches_collaborateurs')
           .update(ficheData)
@@ -336,7 +396,6 @@ const FichesProjets = () => {
         if (error) throw error;
         setSuccess('Fiche collaborateur mise à jour avec succès');
       } else {
-        // Création
         const { error } = await supabase
           .from('fiches_collaborateurs')
           .insert([ficheData]);
@@ -351,6 +410,93 @@ const FichesProjets = () => {
       fetchProjetsCollaborateur();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde de la fiche');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitObjectifs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProjet) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const objectifsFiltered = objectifsData.objectifs.filter(obj => 
+        obj.titre.trim() !== '' && obj.description.trim() !== ''
+      );
+
+      const data = {
+        collaboration_id: selectedProjet.id,
+        objectifs: objectifsFiltered
+      };
+
+      if (selectedProjet.objectifs_collaborateur) {
+        const { error } = await supabase
+          .from('objectifs_collaborateurs')
+          .update(data)
+          .eq('id', selectedProjet.objectifs_collaborateur.id);
+
+        if (error) throw error;
+        setSuccess('Objectifs mis à jour avec succès');
+      } else {
+        const { error } = await supabase
+          .from('objectifs_collaborateurs')
+          .insert([data]);
+
+        if (error) throw error;
+        setSuccess('Objectifs créés avec succès');
+      }
+
+      setShowObjectifsForm(false);
+      setSelectedProjet(null);
+      resetObjectifsForm();
+      fetchProjetsCollaborateur();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde des objectifs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitEvaluation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProjet?.objectifs_collaborateur) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = {
+        objectifs_id: selectedProjet.objectifs_collaborateur.id,
+        auto_evaluation: evaluationData.auto_evaluation,
+        statut: 'en_attente'
+      };
+
+      if (selectedProjet.evaluation_objectifs) {
+        const { error } = await supabase
+          .from('evaluations_objectifs')
+          .update(data)
+          .eq('id', selectedProjet.evaluation_objectifs.id);
+
+        if (error) throw error;
+        setSuccess('Auto-évaluation mise à jour et soumise pour validation');
+      } else {
+        const { error } = await supabase
+          .from('evaluations_objectifs')
+          .insert([data]);
+
+        if (error) throw error;
+        setSuccess('Auto-évaluation créée et soumise pour validation');
+      }
+
+      setShowEvaluationForm(false);
+      setSelectedProjet(null);
+      resetEvaluationForm();
+      fetchProjetsCollaborateur();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde de l\'évaluation');
     } finally {
       setLoading(false);
     }
@@ -381,6 +527,63 @@ const FichesProjets = () => {
     }
     
     setShowCollaborateurForm(true);
+  };
+
+  const openObjectifsForm = (projet: ProjetCollaborateur) => {
+    setSelectedProjet(projet);
+    
+    if (projet.objectifs_collaborateur) {
+      setObjectifsData({
+        objectifs: projet.objectifs_collaborateur.objectifs.length > 0 
+          ? projet.objectifs_collaborateur.objectifs 
+          : [{ titre: '', description: '', indicateurs: '', echeance: '' }]
+      });
+    } else {
+      resetObjectifsForm();
+    }
+    
+    setShowObjectifsForm(true);
+  };
+
+  const openEvaluationForm = (projet: ProjetCollaborateur) => {
+    setSelectedProjet(projet);
+    
+    if (projet.evaluation_objectifs && projet.objectifs_collaborateur) {
+      // Préparer l'auto-évaluation existante
+      const autoEval: Record<string, { statut: string; commentaire: string; preuves: string }> = {};
+      
+      projet.objectifs_collaborateur.objectifs.forEach((obj: any, index: number) => {
+        const existingEval = projet.evaluation_objectifs?.auto_evaluation?.[index.toString()];
+        autoEval[index.toString()] = existingEval || {
+          statut: '',
+          commentaire: '',
+          preuves: ''
+        };
+      });
+      
+      setEvaluationData({
+        auto_evaluation: autoEval,
+        commentaires_generaux: ''
+      });
+    } else if (projet.objectifs_collaborateur) {
+      // Créer une nouvelle auto-évaluation
+      const autoEval: Record<string, { statut: string; commentaire: string; preuves: string }> = {};
+      
+      projet.objectifs_collaborateur.objectifs.forEach((_: any, index: number) => {
+        autoEval[index.toString()] = {
+          statut: '',
+          commentaire: '',
+          preuves: ''
+        };
+      });
+      
+      setEvaluationData({
+        auto_evaluation: autoEval,
+        commentaires_generaux: ''
+      });
+    }
+    
+    setShowEvaluationForm(true);
   };
 
   const resetForm = () => {
@@ -415,6 +618,19 @@ const FichesProjets = () => {
     });
   };
 
+  const resetObjectifsForm = () => {
+    setObjectifsData({
+      objectifs: [{ titre: '', description: '', indicateurs: '', echeance: '' }]
+    });
+  };
+
+  const resetEvaluationForm = () => {
+    setEvaluationData({
+      auto_evaluation: {},
+      commentaires_generaux: ''
+    });
+  };
+
   const addArrayField = (field: string, isCollabForm = false) => {
     if (isCollabForm) {
       setFicheCollaborateurData(prev => ({
@@ -427,6 +643,42 @@ const FichesProjets = () => {
         [field]: [...(prev[field as keyof typeof prev] as string[]), '']
       }));
     }
+  };
+
+  const addObjectif = () => {
+    setObjectifsData(prev => ({
+      ...prev,
+      objectifs: [...prev.objectifs, { titre: '', description: '', indicateurs: '', echeance: '' }]
+    }));
+  };
+
+  const updateObjectif = (index: number, field: string, value: string) => {
+    setObjectifsData(prev => ({
+      ...prev,
+      objectifs: prev.objectifs.map((obj, i) => 
+        i === index ? { ...obj, [field]: value } : obj
+      )
+    }));
+  };
+
+  const removeObjectif = (index: number) => {
+    setObjectifsData(prev => ({
+      ...prev,
+      objectifs: prev.objectifs.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateEvaluation = (objectifIndex: string, field: string, value: string) => {
+    setEvaluationData(prev => ({
+      ...prev,
+      auto_evaluation: {
+        ...prev.auto_evaluation,
+        [objectifIndex]: {
+          ...prev.auto_evaluation[objectifIndex],
+          [field]: value
+        }
+      }
+    }));
   };
 
   const updateArrayField = (field: string, index: number, value: string, subField?: string, isCollabForm = false) => {
@@ -486,7 +738,7 @@ const FichesProjets = () => {
            projet.projet.nom_client.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  if (loading && !showCreateForm && !showCollaborateurForm) {
+  if (loading && !showCreateForm && !showCollaborateurForm && !showObjectifsForm && !showEvaluationForm) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -687,15 +939,9 @@ const FichesProjets = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-xl font-semibold text-gray-900">{projet.projet.titre}</h3>
-                      {projet.fiche_collaborateur ? (
-                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />
-                          Fiche complétée
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
-                          Fiche à compléter
+                      {isProjetFini(projet) && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          Projet terminé
                         </span>
                       )}
                     </div>
@@ -721,33 +967,63 @@ const FichesProjets = () => {
                   </div>
                 </div>
 
-                {projet.responsabilites && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">Responsabilités:</h4>
-                    <p className="text-sm text-gray-600">{projet.responsabilites}</p>
-                  </div>
-                )}
-
-                {projet.fiche_collaborateur && (
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700">Fiche collaborateur</h4>
-                        <p className="text-xs text-gray-500">
-                          Dernière mise à jour: {format(new Date(projet.fiche_collaborateur.updated_at), 'dd/MM/yyyy à HH:mm', { locale: fr })}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs rounded-full ${statusColors[projet.fiche_collaborateur.statut as keyof typeof statusColors]}`}>
-                        {statusLabels[projet.fiche_collaborateur.statut as keyof typeof statusLabels]}
-                      </span>
+                {/* Status des différentes fiches */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  {/* Fiche collaborateur */}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Fiche collaborateur</h4>
+                      {projet.fiche_collaborateur ? (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      )}
                     </div>
+                    <p className="text-xs text-gray-600">
+                      {projet.fiche_collaborateur ? 'Complétée' : 'À compléter'}
+                    </p>
                   </div>
-                )}
 
-                <div className="flex justify-end">
+                  {/* Objectifs */}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Objectifs</h4>
+                      {projet.objectifs_collaborateur ? (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      {projet.objectifs_collaborateur ? 'Définis' : 'À définir'}
+                    </p>
+                  </div>
+
+                  {/* Évaluation */}
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Auto-évaluation</h4>
+                      {projet.evaluation_objectifs ? (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      ) : isProjetFini(projet) && projet.objectifs_collaborateur ? (
+                        <AlertCircle className="w-4 h-4 text-red-600" />
+                      ) : (
+                        <Clock className="w-4 h-4 text-gray-400" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      {projet.evaluation_objectifs ? 'Complétée' : 
+                       isProjetFini(projet) && projet.objectifs_collaborateur ? 'À compléter' : 
+                       'En attente'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => openFicheCollaborateurForm(projet)}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm"
                   >
                     {projet.fiche_collaborateur ? (
                       <>
@@ -761,6 +1037,42 @@ const FichesProjets = () => {
                       </>
                     )}
                   </button>
+
+                  <button
+                    onClick={() => openObjectifsForm(projet)}
+                    className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm"
+                  >
+                    {projet.objectifs_collaborateur ? (
+                      <>
+                        <Edit className="w-4 h-4" />
+                        Modifier objectifs
+                      </>
+                    ) : (
+                      <>
+                        <Target className="w-4 h-4" />
+                        Définir objectifs
+                      </>
+                    )}
+                  </button>
+
+                  {isProjetFini(projet) && projet.objectifs_collaborateur && (
+                    <button
+                      onClick={() => openEvaluationForm(projet)}
+                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm"
+                    >
+                      {projet.evaluation_objectifs ? (
+                        <>
+                          <Edit className="w-4 h-4" />
+                          Modifier évaluation
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="w-4 h-4" />
+                          Auto-évaluation
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -1174,6 +1486,262 @@ const FichesProjets = () => {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Sauvegarde...' : (selectedProjet.fiche_collaborateur ? 'Mettre à jour' : 'Enregistrer')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Objectifs Form Modal */}
+      {showObjectifsForm && selectedProjet && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {selectedProjet.objectifs_collaborateur ? 'Modifier' : 'Définir'} mes objectifs
+              </h2>
+              <p className="text-gray-600 mt-1">
+                Projet: {selectedProjet.projet.titre} - {selectedProjet.role_projet}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitObjectifs} className="p-6 space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-blue-800 mb-2">Information importante</h3>
+                <p className="text-sm text-blue-700">
+                  Définissez clairement vos objectifs personnels pour ce projet. Ces objectifs vous serviront de base pour votre auto-évaluation en fin de projet.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-900">Mes objectifs sur ce projet</h3>
+                
+                {objectifsData.objectifs.map((objectif, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-md font-medium text-gray-900">Objectif {index + 1}</h4>
+                      {objectifsData.objectifs.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeObjectif(index)}
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Titre de l'objectif *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={objectif.titre}
+                          onChange={(e) => updateObjectif(index, 'titre', e.target.value)}
+                          placeholder="Ex: Développer une nouvelle fonctionnalité"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Échéance
+                        </label>
+                        <input
+                          type="date"
+                          value={objectif.echeance}
+                          onChange={(e) => updateObjectif(index, 'echeance', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Description détaillée *
+                      </label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={objectif.description}
+                        onChange={(e) => updateObjectif(index, 'description', e.target.value)}
+                        placeholder="Décrivez précisément ce que vous voulez accomplir..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                    
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Indicateurs de réussite
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={objectif.indicateurs}
+                        onChange={(e) => updateObjectif(index, 'indicateurs', e.target.value)}
+                        placeholder="Comment mesurer la réussite de cet objectif ?"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={addObjectif}
+                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  Ajouter un objectif
+                </button>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-6 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowObjectifsForm(false);
+                    setSelectedProjet(null);
+                    resetObjectifsForm();
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Sauvegarde...' : (selectedProjet.objectifs_collaborateur ? 'Mettre à jour' : 'Enregistrer')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Évaluation Form Modal */}
+      {showEvaluationForm && selectedProjet && selectedProjet.objectifs_collaborateur && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Auto-évaluation de mes objectifs
+              </h2>
+              <p className="text-gray-600 mt-1">
+                Projet: {selectedProjet.projet.titre} - {selectedProjet.role_projet}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitEvaluation} className="p-6 space-y-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-yellow-800 mb-2">Auto-évaluation</h3>
+                <p className="text-sm text-yellow-700">
+                  Évaluez honnêtement l'atteinte de chacun de vos objectifs. Cette évaluation sera ensuite validée par votre référent projet et votre coach.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                {selectedProjet.objectifs_collaborateur.objectifs.map((objectif: any, index: number) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-6">
+                    <div className="mb-4">
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">{objectif.titre}</h4>
+                      <p className="text-gray-600 mb-2">{objectif.description}</p>
+                      {objectif.indicateurs && (
+                        <p className="text-sm text-gray-500">
+                          <strong>Indicateurs:</strong> {objectif.indicateurs}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Statut de l'objectif *
+                        </label>
+                        <select
+                          required
+                          value={evaluationData.auto_evaluation[index.toString()]?.statut || ''}
+                          onChange={(e) => updateEvaluation(index.toString(), 'statut', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                          <option value="">Sélectionner un statut</option>
+                          {objectifStatusOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Preuves/Réalisations
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={evaluationData.auto_evaluation[index.toString()]?.preuves || ''}
+                          onChange={(e) => updateEvaluation(index.toString(), 'preuves', e.target.value)}
+                          placeholder="Décrivez les preuves de votre réalisation..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Commentaires et justification *
+                      </label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={evaluationData.auto_evaluation[index.toString()]?.commentaire || ''}
+                        onChange={(e) => updateEvaluation(index.toString(), 'commentaire', e.target.value)}
+                        placeholder="Expliquez votre évaluation, les difficultés rencontrées, les apprentissages..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Commentaires généraux sur le projet
+                </label>
+                <textarea
+                  rows={4}
+                  value={evaluationData.commentaires_generaux}
+                  onChange={(e) => setEvaluationData(prev => ({ ...prev, commentaires_generaux: e.target.value }))}
+                  placeholder="Bilan global, apprentissages, suggestions pour de futurs projets..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-6 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEvaluationForm(false);
+                    setSelectedProjet(null);
+                    resetEvaluationForm();
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Soumission...' : 'Soumettre pour validation'}
                 </button>
               </div>
             </form>

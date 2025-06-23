@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, User, Building, Shield, Calendar, Plus, Trash2, Save } from 'lucide-react';
+import { Edit, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, User, Building, Shield, Calendar, Plus, Trash2, Save, UserCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -12,6 +12,7 @@ interface UserProfile {
   department: string | null;
   role: string;
   manager_id: string | null;
+  coach_id: string | null;
   is_active: boolean;
   last_login: string | null;
   created_at: string;
@@ -19,6 +20,9 @@ interface UserProfile {
   date_entree_entreprise: string | null;
   fiche_poste: string | null;
   manager: {
+    full_name: string;
+  } | null;
+  coach: {
     full_name: string;
   } | null;
 }
@@ -30,12 +34,14 @@ interface EditUserForm {
   date_entree_entreprise: string;
   fiche_poste: string;
   manager_id: string;
+  coach_id: string;
   department: string;
 }
 
 const Administration = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [managers, setManagers] = useState<UserProfile[]>([]);
+  const [coaches, setCoaches] = useState<UserProfile[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -53,6 +59,7 @@ const Administration = () => {
     date_entree_entreprise: '',
     fiche_poste: '',
     manager_id: '',
+    coach_id: '',
     department: ''
   });
 
@@ -105,7 +112,7 @@ const Administration = () => {
 
   const fetchUsers = async () => {
     try {
-      console.log('=== FETCHING USERS WITH MANAGER INFO ===');
+      console.log('=== FETCHING USERS WITH MANAGER AND COACH INFO ===');
       
       // Première requête : récupérer tous les utilisateurs
       const { data: usersData, error: usersError } = await supabase
@@ -118,6 +125,7 @@ const Administration = () => {
           department,
           role,
           manager_id,
+          coach_id,
           is_active,
           last_login,
           created_at,
@@ -134,49 +142,65 @@ const Administration = () => {
 
       console.log('Users data fetched:', usersData?.length || 0, 'users');
 
-      // Deuxième requête : récupérer les informations des managers
+      // Deuxième requête : récupérer les informations des managers et coaches
       const managerIds = usersData?.map(user => user.manager_id).filter(Boolean) || [];
+      const coachIds = usersData?.map(user => user.coach_id).filter(Boolean) || [];
+      const allIds = [...new Set([...managerIds, ...coachIds])];
+      
       console.log('Manager IDs to fetch:', managerIds);
+      console.log('Coach IDs to fetch:', coachIds);
 
-      let managersData: any[] = [];
-      if (managerIds.length > 0) {
+      let managersAndCoachesData: any[] = [];
+      if (allIds.length > 0) {
         const { data: managersInfo, error: managersError } = await supabase
           .from('user_profiles')
           .select('id, full_name')
-          .in('id', managerIds);
+          .in('id', allIds);
 
         if (managersError) {
-          console.error('Error fetching managers:', managersError);
+          console.error('Error fetching managers and coaches:', managersError);
         } else {
-          managersData = managersInfo || [];
-          console.log('Managers data fetched:', managersData);
+          managersAndCoachesData = managersInfo || [];
+          console.log('Managers and coaches data fetched:', managersAndCoachesData);
         }
       }
 
       // Combiner les données
-      const usersWithManagers = usersData?.map(user => {
-        const manager = managersData.find(m => m.id === user.manager_id);
+      const usersWithManagersAndCoaches = usersData?.map(user => {
+        const manager = managersAndCoachesData.find(m => m.id === user.manager_id);
+        const coach = managersAndCoachesData.find(c => c.id === user.coach_id);
         return {
           ...user,
-          manager: manager ? { full_name: manager.full_name } : null
+          manager: manager ? { full_name: manager.full_name } : null,
+          coach: coach ? { full_name: coach.full_name } : null
         };
       }) || [];
 
-      console.log('Final users with managers:', usersWithManagers.map(u => ({
+      console.log('Final users with managers and coaches:', usersWithManagersAndCoaches.map(u => ({
         name: u.full_name,
         manager_id: u.manager_id,
-        manager_name: u.manager?.full_name || 'None'
+        manager_name: u.manager?.full_name || 'None',
+        coach_id: u.coach_id,
+        coach_name: u.coach?.full_name || 'None'
       })));
 
-      setUsers(usersWithManagers);
+      setUsers(usersWithManagersAndCoaches);
       
       // Filtrer les managers (direction, coach_rh, referent_projet)
-      const managerUsers = usersWithManagers.filter(user => 
+      const managerUsers = usersWithManagersAndCoaches.filter(user => 
         ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
       );
       
+      // Filtrer les coaches (coach_rh uniquement)
+      const coachUsers = usersWithManagersAndCoaches.filter(user => 
+        user.role === 'coach_rh'
+      );
+      
       console.log('Manager users:', managerUsers.map(u => ({ name: u.full_name, role: u.role })));
+      console.log('Coach users:', coachUsers.map(u => ({ name: u.full_name, role: u.role })));
+      
       setManagers(managerUsers);
+      setCoaches(coachUsers);
     } catch (err) {
       console.error('Error in fetchUsers:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des utilisateurs');
@@ -257,6 +281,7 @@ const Administration = () => {
         date_entree_entreprise: formData.date_entree_entreprise || null,
         fiche_poste: formData.fiche_poste || null,
         manager_id: formData.manager_id || null,
+        coach_id: formData.coach_id || null,
         department: formData.department || null
       };
 
@@ -294,6 +319,7 @@ const Administration = () => {
       date_entree_entreprise: user.date_entree_entreprise || user.created_at?.split('T')[0] || '',
       fiche_poste: user.fiche_poste || '',
       manager_id: user.manager_id || '',
+      coach_id: user.coach_id || '',
       department: user.department || ''
     });
     setShowEditForm(true);
@@ -307,6 +333,7 @@ const Administration = () => {
       date_entree_entreprise: '',
       fiche_poste: '',
       manager_id: '',
+      coach_id: '',
       department: ''
     });
   };
@@ -386,17 +413,9 @@ const Administration = () => {
               <div className="mt-2 text-sm text-yellow-700 space-y-1">
                 <div>Total users: {users.length}</div>
                 <div>Users with managers: {users.filter(u => u.manager?.full_name).length}</div>
+                <div>Users with coaches: {users.filter(u => u.coach?.full_name).length}</div>
                 <div>Available managers: {managers.length}</div>
-                <div className="text-xs mt-2">
-                  <strong>Manager assignments:</strong>
-                  <ul className="mt-1 space-y-1">
-                    {users.map(user => (
-                      <li key={user.id}>
-                        {user.full_name}: {user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <div>Available coaches: {coaches.length}</div>
               </div>
             </div>
             <button
@@ -478,6 +497,9 @@ const Administration = () => {
                       Responsable direct
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Coach
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -518,6 +540,14 @@ const Administration = () => {
                           <User className="h-4 w-4 text-gray-400 mr-2" />
                           <span className="text-sm text-gray-900">
                             {user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <UserCheck className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">
+                            {user.coach?.full_name ? formatManagerName(user.coach.full_name) : 'Aucun'}
                           </span>
                         </div>
                       </td>
@@ -718,7 +748,7 @@ const Administration = () => {
                 </div>
 
                 {/* Responsable direct */}
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Responsable direct
                   </label>
@@ -730,6 +760,23 @@ const Administration = () => {
                     <option value="">Sélectionner un responsable</option>
                     {managers.filter(m => m.id !== editingUser?.id).map(manager => (
                       <option key={manager.id} value={manager.id}>{manager.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Coach */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Coach RH
+                  </label>
+                  <select
+                    value={formData.coach_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, coach_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Sélectionner un coach</option>
+                    {coaches.filter(c => c.id !== editingUser?.id).map(coach => (
+                      <option key={coach.id} value={coach.id}>{coach.full_name}</option>
                     ))}
                   </select>
                 </div>
@@ -762,6 +809,12 @@ const Administration = () => {
                     <span className="font-medium text-gray-600">Responsable actuel:</span>
                     <span className="ml-2 text-gray-900">
                       {editingUser.manager?.full_name ? formatManagerName(editingUser.manager.full_name) : 'Aucun'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Coach actuel:</span>
+                    <span className="ml-2 text-gray-900">
+                      {editingUser.coach?.full_name ? formatManagerName(editingUser.coach.full_name) : 'Aucun'}
                     </span>
                   </div>
                 </div>
