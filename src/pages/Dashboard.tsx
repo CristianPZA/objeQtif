@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Bell, CheckCircle, AlertTriangle, Users, Star } from 'lucide-react';
@@ -29,6 +30,7 @@ const DashboardContent = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,29 +67,13 @@ const DashboardContent = () => {
           throw new Error(`Profile fetch error: ${profileError.message}`);
         }
 
-        // If no profile exists, create a default one
+        // If no profile exists, redirect to complete profile page
         if (!profileData) {
-          const defaultProfile = {
-            full_name: 'Utilisateur',
-            role: 'Non défini'
-          };
-          
-          setProfile(defaultProfile);
-          
-          const { error: createError } = await supabase
-            .from('user_profiles')
-            .insert([{ 
-              id: user.id,
-              ...defaultProfile
-            }]);
-            
-          if (createError) {
-            console.error('Error creating profile:', createError);
-            throw new Error(`Failed to create profile: ${createError.message}`);
-          }
-        } else {
-          setProfile(profileData);
+          navigate('/complete-profile');
+          return;
         }
+
+        setProfile(profileData);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
         setError(errorMessage);
@@ -98,7 +84,7 @@ const DashboardContent = () => {
     };
 
     fetchData();
-  }, []);
+  }, [navigate]);
 
   if (loading) {
     return (
