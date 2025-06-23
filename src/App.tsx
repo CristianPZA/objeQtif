@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import FichesProjets from './pages/FichesProjets';
+import Administration from './pages/Administration';
 import CompleteProfile from './pages/CompleteProfile';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -29,6 +30,7 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="fiches-projets" element={<FichesProjets />} />
+            <Route path="administration" element={<Administration />} />
           </Route>
         </Routes>
       </AuthProvider>

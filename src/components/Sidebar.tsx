@@ -10,6 +10,7 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
+  Settings,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -103,6 +104,15 @@ const Sidebar = () => {
       label: 'Aide',
     },
   ];
+
+  // Add administration menu item for direction and admin roles
+  if (userRole === 'direction' || userRole === 'admin') {
+    menuItems.push({
+      to: '/administration',
+      icon: <Settings className="w-5 h-5" />,
+      label: 'Administration',
+    });
+  }
 
   return (
     <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
