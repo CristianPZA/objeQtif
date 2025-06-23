@@ -15,7 +15,6 @@ interface UserProfile {
   is_active: boolean;
   last_login: string | null;
   created_at: string;
-  date_entree: string | null;
   fiche_poste: string | null;
   manager: {
     full_name: string;
@@ -30,7 +29,6 @@ interface CreateUserForm {
   department: string;
   role: string;
   manager_id: string;
-  date_entree: string;
   fiche_poste: string;
 }
 
@@ -55,7 +53,6 @@ const Administration = () => {
     department: '',
     role: 'employe',
     manager_id: '',
-    date_entree: '',
     fiche_poste: ''
   });
 
@@ -127,7 +124,6 @@ const Administration = () => {
           is_active,
           last_login,
           created_at,
-          date_entree,
           fiche_poste,
           manager:user_profiles!manager_id(full_name)
         `)
@@ -170,7 +166,6 @@ const Administration = () => {
           department: formData.department || null,
           role: formData.role,
           manager_id: formData.manager_id || null,
-          date_entree: formData.date_entree || null,
           fiche_poste: formData.fiche_poste || null,
           is_active: true
         }]);
@@ -186,7 +181,6 @@ const Administration = () => {
         department: '',
         role: 'employe',
         manager_id: '',
-        date_entree: '',
         fiche_poste: ''
       });
       setShowCreateForm(false);
@@ -215,7 +209,6 @@ const Administration = () => {
           department: formData.department || null,
           role: formData.role,
           manager_id: formData.manager_id || null,
-          date_entree: formData.date_entree || null,
           fiche_poste: formData.fiche_poste || null
         })
         .eq('id', editingUser.id);
@@ -270,7 +263,6 @@ const Administration = () => {
       department: user.department || '',
       role: user.role,
       manager_id: user.manager_id || '',
-      date_entree: user.date_entree || '',
       fiche_poste: user.fiche_poste || ''
     });
     setShowEditForm(true);
@@ -393,7 +385,7 @@ const Administration = () => {
                   Manager
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date d'entrée
+                  Date de création
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
@@ -441,7 +433,7 @@ const Administration = () => {
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 text-gray-400 mr-2" />
                       <span className="text-sm text-gray-900">
-                        {user.date_entree ? format(new Date(user.date_entree), 'dd/MM/yyyy', { locale: fr }) : 'Non définie'}
+                        {format(new Date(user.created_at), 'dd/MM/yyyy', { locale: fr })}
                       </span>
                     </div>
                   </td>
@@ -583,7 +575,7 @@ const Administration = () => {
                   </select>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Manager (N+1)
                   </label>
@@ -597,18 +589,6 @@ const Administration = () => {
                       <option key={manager.id} value={manager.id}>{manager.full_name}</option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date d'entrée
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date_entree}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date_entree: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
                 </div>
               </div>
 
@@ -740,18 +720,6 @@ const Administration = () => {
                       <option key={manager.id} value={manager.id}>{manager.full_name}</option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date d'entrée
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date_entree}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date_entree: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
                 </div>
               </div>
 
