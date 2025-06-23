@@ -16,8 +16,7 @@ interface UserProfile {
   last_login: string | null;
   created_at: string;
   date_naissance: string | null;
-  date_entree_entreprise: string | null;
-  poste: string | null;
+  fiche_poste: string | null;
   manager: {
     full_name: string;
   } | null;
@@ -26,8 +25,7 @@ interface UserProfile {
 interface EditUserForm {
   full_name: string;
   date_naissance: string;
-  date_entree_entreprise: string;
-  poste: string;
+  fiche_poste: string;
   manager_id: string;
   department: string;
 }
@@ -45,8 +43,7 @@ const Administration = () => {
   const [formData, setFormData] = useState<EditUserForm>({
     full_name: '',
     date_naissance: '',
-    date_entree_entreprise: '',
-    poste: '',
+    fiche_poste: '',
     manager_id: '',
     department: ''
   });
@@ -112,8 +109,7 @@ const Administration = () => {
           last_login,
           created_at,
           date_naissance,
-          date_entree_entreprise,
-          poste,
+          fiche_poste,
           manager:user_profiles!manager_id(full_name)
         `)
         .order('full_name');
@@ -142,8 +138,7 @@ const Administration = () => {
         .update({
           full_name: formData.full_name,
           date_naissance: formData.date_naissance || null,
-          date_entree_entreprise: formData.date_entree_entreprise || null,
-          poste: formData.poste || null,
+          fiche_poste: formData.fiche_poste || null,
           manager_id: formData.manager_id || null,
           department: formData.department || null
         })
@@ -167,8 +162,7 @@ const Administration = () => {
     setFormData({
       full_name: user.full_name || '',
       date_naissance: user.date_naissance || '',
-      date_entree_entreprise: user.date_entree_entreprise || '',
-      poste: user.poste || '',
+      fiche_poste: user.fiche_poste || '',
       manager_id: user.manager_id || '',
       department: user.department || ''
     });
@@ -179,8 +173,7 @@ const Administration = () => {
     setFormData({
       full_name: '',
       date_naissance: '',
-      date_entree_entreprise: '',
-      poste: '',
+      fiche_poste: '',
       manager_id: '',
       department: ''
     });
@@ -375,28 +368,15 @@ const Administration = () => {
                   />
                 </div>
 
-                {/* Date d'entrée dans l'entreprise */}
+                {/* Fiche de poste */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date d'entrée dans l'entreprise
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date_entree_entreprise}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date_entree_entreprise: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                {/* Poste */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Poste
+                    Fiche de poste
                   </label>
                   <input
                     type="text"
-                    value={formData.poste}
-                    onChange={(e) => setFormData(prev => ({ ...prev, poste: e.target.value }))}
+                    value={formData.fiche_poste}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fiche_poste: e.target.value }))}
                     placeholder="Ex: Développeur Senior, Chef de projet..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
@@ -420,7 +400,7 @@ const Administration = () => {
                 </div>
 
                 {/* Responsable direct */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Responsable direct
                   </label>
