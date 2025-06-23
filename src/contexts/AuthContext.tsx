@@ -29,7 +29,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check active sessions and sets the user
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (error) {
-        console.error('Auth error:', error);
+        // Don't log "Auth session missing!" as an error since it's a normal state
+        if (error.message !== 'Auth session missing!') {
+          console.error('Auth error:', error);
+        }
+        
         if (error.message === 'User from sub claim in JWT does not exist' || 
             error.message.includes('User from sub claim in JWT does not exist')) {
           // Clear the invalid session
