@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users, Lock, UserPlus, X } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users, Lock, UserPlus, X, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -178,6 +178,89 @@ const Projets = () => {
         (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId)) return true;
     
     return false;
+  };
+
+  const canTerminateProject = (projet: Projet) => {
+    if (!currentUserRole || !currentUserId) return false;
+    
+    // Le projet doit être en cours pour pouvoir être terminé
+    if (projet.statut !== 'en_cours') return false;
+    
+    // Admin et direction peuvent terminer tous les projets
+    if (['admin', 'direction'].includes(currentUserRole)) return true;
+    
+    // Référent projet peut terminer ses projets ou ceux dont il est référent
+    if (currentUserRole === 'referent_projet' && 
+        (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId)) return true;
+    
+    return false;
+  };
+
+  const handleTerminateProject = async (projet: Projet) => {
+    if (!canTerminateProject(projet)) {
+      setError('Vous n\'avez pas les droits pour terminer ce projet');
+      return;
+    }
+
+    const confirmMessage = `Êtes-vous sûr de vouloir marquer le projet "${projet.titre}" comme terminé ?\n\nCela déclenchera automatiquement les auto-évaluations pour tous les collaborateurs du projet.`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Marquer le projet comme terminé
+      const { error: updateError } = await supabase
+        .from('projets')
+        .update({
+          statut: 'termine',
+          taux_avancement: 100,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projet.id);
+
+      if (updateError) throw updateError;
+
+      // Créer les notifications pour les collaborateurs
+      const collaborateurIds = projet.collaborateurs.map(c => c.employe_id);
+      
+      if (collaborateurIds.length > 0) {
+        const notifications = collaborateurIds.map(employeId => ({
+          destinataire_id: employeId,
+          expediteur_id: currentUserId,
+          titre: 'Projet terminé - Auto-évaluation requise',
+          message: `Le projet "${projet.titre}" est maintenant terminé. Veuillez compléter votre auto-évaluation des objectifs dans la section "Fiches Projets".`,
+          type: 'reminder',
+          priority: 2,
+          action_url: '/fiches-projets',
+          metadata: {
+            projet_id: projet.id,
+            projet_titre: projet.titre,
+            action_type: 'auto_evaluation_required'
+          }
+        }));
+
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert(notifications);
+
+        if (notificationError) {
+          console.error('Erreur lors de la création des notifications:', notificationError);
+          // Ne pas faire échouer l'opération pour les notifications
+        }
+      }
+
+      setSuccess(`Projet "${projet.titre}" marqué comme terminé. Les collaborateurs ont été notifiés pour compléter leur auto-évaluation.`);
+      fetchProjets(); // Recharger les projets
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la finalisation du projet');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -548,6 +631,26 @@ const Projets = () => {
                   <p className="text-gray-600 mb-3">{projet.description}</p>
                 </div>
                 <div className="flex gap-2">
+                  {/* Bouton Terminer le projet */}
+                  {canTerminateProject(projet) && (
+                    <button
+                      onClick={() => handleTerminateProject(projet)}
+                      className="text-green-600 hover:text-green-900 p-2 rounded hover:bg-green-50 flex items-center gap-1"
+                      title="Marquer le projet comme terminé"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs hidden sm:inline">Terminer</span>
+                    </button>
+                  )}
+                  
+                  {/* Indicateur projet terminé */}
+                  {projet.statut === 'termine' && (
+                    <div className="flex items-center gap-1 text-green-600 p-2">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs hidden sm:inline">Terminé</span>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => openCollaborateursModal(projet)}
                     className="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50"
@@ -615,6 +718,21 @@ const Projets = () => {
                 </div>
               )}
 
+              {/* Alerte pour les projets terminés avec collaborateurs */}
+              {projet.statut === 'termine' && projet.collaborateurs.length > 0 && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="text-amber-800 font-medium">Projet terminé</p>
+                      <p className="text-amber-700 mt-1">
+                        Les collaborateurs ont été notifiés pour compléter leur auto-évaluation des objectifs.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-500">
                   Créé par: {projet.auteur_nom}
@@ -623,7 +741,9 @@ const Projets = () => {
                   <span className="text-sm text-gray-600">Avancement: {projet.taux_avancement}%</span>
                   <div className="w-24 bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-indigo-600 h-2 rounded-full transition-all"
+                      className={`h-2 rounded-full transition-all ${
+                        projet.statut === 'termine' ? 'bg-green-600' : 'bg-indigo-600'
+                      }`}
                       style={{ width: `${projet.taux_avancement}%` }}
                     ></div>
                   </div>
