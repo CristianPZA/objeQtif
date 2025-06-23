@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Users, Calendar, Building, FileText, Shield, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Users, Calendar, Building, FileText, Shield, AlertTriangle, Cake } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -15,6 +15,7 @@ interface UserProfile {
   is_active: boolean;
   last_login: string | null;
   created_at: string;
+  date_naissance: string | null;
   fiche_poste: string | null;
   manager: {
     full_name: string;
@@ -23,12 +24,12 @@ interface UserProfile {
 
 interface CreateUserForm {
   email: string;
-  password: string;
   full_name: string;
   phone: string;
   department: string;
   role: string;
   manager_id: string;
+  date_naissance: string;
   fiche_poste: string;
 }
 
@@ -47,12 +48,12 @@ const Administration = () => {
 
   const [formData, setFormData] = useState<CreateUserForm>({
     email: '',
-    password: '',
     full_name: '',
     phone: '',
     department: '',
     role: 'employe',
     manager_id: '',
+    date_naissance: '',
     fiche_poste: ''
   });
 
@@ -124,6 +125,7 @@ const Administration = () => {
           is_active,
           last_login,
           created_at,
+          date_naissance,
           fiche_poste,
           manager:user_profiles!manager_id(full_name)
         `)
@@ -139,6 +141,15 @@ const Administration = () => {
     }
   };
 
+  // Fonction pour générer le mot de passe à partir de la date de naissance (jjmmaaaa)
+  const generatePasswordFromBirthdate = (birthdate: string): string => {
+    const date = new Date(birthdate);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString();
+    return `${day}${month}${year}`;
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -146,10 +157,13 @@ const Administration = () => {
     setSuccess(null);
 
     try {
+      // Générer le mot de passe à partir de la date de naissance
+      const password = generatePasswordFromBirthdate(formData.date_naissance);
+
       // Créer l'utilisateur dans Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: formData.email,
-        password: formData.password,
+        password: password,
         email_confirm: true
       });
 
@@ -166,21 +180,22 @@ const Administration = () => {
           department: formData.department || null,
           role: formData.role,
           manager_id: formData.manager_id || null,
+          date_naissance: formData.date_naissance,
           fiche_poste: formData.fiche_poste || null,
           is_active: true
         }]);
 
       if (profileError) throw profileError;
 
-      setSuccess('Utilisateur créé avec succès');
+      setSuccess(`Utilisateur créé avec succès. Mot de passe généré: ${password}`);
       setFormData({
         email: '',
-        password: '',
         full_name: '',
         phone: '',
         department: '',
         role: 'employe',
         manager_id: '',
+        date_naissance: '',
         fiche_poste: ''
       });
       setShowCreateForm(false);
@@ -209,6 +224,7 @@ const Administration = () => {
           department: formData.department || null,
           role: formData.role,
           manager_id: formData.manager_id || null,
+          date_naissance: formData.date_naissance,
           fiche_poste: formData.fiche_poste || null
         })
         .eq('id', editingUser.id);
@@ -257,12 +273,12 @@ const Administration = () => {
     setEditingUser(user);
     setFormData({
       email: user.email,
-      password: '',
       full_name: user.full_name,
       phone: user.phone || '',
       department: user.department || '',
       role: user.role,
       manager_id: user.manager_id || '',
+      date_naissance: user.date_naissance || '',
       fiche_poste: user.fiche_poste || ''
     });
     setShowEditForm(true);
@@ -385,7 +401,7 @@ const Administration = () => {
                   Manager
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date de création
+                  Date de naissance
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Statut
@@ -431,9 +447,9 @@ const Administration = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                      <Cake className="h-4 w-4 text-gray-400 mr-2" />
                       <span className="text-sm text-gray-900">
-                        {format(new Date(user.created_at), 'dd/MM/yyyy', { locale: fr })}
+                        {user.date_naissance ? format(new Date(user.date_naissance), 'dd/MM/yyyy', { locale: fr }) : 'Non définie'}
                       </span>
                     </div>
                   </td>
@@ -488,6 +504,9 @@ const Administration = () => {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold text-gray-900">Nouvel employé</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Le mot de passe sera automatiquement généré à partir de la date de naissance (format: jjmmaaaa)
+              </p>
             </div>
 
             <form onSubmit={handleCreateUser} className="p-6 space-y-6">
@@ -507,19 +526,6 @@ const Administration = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Mot de passe temporaire *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Nom complet *
                   </label>
                   <input
@@ -529,6 +535,22 @@ const Administration = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date de naissance *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.date_naissance}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date_naissance: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Utilisée pour générer le mot de passe automatiquement
+                  </p>
                 </div>
 
                 <div>
@@ -664,6 +686,18 @@ const Administration = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date de naissance
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date_naissance}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date_naissance: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Téléphone
                   </label>
                   <input
@@ -706,7 +740,7 @@ const Administration = () => {
                   </select>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Manager (N+1)
                   </label>
