@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react';
+import { Edit, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, User, Building, Shield, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import UserTable from '../components/administration/UserTable';
-import UserFilters from '../components/administration/UserFilters';
-import UserForm from '../components/administration/UserForm';
-import FieldConfiguration from '../components/administration/FieldConfiguration';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface UserProfile {
   id: string;
@@ -18,29 +16,20 @@ interface UserProfile {
   last_login: string | null;
   created_at: string;
   date_naissance: string | null;
-  fiche_poste: string | null;
+  date_entree_entreprise: string | null;
+  poste: string | null;
   manager: {
     full_name: string;
   } | null;
 }
 
-interface CreateUserForm {
-  email: string;
+interface EditUserForm {
   full_name: string;
-  phone: string;
-  department: string;
-  role: string;
-  manager_id: string;
   date_naissance: string;
-  fiche_poste: string;
-}
-
-interface DiagnosticInfo {
-  supabaseConnection: boolean;
-  edgeFunctionAvailable: boolean;
-  userPermissions: string | null;
-  lastError: string | null;
-  timestamp: string;
+  date_entree_entreprise: string;
+  poste: string;
+  manager_id: string;
+  department: string;
 }
 
 const Administration = () => {
@@ -48,38 +37,18 @@ const Administration = () => {
   const [managers, setManagers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'config'>('users');
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [diagnosticInfo, setDiagnosticInfo] = useState<DiagnosticInfo | null>(null);
 
-  const [formData, setFormData] = useState<CreateUserForm>({
-    email: '',
+  const [formData, setFormData] = useState<EditUserForm>({
     full_name: '',
-    phone: '',
-    department: '',
-    role: 'employe',
-    manager_id: '',
     date_naissance: '',
-    fiche_poste: ''
-  });
-
-  // Configuration des champs
-  const [fieldConfig, setFieldConfig] = useState({
-    email: { enabled: true, required: true, label: 'Email' },
-    full_name: { enabled: true, required: true, label: 'Nom complet' },
-    phone: { enabled: true, required: false, label: 'Téléphone' },
-    department: { enabled: true, required: false, label: 'Département' },
-    role: { enabled: true, required: true, label: 'Rôle' },
-    manager_id: { enabled: true, required: true, label: 'Manager (N+1)' },
-    date_naissance: { enabled: true, required: true, label: 'Date de naissance' },
-    fiche_poste: { enabled: true, required: false, label: 'Fiche de poste' }
+    date_entree_entreprise: '',
+    poste: '',
+    manager_id: '',
+    department: ''
   });
 
   const roles = [
@@ -105,88 +74,7 @@ const Administration = () => {
   useEffect(() => {
     checkAdminAccess();
     fetchUsers();
-    loadFieldConfiguration();
-    runDiagnostic();
   }, []);
-
-  const runDiagnostic = async () => {
-    console.log('=== RUNNING SYSTEM DIAGNOSTIC ===');
-    const diagnostic: DiagnosticInfo = {
-      supabaseConnection: false,
-      edgeFunctionAvailable: false,
-      userPermissions: null,
-      lastError: null,
-      timestamp: new Date().toISOString()
-    };
-
-    try {
-      // Test 1: Connexion Supabase
-      console.log('Testing Supabase connection...');
-      const { data: testData, error: testError } = await supabase
-        .from('user_profiles')
-        .select('count')
-        .limit(1);
-
-      if (testError) {
-        console.error('Supabase connection failed:', testError);
-        diagnostic.lastError = `Connexion Supabase: ${testError.message}`;
-      } else {
-        console.log('✓ Supabase connection OK');
-        diagnostic.supabaseConnection = true;
-      }
-
-      // Test 2: Permissions utilisateur
-      console.log('Testing user permissions...');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Profile fetch failed:', profileError);
-          diagnostic.lastError = `Profil utilisateur: ${profileError.message}`;
-        } else {
-          console.log('✓ User profile OK, role:', profile.role);
-          diagnostic.userPermissions = profile.role;
-        }
-      }
-
-      // Test 3: Edge Function disponibilité
-      console.log('Testing edge function availability...');
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const testResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-            method: 'OPTIONS',
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-            }
-          });
-
-          if (testResponse.ok) {
-            console.log('✓ Edge function accessible');
-            diagnostic.edgeFunctionAvailable = true;
-          } else {
-            console.error('Edge function not accessible:', testResponse.status);
-            diagnostic.lastError = `Edge function: HTTP ${testResponse.status}`;
-          }
-        }
-      } catch (fetchError) {
-        console.error('Edge function test failed:', fetchError);
-        diagnostic.lastError = `Edge function: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`;
-      }
-
-    } catch (err) {
-      console.error('Diagnostic failed:', err);
-      diagnostic.lastError = err instanceof Error ? err.message : 'Erreur de diagnostic inconnue';
-    }
-
-    console.log('=== DIAGNOSTIC COMPLETE ===', diagnostic);
-    setDiagnosticInfo(diagnostic);
-  };
 
   const checkAdminAccess = async () => {
     try {
@@ -224,7 +112,8 @@ const Administration = () => {
           last_login,
           created_at,
           date_naissance,
-          fiche_poste,
+          date_entree_entreprise,
+          poste,
           manager:user_profiles!manager_id(full_name)
         `)
         .order('full_name');
@@ -236,267 +125,6 @@ const Administration = () => {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des utilisateurs');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadFieldConfiguration = () => {
-    const savedConfig = localStorage.getItem('admin_field_config');
-    if (savedConfig) {
-      try {
-        setFieldConfig(JSON.parse(savedConfig));
-      } catch (err) {
-        console.error('Erreur lors du chargement de la configuration:', err);
-      }
-    }
-  };
-
-  const saveFieldConfiguration = (config: typeof fieldConfig) => {
-    setFieldConfig(config);
-    localStorage.setItem('admin_field_config', JSON.stringify(config));
-    setSuccess('Configuration des champs sauvegardée avec succès');
-    setTimeout(() => setSuccess(null), 3000);
-  };
-
-  const generatePasswordFromBirthdate = (birthdate: string): string => {
-    const date = new Date(birthdate);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear().toString();
-    return `${day}${month}${year}`;
-  };
-
-  const validateFormData = (data: CreateUserForm): string[] => {
-    const errors: string[] = [];
-
-    // Validation email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-      errors.push('Format d\'email invalide');
-    }
-
-    // Validation champs obligatoires
-    if (!data.full_name.trim()) {
-      errors.push('Le nom complet est requis');
-    }
-
-    if (!data.role) {
-      errors.push('Le rôle est requis');
-    }
-
-    if (fieldConfig.manager_id.required && !data.manager_id) {
-      errors.push('Le manager est requis');
-    }
-
-    if (!data.date_naissance) {
-      errors.push('La date de naissance est requise');
-    } else {
-      // Validation date de naissance (pas dans le futur, âge raisonnable)
-      const birthDate = new Date(data.date_naissance);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      
-      if (birthDate > today) {
-        errors.push('La date de naissance ne peut pas être dans le futur');
-      }
-      
-      if (age < 16 || age > 100) {
-        errors.push('L\'âge doit être compris entre 16 et 100 ans');
-      }
-    }
-
-    return errors;
-  };
-
-  const getErrorMessage = (errorResponse: any): string => {
-    // Check if it's a response from the Edge Function
-    if (errorResponse.error) {
-      const errorType = errorResponse.error;
-      
-      // Map specific error types to user-friendly French messages
-      switch (errorType) {
-        case 'A user with this email already exists':
-          return 'Un utilisateur avec cet email existe déjà. Veuillez utiliser une autre adresse email.';
-        
-        case 'Invalid email format':
-          return 'Le format de l\'email est invalide. Veuillez vérifier l\'adresse email saisie.';
-        
-        case 'Invalid password':
-          return 'Le mot de passe ne respecte pas les critères de sécurité requis.';
-        
-        case 'Password must be at least 6 characters long':
-          return 'Le mot de passe doit contenir au moins 6 caractères.';
-        
-        case 'Missing required fields':
-          return 'Des champs obligatoires sont manquants. Veuillez vérifier le formulaire.';
-        
-        case 'Missing required user data fields (full_name, role)':
-          return 'Le nom complet et le rôle sont obligatoires.';
-        
-        case 'Insufficient permissions':
-          return 'Vous n\'avez pas les droits nécessaires pour créer un utilisateur.';
-        
-        case 'Authorization required':
-        case 'Invalid authentication':
-          return 'Votre session a expiré. Veuillez vous reconnecter.';
-        
-        case 'Failed to create authentication user':
-          return 'Échec de la création du compte utilisateur. Veuillez réessayer.';
-        
-        case 'Failed to create user profile':
-          return 'Échec de la création du profil utilisateur. Veuillez réessayer.';
-        
-        case 'Server configuration error':
-          return 'Erreur de configuration du serveur. Veuillez contacter l\'administrateur système.';
-        
-        case 'Internal server error':
-          return 'Erreur serveur temporaire. Veuillez réessayer dans quelques minutes.';
-        
-        default:
-          // If we have details, include them
-          if (errorResponse.details) {
-            return `Erreur: ${errorResponse.details}`;
-          }
-          return `Erreur inattendue: ${errorType}`;
-      }
-    }
-    
-    // Fallback for other error types
-    if (typeof errorResponse === 'string') {
-      return errorResponse;
-    }
-    
-    return 'Une erreur inattendue s\'est produite. Veuillez réessayer.';
-  };
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Empêcher les soumissions multiples
-    if (submitting) {
-      console.log('Submission already in progress, ignoring...');
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
-
-    // Sauvegarde temporaire des données du formulaire
-    const formBackup = { ...formData };
-
-    try {
-      console.log('=== STARTING USER CREATION PROCESS ===');
-      console.log('Form data:', formData);
-
-      // Validation côté client
-      const validationErrors = validateFormData(formData);
-      if (validationErrors.length > 0) {
-        throw new Error(`Erreurs de validation: ${validationErrors.join(', ')}`);
-      }
-
-      // Vérification que l'utilisateur n'existe pas déjà
-      const { data: existingUsers } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('email', formData.email.trim().toLowerCase());
-
-      if (existingUsers && existingUsers.length > 0) {
-        throw new Error('Un utilisateur avec cet email existe déjà');
-      }
-
-      const password = generatePasswordFromBirthdate(formData.date_naissance);
-      console.log('Generated password length:', password.length);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Session expirée. Veuillez vous reconnecter.');
-      }
-
-      console.log('Session found, preparing request...');
-
-      const requestBody = {
-        email: formData.email.trim().toLowerCase(),
-        password: password,
-        userData: {
-          full_name: formData.full_name.trim(),
-          email: formData.email.trim().toLowerCase(),
-          phone: formData.phone.trim() || null,
-          department: formData.department || null,
-          role: formData.role,
-          manager_id: formData.manager_id || null,
-          date_naissance: formData.date_naissance,
-          fiche_poste: formData.fiche_poste.trim() || null,
-          is_active: true
-        }
-      };
-
-      console.log('Request body prepared:', {
-        ...requestBody,
-        password: '[HIDDEN]'
-      });
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      console.log('Response received:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
-      const responseText = await response.text();
-      console.log('Response body:', responseText);
-
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse response as JSON:', parseError);
-        throw new Error(`Réponse serveur invalide. Veuillez contacter l'administrateur système.`);
-      }
-
-      if (!response.ok) {
-        console.error('Request failed with result:', result);
-        
-        // Use the improved error message function
-        const userFriendlyMessage = getErrorMessage(result);
-        throw new Error(userFriendlyMessage);
-      }
-
-      console.log('User created successfully:', result);
-
-      setSuccess(`✅ Utilisateur créé avec succès ! 
-      📧 Email: ${formData.email}
-      🔑 Mot de passe temporaire: ${password}
-      
-      ⚠️ Communiquez ces informations à l'employé de manière sécurisée.`);
-      
-      resetForm();
-      setShowCreateForm(false);
-      fetchUsers();
-      
-      // Relancer le diagnostic après succès
-      setTimeout(() => runDiagnostic(), 1000);
-
-    } catch (err) {
-      console.error('Error creating user:', err);
-      
-      // Restaurer les données du formulaire en cas d'erreur
-      setFormData(formBackup);
-      
-      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue lors de la création de l\'utilisateur';
-      setError(errorMessage);
-      
-      // Relancer le diagnostic en cas d'erreur
-      setTimeout(() => runDiagnostic(), 1000);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -513,91 +141,60 @@ const Administration = () => {
         .from('user_profiles')
         .update({
           full_name: formData.full_name,
-          phone: formData.phone || null,
-          department: formData.department || null,
-          role: formData.role,
+          date_naissance: formData.date_naissance || null,
+          date_entree_entreprise: formData.date_entree_entreprise || null,
+          poste: formData.poste || null,
           manager_id: formData.manager_id || null,
-          date_naissance: formData.date_naissance,
-          fiche_poste: formData.fiche_poste || null
+          department: formData.department || null
         })
         .eq('id', editingUser.id);
 
       if (error) throw error;
 
-      setSuccess('Utilisateur modifié avec succès');
+      setSuccess('Informations employé modifiées avec succès');
       setShowEditForm(false);
       setEditingUser(null);
       fetchUsers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la modification de l\'utilisateur');
+      setError(err instanceof Error ? err.message : 'Erreur lors de la modification des informations');
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${userName}" ? Cette action est irréversible.`)) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ is_active: false })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      setSuccess('Utilisateur désactivé avec succès');
-      fetchUsers();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression de l\'utilisateur');
-    } finally {
-      setLoading(false);
     }
   };
 
   const openEditForm = (user: UserProfile) => {
     setEditingUser(user);
     setFormData({
-      email: user.email,
-      full_name: user.full_name,
-      phone: user.phone || '',
-      department: user.department || '',
-      role: user.role,
-      manager_id: user.manager_id || '',
+      full_name: user.full_name || '',
       date_naissance: user.date_naissance || '',
-      fiche_poste: user.fiche_poste || ''
+      date_entree_entreprise: user.date_entree_entreprise || '',
+      poste: user.poste || '',
+      manager_id: user.manager_id || '',
+      department: user.department || ''
     });
     setShowEditForm(true);
   };
 
   const resetForm = () => {
     setFormData({
-      email: '',
       full_name: '',
-      phone: '',
-      department: '',
-      role: 'employe',
-      manager_id: '',
       date_naissance: '',
-      fiche_poste: ''
+      date_entree_entreprise: '',
+      poste: '',
+      manager_id: '',
+      department: ''
     });
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDepartment = departmentFilter === 'all' || user.department === departmentFilter;
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    return matchesSearch && matchesDepartment && matchesRole;
-  });
+  const roleColors = {
+    employe: 'bg-gray-100 text-gray-800',
+    referent_projet: 'bg-blue-100 text-blue-800',
+    coach_rh: 'bg-green-100 text-green-800',
+    direction: 'bg-purple-100 text-purple-800',
+    admin: 'bg-red-100 text-red-800'
+  };
 
-  if (loading && !showCreateForm && !showEditForm) {
+  if (loading && !showEditForm) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -621,18 +218,22 @@ const Administration = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Administration</h1>
-          <p className="text-gray-600 mt-1">Gestion des profils employés et des droits d'accès</p>
+          <p className="text-gray-600 mt-1">Gestion des profils employés</p>
         </div>
-        {activeTab === 'users' && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            disabled={submitting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus className="w-5 h-5" />
-            Nouvel employé
-          </button>
-        )}
+      </div>
+
+      {/* Info Box */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <Info className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">Gestion des employés</h3>
+            <div className="mt-1 text-sm text-blue-700">
+              <p>Les nouveaux employés doivent être créés via l'onglet "Authentication" de Supabase.</p>
+              <p>Une fois créés, ils apparaîtront automatiquement dans ce tableau et vous pourrez modifier leurs informations.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Messages */}
@@ -642,7 +243,7 @@ const Administration = () => {
             <XCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
             <div>
               <h3 className="text-sm font-medium text-red-800">Erreur</h3>
-              <div className="mt-1 text-sm text-red-700 whitespace-pre-line">
+              <div className="mt-1 text-sm text-red-700">
                 {error}
               </div>
             </div>
@@ -656,7 +257,7 @@ const Administration = () => {
             <CheckCircle className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
             <div>
               <h3 className="text-sm font-medium text-green-800">Succès</h3>
-              <div className="mt-1 text-sm text-green-700 whitespace-pre-line">
+              <div className="mt-1 text-sm text-green-700">
                 {success}
               </div>
             </div>
@@ -664,153 +265,231 @@ const Administration = () => {
         </div>
       )}
 
-      {/* Diagnostic Info (Development only) */}
-      {process.env.NODE_ENV === 'development' && diagnosticInfo && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-blue-800">Diagnostic Système</h3>
-              <div className="mt-2 text-sm text-blue-700 space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${diagnosticInfo.supabaseConnection ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  Connexion Supabase: {diagnosticInfo.supabaseConnection ? 'OK' : 'Échec'}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${diagnosticInfo.edgeFunctionAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  Edge Function: {diagnosticInfo.edgeFunctionAvailable ? 'Disponible' : 'Indisponible'}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${diagnosticInfo.userPermissions ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  Permissions: {diagnosticInfo.userPermissions || 'Non définies'}
-                </div>
-                {diagnosticInfo.lastError && (
-                  <div className="text-red-600 text-xs mt-2">
-                    Dernière erreur: {diagnosticInfo.lastError}
-                  </div>
-                )}
-                <div className="text-xs text-gray-500 mt-2">
-                  Dernière vérification: {new Date(diagnosticInfo.timestamp).toLocaleString('fr-FR')}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={runDiagnostic}
-              className="text-blue-600 hover:text-blue-800 text-xs underline"
-            >
-              Actualiser
-            </button>
-          </div>
+      {/* Users Table */}
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Employé
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rôle
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Responsable direct
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                          <User className="h-5 w-5 text-indigo-600" />
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
+                        <div className="text-sm text-gray-500">{user.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
+                      <Shield className="w-3 h-3 mr-1" />
+                      {roles.find(r => r.value === user.role)?.label}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {user.manager?.full_name || 'Aucun'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => openEditForm(user)}
+                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50 flex items-center gap-1"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Modifier
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
 
-      {/* Loading indicator during submission */}
-      {submitting && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-3"></div>
-            <span className="text-sm text-yellow-800">Opération en cours, veuillez patienter...</span>
+        {users.length === 0 && (
+          <div className="text-center py-12">
+            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun employé trouvé</h3>
+            <p className="text-gray-600">
+              Les employés créés via Supabase Auth apparaîtront ici automatiquement.
+            </p>
           </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'users'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Gestion des employés
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('config')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'config'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Configuration des champs
-            </div>
-          </button>
-        </nav>
+        )}
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'users' && (
-        <div className="space-y-6">
-          <UserFilters
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            departmentFilter={departmentFilter}
-            setDepartmentFilter={setDepartmentFilter}
-            roleFilter={roleFilter}
-            setRoleFilter={setRoleFilter}
-            departments={departments}
-            roles={roles}
-          />
+      {/* Edit Form Modal */}
+      {showEditForm && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Modifier les informations de {editingUser.full_name}
+              </h2>
+            </div>
 
-          <UserTable
-            users={filteredUsers}
-            roles={roles}
-            onEdit={openEditForm}
-            onDelete={handleDeleteUser}
-          />
+            <form onSubmit={handleEditUser} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Nom complet */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nom complet *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.full_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Date de naissance */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date de naissance
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date_naissance}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date_naissance: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Date d'entrée dans l'entreprise */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date d'entrée dans l'entreprise
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date_entree_entreprise}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date_entree_entreprise: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Poste */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Poste
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.poste}
+                    onChange={(e) => setFormData(prev => ({ ...prev, poste: e.target.value }))}
+                    placeholder="Ex: Développeur Senior, Chef de projet..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Département */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Département
+                  </label>
+                  <select
+                    value={formData.department}
+                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Sélectionner un département</option>
+                    {departments.map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Responsable direct */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Responsable direct
+                  </label>
+                  <select
+                    value={formData.manager_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, manager_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Sélectionner un responsable</option>
+                    {managers.filter(m => m.id !== editingUser?.id).map(manager => (
+                      <option key={manager.id} value={manager.id}>{manager.full_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Informations en lecture seule */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Informations système (lecture seule)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-600">Email:</span>
+                    <span className="ml-2 text-gray-900">{editingUser.email}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Rôle:</span>
+                    <span className="ml-2 text-gray-900">{roles.find(r => r.value === editingUser.role)?.label}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Créé le:</span>
+                    <span className="ml-2 text-gray-900">
+                      {format(new Date(editingUser.created_at), 'dd/MM/yyyy', { locale: fr })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Statut:</span>
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                      editingUser.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {editingUser.is_active ? 'Actif' : 'Inactif'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditForm(false);
+                    setEditingUser(null);
+                    resetForm();
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {submitting ? 'Modification...' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
-
-      {activeTab === 'config' && (
-        <FieldConfiguration
-          fieldConfig={fieldConfig}
-          onSave={saveFieldConfiguration}
-        />
-      )}
-
-      {/* User Forms */}
-      <UserForm
-        isOpen={showCreateForm}
-        onClose={() => {
-          setShowCreateForm(false);
-          resetForm();
-        }}
-        onSubmit={handleCreateUser}
-        formData={formData}
-        setFormData={setFormData}
-        editingUser={null}
-        managers={managers}
-        departments={departments}
-        roles={roles}
-        loading={submitting}
-        fieldConfig={fieldConfig}
-      />
-
-      <UserForm
-        isOpen={showEditForm}
-        onClose={() => {
-          setShowEditForm(false);
-          setEditingUser(null);
-          resetForm();
-        }}
-        onSubmit={handleEditUser}
-        formData={formData}
-        setFormData={setFormData}
-        editingUser={editingUser}
-        managers={managers}
-        departments={departments}
-        roles={roles}
-        loading={submitting}
-        fieldConfig={fieldConfig}
-      />
     </div>
   );
 };
