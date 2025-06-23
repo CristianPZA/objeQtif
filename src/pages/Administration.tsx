@@ -182,12 +182,45 @@ const Administration = () => {
     setSuccess(null);
 
     try {
+      console.log('=== STARTING USER CREATION ===');
+      console.log('Form data:', formData);
+
+      // Validation côté client
+      if (!formData.email || !formData.full_name || !formData.role) {
+        throw new Error('Les champs obligatoires doivent être remplis');
+      }
+
+      if (!formData.date_naissance) {
+        throw new Error('La date de naissance est requise pour générer le mot de passe');
+      }
+
       const password = generatePasswordFromBirthdate(formData.date_naissance);
+      console.log('Generated password length:', password.length);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Session non trouvée');
       }
+
+      console.log('Session found, making request to edge function...');
+
+      const requestBody = {
+        email: formData.email.trim(),
+        password: password,
+        userData: {
+          full_name: formData.full_name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim() || null,
+          department: formData.department || null,
+          role: formData.role,
+          manager_id: formData.manager_id || null,
+          date_naissance: formData.date_naissance,
+          fiche_poste: formData.fiche_poste.trim() || null,
+          is_active: true
+        }
+      };
+
+      console.log('Request body:', requestBody);
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
         method: 'POST',
@@ -195,34 +228,36 @@ const Administration = () => {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: password,
-          userData: {
-            full_name: formData.full_name,
-            email: formData.email,
-            phone: formData.phone || null,
-            department: formData.department || null,
-            role: formData.role,
-            manager_id: formData.manager_id || null,
-            date_naissance: formData.date_naissance,
-            fiche_poste: formData.fiche_poste || null,
-            is_active: true
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
-      const result = await response.json();
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', parseError);
+        throw new Error(`Invalid response from server: ${responseText}`);
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || 'Erreur lors de la création de l\'utilisateur');
+        console.error('Request failed:', result);
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
+
+      console.log('User created successfully:', result);
 
       setSuccess(`Utilisateur créé avec succès. Mot de passe généré: ${password}`);
       resetForm();
       setShowCreateForm(false);
       fetchUsers();
     } catch (err) {
+      console.error('Error creating user:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors de la création de l\'utilisateur');
     } finally {
       setLoading(false);
@@ -373,6 +408,15 @@ const Administration = () => {
       {success && (
         <div className="bg-green-50 text-green-700 p-4 rounded-lg">
           {success}
+        </div>
+      )}
+
+      {/* Debug Info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-blue-50 text-blue-700 p-4 rounded-lg text-sm">
+          <strong>Debug Info:</strong><br />
+          Supabase URL: {import.meta.env.VITE_SUPABASE_URL ? 'Configuré' : 'Manquant'}<br />
+          Edge Function URL: {import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user
         </div>
       )}
 
