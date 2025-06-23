@@ -67,7 +67,7 @@ const Sidebar = () => {
     {
       to: '/aide',
       icon: <HelpCircle className="w-5 h-5" />,
-      label: 'Aide',
+      label: 'Career Pathways',
     },
   ];
 
