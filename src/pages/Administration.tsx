@@ -16,6 +16,7 @@ interface UserProfile {
   last_login: string | null;
   created_at: string;
   date_naissance: string | null;
+  date_entree_entreprise: string | null;
   fiche_poste: string | null;
   manager: {
     full_name: string;
@@ -104,6 +105,8 @@ const Administration = () => {
 
   const fetchUsers = async () => {
     try {
+      console.log('Fetching users with manager information...');
+      
       const { data, error } = await supabase
         .from('user_profiles')
         .select(`
@@ -118,15 +121,31 @@ const Administration = () => {
           last_login,
           created_at,
           date_naissance,
+          date_entree_entreprise,
           fiche_poste,
-          manager:user_profiles!manager_id(full_name)
+          manager:user_profiles!manager_id(
+            full_name
+          )
         `)
         .order('full_name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching users:', error);
+        throw error;
+      }
+
+      console.log('Fetched users:', data);
       setUsers(data || []);
-      setManagers(data?.filter(user => ['direction', 'coach_rh', 'referent_projet'].includes(user.role)) || []);
+      
+      // Filtrer les managers (direction, coach_rh, referent_projet)
+      const managerUsers = data?.filter(user => 
+        ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
+      ) || [];
+      
+      console.log('Manager users:', managerUsers);
+      setManagers(managerUsers);
     } catch (err) {
+      console.error('Error in fetchUsers:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des utilisateurs');
     } finally {
       setLoading(false);
@@ -199,24 +218,33 @@ const Administration = () => {
 
     try {
       // Mettre à jour le profil utilisateur
+      const updateData: any = {
+        full_name: formData.full_name,
+        date_naissance: formData.date_naissance || null,
+        date_entree_entreprise: formData.date_entree_entreprise || null,
+        fiche_poste: formData.fiche_poste || null,
+        manager_id: formData.manager_id || null,
+        department: formData.department || null
+      };
+
+      console.log('Updating user with data:', updateData);
+
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .update({
-          full_name: formData.full_name,
-          date_naissance: formData.date_naissance || null,
-          fiche_poste: formData.fiche_poste || null,
-          manager_id: formData.manager_id || null,
-          department: formData.department || null
-        })
+        .update(updateData)
         .eq('id', editingUser.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw profileError;
+      }
 
       setSuccess('Informations employé modifiées avec succès');
       setShowEditForm(false);
       setEditingUser(null);
-      fetchUsers();
+      fetchUsers(); // Recharger les données pour voir les changements
     } catch (err) {
+      console.error('Error updating user:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors de la modification des informations');
     } finally {
       setSubmitting(false);
@@ -224,12 +252,13 @@ const Administration = () => {
   };
 
   const openEditForm = (user: UserProfile) => {
+    console.log('Opening edit form for user:', user);
     setEditingUser(user);
     setFormData({
       full_name: user.full_name || '',
       email: user.email || '',
       date_naissance: user.date_naissance || '',
-      date_entree_entreprise: user.created_at ? user.created_at.split('T')[0] : '',
+      date_entree_entreprise: user.date_entree_entreprise || user.created_at?.split('T')[0] || '',
       fiche_poste: user.fiche_poste || '',
       manager_id: user.manager_id || '',
       department: user.department || ''
@@ -374,6 +403,9 @@ const Administration = () => {
                       Employé
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Département
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Rôle
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -397,7 +429,16 @@ const Administration = () => {
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
                             <div className="text-sm text-gray-500">{user.email}</div>
+                            {user.phone && (
+                              <div className="text-sm text-gray-500">{user.phone}</div>
+                            )}
                           </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <Building className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">{user.department || 'Non défini'}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -644,6 +685,12 @@ const Administration = () => {
                         ? format(new Date(editingUser.last_login), 'dd/MM/yyyy à HH:mm', { locale: fr })
                         : 'Jamais'
                       }
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Responsable actuel:</span>
+                    <span className="ml-2 text-gray-900">
+                      {editingUser.manager?.full_name ? formatManagerName(editingUser.manager.full_name) : 'Aucun'}
                     </span>
                   </div>
                 </div>
