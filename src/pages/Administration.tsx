@@ -199,29 +199,7 @@ const Administration = () => {
 
       if (profileError) throw profileError;
 
-      // Mettre à jour l'email dans Supabase Auth si différent
-      if (formData.email !== editingUser.email) {
-        const { error: authError } = await supabase.auth.admin.updateUserById(
-          editingUser.id,
-          { email: formData.email }
-        );
-
-        if (authError) {
-          console.warn('Impossible de mettre à jour l\'email dans Auth:', authError.message);
-          setSuccess('Informations employé modifiées avec succès (sauf l\'email - contactez l\'administrateur système)');
-        } else {
-          // Mettre à jour l'email dans le profil aussi
-          await supabase
-            .from('user_profiles')
-            .update({ email: formData.email })
-            .eq('id', editingUser.id);
-          
-          setSuccess('Informations employé modifiées avec succès');
-        }
-      } else {
-        setSuccess('Informations employé modifiées avec succès');
-      }
-
+      setSuccess('Informations employé modifiées avec succès');
       setShowEditForm(false);
       setEditingUser(null);
       fetchUsers();
@@ -367,6 +345,7 @@ const Administration = () => {
                 <div className="mt-1 text-sm text-blue-700">
                   <p>Les nouveaux employés doivent être créés via l'onglet "Authentication" de Supabase.</p>
                   <p>Une fois créés, ils apparaîtront automatiquement dans ce tableau et vous pourrez modifier leurs informations.</p>
+                  <p className="mt-2 font-medium">Note: La modification des emails doit être effectuée directement dans le tableau de bord Supabase pour des raisons de sécurité.</p>
                 </div>
               </div>
             </div>
@@ -540,20 +519,19 @@ const Administration = () => {
                   />
                 </div>
 
-                {/* Email */}
+                {/* Email (lecture seule) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email *
+                    Email
                   </label>
                   <input
                     type="email"
-                    required
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Modifiera également l'email dans Supabase Auth
+                    Pour modifier l'email, utilisez le tableau de bord Supabase
                   </p>
                 </div>
 
