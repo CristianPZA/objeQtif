@@ -67,7 +67,7 @@ const Administration = () => {
     phone: { enabled: true, required: false, label: 'Téléphone' },
     department: { enabled: true, required: false, label: 'Département' },
     role: { enabled: true, required: true, label: 'Rôle' },
-    manager_id: { enabled: true, required: false, label: 'Manager (N+1)' },
+    manager_id: { enabled: true, required: true, label: 'Manager (N+1)' },
     date_naissance: { enabled: true, required: true, label: 'Date de naissance' },
     fiche_poste: { enabled: true, required: false, label: 'Fiche de poste' }
   });
@@ -194,6 +194,10 @@ const Administration = () => {
         throw new Error('La date de naissance est requise pour générer le mot de passe');
       }
 
+      if (!formData.manager_id) {
+        throw new Error('Le manager est requis');
+      }
+
       const password = generatePasswordFromBirthdate(formData.date_naissance);
       console.log('Generated password length:', password.length);
 
@@ -213,7 +217,7 @@ const Administration = () => {
           phone: formData.phone.trim() || null,
           department: formData.department || null,
           role: formData.role,
-          manager_id: formData.manager_id || null,
+          manager_id: formData.manager_id,
           date_naissance: formData.date_naissance,
           fiche_poste: formData.fiche_poste.trim() || null,
           is_active: true
