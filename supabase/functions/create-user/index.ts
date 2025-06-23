@@ -258,10 +258,30 @@ serve(async (req) => {
 
     if (createError) {
       console.log(`[${requestId}] ERROR: Failed to create auth user - ${createError.message}`)
+      
+      // Provide more specific error messages based on the error type
+      let errorMessage = 'Failed to create authentication user';
+      let errorDetails = createError.message;
+      
+      // Check for common error patterns
+      if (createError.message === 'Database error creating new user' || 
+          createError.message.includes('duplicate') || 
+          createError.message.includes('already exists') ||
+          createError.message.includes('unique constraint')) {
+        errorMessage = 'A user with this email already exists';
+        errorDetails = 'Email address is already registered in the system';
+      } else if (createError.message.includes('invalid email')) {
+        errorMessage = 'Invalid email format';
+        errorDetails = 'Please provide a valid email address';
+      } else if (createError.message.includes('password')) {
+        errorMessage = 'Invalid password';
+        errorDetails = 'Password does not meet security requirements';
+      }
+      
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to create authentication user',
-          details: createError.message,
+          error: errorMessage,
+          details: errorDetails,
           requestId 
         }),
         { 
@@ -341,10 +361,21 @@ serve(async (req) => {
         console.error(`[${requestId}] Failed to cleanup auth user: ${cleanupError}`)
       }
       
+      // Provide more specific error message for profile creation failures
+      let errorMessage = 'Failed to create user profile';
+      let errorDetails = profileCreateError.message;
+      
+      if (profileCreateError.message.includes('duplicate') || 
+          profileCreateError.message.includes('unique constraint') ||
+          profileCreateError.message.includes('already exists')) {
+        errorMessage = 'A user with this email already exists';
+        errorDetails = 'User profile with this email is already registered';
+      }
+      
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to create user profile',
-          details: profileCreateError.message,
+          error: errorMessage,
+          details: errorDetails,
           requestId 
         }),
         { 

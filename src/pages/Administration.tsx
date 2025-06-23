@@ -307,6 +307,67 @@ const Administration = () => {
     return errors;
   };
 
+  const getErrorMessage = (errorResponse: any): string => {
+    // Check if it's a response from the Edge Function
+    if (errorResponse.error) {
+      const errorType = errorResponse.error;
+      
+      // Map specific error types to user-friendly French messages
+      switch (errorType) {
+        case 'A user with this email already exists':
+          return 'Un utilisateur avec cet email existe déjà. Veuillez utiliser une autre adresse email.';
+        
+        case 'Invalid email format':
+          return 'Le format de l\'email est invalide. Veuillez vérifier l\'adresse email saisie.';
+        
+        case 'Invalid password':
+          return 'Le mot de passe ne respecte pas les critères de sécurité requis.';
+        
+        case 'Password must be at least 6 characters long':
+          return 'Le mot de passe doit contenir au moins 6 caractères.';
+        
+        case 'Missing required fields':
+          return 'Des champs obligatoires sont manquants. Veuillez vérifier le formulaire.';
+        
+        case 'Missing required user data fields (full_name, role)':
+          return 'Le nom complet et le rôle sont obligatoires.';
+        
+        case 'Insufficient permissions':
+          return 'Vous n\'avez pas les droits nécessaires pour créer un utilisateur.';
+        
+        case 'Authorization required':
+        case 'Invalid authentication':
+          return 'Votre session a expiré. Veuillez vous reconnecter.';
+        
+        case 'Failed to create authentication user':
+          return 'Échec de la création du compte utilisateur. Veuillez réessayer.';
+        
+        case 'Failed to create user profile':
+          return 'Échec de la création du profil utilisateur. Veuillez réessayer.';
+        
+        case 'Server configuration error':
+          return 'Erreur de configuration du serveur. Veuillez contacter l\'administrateur système.';
+        
+        case 'Internal server error':
+          return 'Erreur serveur temporaire. Veuillez réessayer dans quelques minutes.';
+        
+        default:
+          // If we have details, include them
+          if (errorResponse.details) {
+            return `Erreur: ${errorResponse.details}`;
+          }
+          return `Erreur inattendue: ${errorType}`;
+      }
+    }
+    
+    // Fallback for other error types
+    if (typeof errorResponse === 'string') {
+      return errorResponse;
+    }
+    
+    return 'Une erreur inattendue s\'est produite. Veuillez réessayer.';
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -403,27 +464,8 @@ const Administration = () => {
       if (!response.ok) {
         console.error('Request failed with result:', result);
         
-        // Messages d'erreur plus conviviaux
-        let userFriendlyMessage = 'La création du compte a échoué. ';
-        
-        if (response.status === 401) {
-          userFriendlyMessage += 'Problème d\'authentification. Veuillez vous reconnecter.';
-        } else if (response.status === 403) {
-          userFriendlyMessage += 'Vous n\'avez pas les droits nécessaires.';
-        } else if (response.status === 400) {
-          if (result.error?.includes('already exists')) {
-            userFriendlyMessage += 'Un utilisateur avec cet email existe déjà.';
-          } else if (result.error?.includes('Invalid email')) {
-            userFriendlyMessage += 'Format d\'email invalide.';
-          } else {
-            userFriendlyMessage += 'Données invalides. Vérifiez le formulaire.';
-          }
-        } else if (response.status >= 500) {
-          userFriendlyMessage += 'Erreur serveur temporaire. Veuillez réessayer dans quelques minutes.';
-        } else {
-          userFriendlyMessage += 'Erreur inattendue. Veuillez contacter l\'administrateur.';
-        }
-
+        // Use the improved error message function
+        const userFriendlyMessage = getErrorMessage(result);
         throw new Error(userFriendlyMessage);
       }
 
