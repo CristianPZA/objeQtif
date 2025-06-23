@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Users, Calendar, Building, FileText, Shield, AlertTriangle, Cake } from 'lucide-react';
+import { Plus, Users, Settings, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import UserTable from '../components/administration/UserTable';
+import UserFilters from '../components/administration/UserFilters';
+import UserForm from '../components/administration/UserForm';
+import FieldConfiguration from '../components/administration/FieldConfiguration';
 
 interface UserProfile {
   id: string;
@@ -37,6 +39,7 @@ const Administration = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [managers, setManagers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'users' | 'config'>('users');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -55,6 +58,18 @@ const Administration = () => {
     manager_id: '',
     date_naissance: '',
     fiche_poste: ''
+  });
+
+  // Configuration des champs
+  const [fieldConfig, setFieldConfig] = useState({
+    email: { enabled: true, required: true, label: 'Email' },
+    full_name: { enabled: true, required: true, label: 'Nom complet' },
+    phone: { enabled: true, required: false, label: 'Téléphone' },
+    department: { enabled: true, required: false, label: 'Département' },
+    role: { enabled: true, required: true, label: 'Rôle' },
+    manager_id: { enabled: true, required: false, label: 'Manager (N+1)' },
+    date_naissance: { enabled: true, required: true, label: 'Date de naissance' },
+    fiche_poste: { enabled: true, required: false, label: 'Fiche de poste' }
   });
 
   const roles = [
@@ -77,17 +92,10 @@ const Administration = () => {
     'Logistique'
   ];
 
-  const roleColors = {
-    employe: 'bg-gray-100 text-gray-800',
-    referent_projet: 'bg-blue-100 text-blue-800',
-    coach_rh: 'bg-green-100 text-green-800',
-    direction: 'bg-purple-100 text-purple-800',
-    admin: 'bg-red-100 text-red-800'
-  };
-
   useEffect(() => {
     checkAdminAccess();
     fetchUsers();
+    loadFieldConfiguration();
   }, []);
 
   const checkAdminAccess = async () => {
@@ -141,7 +149,24 @@ const Administration = () => {
     }
   };
 
-  // Fonction pour générer le mot de passe à partir de la date de naissance (jjmmaaaa)
+  const loadFieldConfiguration = () => {
+    const savedConfig = localStorage.getItem('admin_field_config');
+    if (savedConfig) {
+      try {
+        setFieldConfig(JSON.parse(savedConfig));
+      } catch (err) {
+        console.error('Erreur lors du chargement de la configuration:', err);
+      }
+    }
+  };
+
+  const saveFieldConfiguration = (config: typeof fieldConfig) => {
+    setFieldConfig(config);
+    localStorage.setItem('admin_field_config', JSON.stringify(config));
+    setSuccess('Configuration des champs sauvegardée avec succès');
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
   const generatePasswordFromBirthdate = (birthdate: string): string => {
     const date = new Date(birthdate);
     const day = date.getDate().toString().padStart(2, '0');
@@ -157,16 +182,13 @@ const Administration = () => {
     setSuccess(null);
 
     try {
-      // Générer le mot de passe à partir de la date de naissance
       const password = generatePasswordFromBirthdate(formData.date_naissance);
 
-      // Get the current user's session token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Session non trouvée');
       }
 
-      // Call the Edge Function to create the user
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
         method: 'POST',
         headers: {
@@ -197,16 +219,7 @@ const Administration = () => {
       }
 
       setSuccess(`Utilisateur créé avec succès. Mot de passe généré: ${password}`);
-      setFormData({
-        email: '',
-        full_name: '',
-        phone: '',
-        department: '',
-        role: 'employe',
-        manager_id: '',
-        date_naissance: '',
-        fiche_poste: ''
-      });
+      resetForm();
       setShowCreateForm(false);
       fetchUsers();
     } catch (err) {
@@ -261,7 +274,6 @@ const Administration = () => {
     setSuccess(null);
 
     try {
-      // Désactiver l'utilisateur plutôt que de le supprimer complètement
       const { error } = await supabase
         .from('user_profiles')
         .update({ is_active: false })
@@ -291,6 +303,19 @@ const Administration = () => {
       fiche_poste: user.fiche_poste || ''
     });
     setShowEditForm(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      email: '',
+      full_name: '',
+      phone: '',
+      department: '',
+      role: 'employe',
+      manager_id: '',
+      date_naissance: '',
+      fiche_poste: ''
+    });
   };
 
   const filteredUsers = users.filter(user => {
@@ -327,13 +352,15 @@ const Administration = () => {
           <h1 className="text-3xl font-bold text-gray-900">Administration</h1>
           <p className="text-gray-600 mt-1">Gestion des profils employés et des droits d'accès</p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nouvel employé
-        </button>
+        {activeTab === 'users' && (
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Nouvel employé
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -349,459 +376,103 @@ const Administration = () => {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Rechercher par nom ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'users'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Gestion des employés
             </div>
-          </div>
-          <div className="lg:w-48">
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">Tous les départements</option>
-              {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-          </div>
-          <div className="lg:w-48">
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="all">Tous les rôles</option>
-              {roles.map(role => (
-                <option key={role.value} value={role.value}>{role.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('config')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'config'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Configuration des champs
+            </div>
+          </button>
+        </nav>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employé
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Département
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rôle
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Manager
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date de naissance
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Statut
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <Users className="h-5 w-5 text-indigo-600" />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                        {user.phone && (
-                          <div className="text-sm text-gray-500">{user.phone}</div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Building className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900">{user.department || 'Non défini'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
-                      <Shield className="w-3 h-3 mr-1" />
-                      {roles.find(r => r.value === user.role)?.label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.manager?.full_name || 'Aucun'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Cake className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900">
-                        {user.date_naissance ? format(new Date(user.date_naissance), 'dd/MM/yyyy', { locale: fr }) : 'Non définie'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.is_active 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.is_active ? 'Actif' : 'Inactif'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => openEditForm(user)}
-                        className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id, user.full_name)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Tab Content */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          <UserFilters
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            departmentFilter={departmentFilter}
+            setDepartmentFilter={setDepartmentFilter}
+            roleFilter={roleFilter}
+            setRoleFilter={setRoleFilter}
+            departments={departments}
+            roles={roles}
+          />
 
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun employé trouvé</h3>
-            <p className="text-gray-600">
-              {searchTerm || departmentFilter !== 'all' || roleFilter !== 'all'
-                ? 'Aucun employé ne correspond à vos critères de recherche.'
-                : 'Commencez par créer votre premier employé.'
-              }
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Create User Modal */}
-      {showCreateForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <h2 className="text-2xl font-bold text-gray-900">Nouvel employé</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Le mot de passe sera automatiquement généré à partir de la date de naissance (format: jjmmaaaa)
-              </p>
-            </div>
-
-            <form onSubmit={handleCreateUser} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nom complet *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.full_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date de naissance *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.date_naissance}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date_naissance: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Utilisée pour générer le mot de passe automatiquement
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Téléphone
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Département
-                  </label>
-                  <select
-                    value={formData.department}
-                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un département</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Rôle *
-                  </label>
-                  <select
-                    required
-                    value={formData.role}
-                    onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    {roles.map(role => (
-                      <option key={role.value} value={role.value}>{role.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Manager (N+1)
-                  </label>
-                  <select
-                    value={formData.manager_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, manager_id: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un manager</option>
-                    {managers.map(manager => (
-                      <option key={manager.id} value={manager.id}>{manager.full_name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fiche de poste
-                </label>
-                <textarea
-                  rows={4}
-                  value={formData.fiche_poste}
-                  onChange={(e) => setFormData(prev => ({ ...prev, fiche_poste: e.target.value }))}
-                  placeholder="Description du poste, missions, responsabilités..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-6 border-t">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {loading ? 'Création...' : 'Créer l\'employé'}
-                </button>
-              </div>
-            </form>
-          </div>
+          <UserTable
+            users={filteredUsers}
+            roles={roles}
+            onEdit={openEditForm}
+            onDelete={handleDeleteUser}
+          />
         </div>
       )}
 
-      {/* Edit User Modal */}
-      {showEditForm && editingUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <h2 className="text-2xl font-bold text-gray-900">Modifier l'employé</h2>
-            </div>
-
-            <form onSubmit={handleEditUser} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nom complet *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.full_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date de naissance
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.date_naissance}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date_naissance: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Téléphone
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Département
-                  </label>
-                  <select
-                    value={formData.department}
-                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un département</option>
-                    {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Rôle *
-                  </label>
-                  <select
-                    required
-                    value={formData.role}
-                    onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    {roles.map(role => (
-                      <option key={role.value} value={role.value}>{role.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Manager (N+1)
-                  </label>
-                  <select
-                    value={formData.manager_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, manager_id: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un manager</option>
-                    {managers.filter(m => m.id !== editingUser.id).map(manager => (
-                      <option key={manager.id} value={manager.id}>{manager.full_name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fiche de poste
-                </label>
-                <textarea
-                  rows={4}
-                  value={formData.fiche_poste}
-                  onChange={(e) => setFormData(prev => ({ ...prev, fiche_poste: e.target.value }))}
-                  placeholder="Description du poste, missions, responsabilités..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-6 border-t">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditForm(false);
-                    setEditingUser(null);
-                  }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {loading ? 'Modification...' : 'Modifier l\'employé'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {activeTab === 'config' && (
+        <FieldConfiguration
+          fieldConfig={fieldConfig}
+          onSave={saveFieldConfiguration}
+        />
       )}
+
+      {/* User Forms */}
+      <UserForm
+        isOpen={showCreateForm}
+        onClose={() => {
+          setShowCreateForm(false);
+          resetForm();
+        }}
+        onSubmit={handleCreateUser}
+        formData={formData}
+        setFormData={setFormData}
+        editingUser={null}
+        managers={managers}
+        departments={departments}
+        roles={roles}
+        loading={loading}
+        fieldConfig={fieldConfig}
+      />
+
+      <UserForm
+        isOpen={showEditForm}
+        onClose={() => {
+          setShowEditForm(false);
+          setEditingUser(null);
+          resetForm();
+        }}
+        onSubmit={handleEditUser}
+        formData={formData}
+        setFormData={setFormData}
+        editingUser={editingUser}
+        managers={managers}
+        departments={departments}
+        roles={roles}
+        loading={loading}
+        fieldConfig={fieldConfig}
+      />
     </div>
   );
 };
