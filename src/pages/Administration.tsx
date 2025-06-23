@@ -105,9 +105,10 @@ const Administration = () => {
 
   const fetchUsers = async () => {
     try {
-      console.log('Fetching users with manager information...');
+      console.log('=== FETCHING USERS WITH MANAGER INFO ===');
       
-      const { data, error } = await supabase
+      // Première requête : récupérer tous les utilisateurs
+      const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select(`
           id,
@@ -122,27 +123,59 @@ const Administration = () => {
           created_at,
           date_naissance,
           date_entree_entreprise,
-          fiche_poste,
-          manager:user_profiles!manager_id(
-            full_name
-          )
+          fiche_poste
         `)
         .order('full_name');
 
-      if (error) {
-        console.error('Error fetching users:', error);
-        throw error;
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        throw usersError;
       }
 
-      console.log('Fetched users:', data);
-      setUsers(data || []);
+      console.log('Users data fetched:', usersData?.length || 0, 'users');
+
+      // Deuxième requête : récupérer les informations des managers
+      const managerIds = usersData?.map(user => user.manager_id).filter(Boolean) || [];
+      console.log('Manager IDs to fetch:', managerIds);
+
+      let managersData: any[] = [];
+      if (managerIds.length > 0) {
+        const { data: managersInfo, error: managersError } = await supabase
+          .from('user_profiles')
+          .select('id, full_name')
+          .in('id', managerIds);
+
+        if (managersError) {
+          console.error('Error fetching managers:', managersError);
+        } else {
+          managersData = managersInfo || [];
+          console.log('Managers data fetched:', managersData);
+        }
+      }
+
+      // Combiner les données
+      const usersWithManagers = usersData?.map(user => {
+        const manager = managersData.find(m => m.id === user.manager_id);
+        return {
+          ...user,
+          manager: manager ? { full_name: manager.full_name } : null
+        };
+      }) || [];
+
+      console.log('Final users with managers:', usersWithManagers.map(u => ({
+        name: u.full_name,
+        manager_id: u.manager_id,
+        manager_name: u.manager?.full_name || 'None'
+      })));
+
+      setUsers(usersWithManagers);
       
       // Filtrer les managers (direction, coach_rh, referent_projet)
-      const managerUsers = data?.filter(user => 
+      const managerUsers = usersWithManagers.filter(user => 
         ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
-      ) || [];
+      );
       
-      console.log('Manager users:', managerUsers);
+      console.log('Manager users:', managerUsers.map(u => ({ name: u.full_name, role: u.role })));
       setManagers(managerUsers);
     } catch (err) {
       console.error('Error in fetchUsers:', err);
@@ -343,6 +376,39 @@ const Administration = () => {
         </div>
       )}
 
+      {/* Debug Info (Development only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-yellow-800">Debug Info</h3>
+              <div className="mt-2 text-sm text-yellow-700 space-y-1">
+                <div>Total users: {users.length}</div>
+                <div>Users with managers: {users.filter(u => u.manager?.full_name).length}</div>
+                <div>Available managers: {managers.length}</div>
+                <div className="text-xs mt-2">
+                  <strong>Manager assignments:</strong>
+                  <ul className="mt-1 space-y-1">
+                    {users.map(user => (
+                      <li key={user.id}>
+                        {user.full_name}: {user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={fetchUsers}
+              className="text-yellow-600 hover:text-yellow-800 text-xs underline"
+            >
+              Actualiser
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
@@ -447,8 +513,13 @@ const Administration = () => {
                           {roles.find(r => r.value === user.role)?.label}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm text-gray-900">
+                            {user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
