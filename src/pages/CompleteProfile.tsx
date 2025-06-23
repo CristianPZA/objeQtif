@@ -23,7 +23,7 @@ const CompleteProfile = () => {
         .from('user_profiles')
         .select('full_name, role')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profile?.full_name && profile?.role) {
         navigate('/dashboard');
