@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Settings, AlertTriangle } from 'lucide-react';
+import { Plus, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import UserTable from '../components/administration/UserTable';
 import UserFilters from '../components/administration/UserFilters';
@@ -35,10 +35,19 @@ interface CreateUserForm {
   fiche_poste: string;
 }
 
+interface DiagnosticInfo {
+  supabaseConnection: boolean;
+  edgeFunctionAvailable: boolean;
+  userPermissions: string | null;
+  lastError: string | null;
+  timestamp: string;
+}
+
 const Administration = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [managers, setManagers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'config'>('users');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -48,6 +57,7 @@ const Administration = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<DiagnosticInfo | null>(null);
 
   const [formData, setFormData] = useState<CreateUserForm>({
     email: '',
@@ -96,7 +106,87 @@ const Administration = () => {
     checkAdminAccess();
     fetchUsers();
     loadFieldConfiguration();
+    runDiagnostic();
   }, []);
+
+  const runDiagnostic = async () => {
+    console.log('=== RUNNING SYSTEM DIAGNOSTIC ===');
+    const diagnostic: DiagnosticInfo = {
+      supabaseConnection: false,
+      edgeFunctionAvailable: false,
+      userPermissions: null,
+      lastError: null,
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      // Test 1: Connexion Supabase
+      console.log('Testing Supabase connection...');
+      const { data: testData, error: testError } = await supabase
+        .from('user_profiles')
+        .select('count')
+        .limit(1);
+
+      if (testError) {
+        console.error('Supabase connection failed:', testError);
+        diagnostic.lastError = `Connexion Supabase: ${testError.message}`;
+      } else {
+        console.log('✓ Supabase connection OK');
+        diagnostic.supabaseConnection = true;
+      }
+
+      // Test 2: Permissions utilisateur
+      console.log('Testing user permissions...');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Profile fetch failed:', profileError);
+          diagnostic.lastError = `Profil utilisateur: ${profileError.message}`;
+        } else {
+          console.log('✓ User profile OK, role:', profile.role);
+          diagnostic.userPermissions = profile.role;
+        }
+      }
+
+      // Test 3: Edge Function disponibilité
+      console.log('Testing edge function availability...');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const testResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+            method: 'OPTIONS',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            }
+          });
+
+          if (testResponse.ok) {
+            console.log('✓ Edge function accessible');
+            diagnostic.edgeFunctionAvailable = true;
+          } else {
+            console.error('Edge function not accessible:', testResponse.status);
+            diagnostic.lastError = `Edge function: HTTP ${testResponse.status}`;
+          }
+        }
+      } catch (fetchError) {
+        console.error('Edge function test failed:', fetchError);
+        diagnostic.lastError = `Edge function: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`;
+      }
+
+    } catch (err) {
+      console.error('Diagnostic failed:', err);
+      diagnostic.lastError = err instanceof Error ? err.message : 'Erreur de diagnostic inconnue';
+    }
+
+    console.log('=== DIAGNOSTIC COMPLETE ===', diagnostic);
+    setDiagnosticInfo(diagnostic);
+  };
 
   const checkAdminAccess = async () => {
     try {
@@ -175,27 +265,82 @@ const Administration = () => {
     return `${day}${month}${year}`;
   };
 
+  const validateFormData = (data: CreateUserForm): string[] => {
+    const errors: string[] = [];
+
+    // Validation email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      errors.push('Format d\'email invalide');
+    }
+
+    // Validation champs obligatoires
+    if (!data.full_name.trim()) {
+      errors.push('Le nom complet est requis');
+    }
+
+    if (!data.role) {
+      errors.push('Le rôle est requis');
+    }
+
+    if (fieldConfig.manager_id.required && !data.manager_id) {
+      errors.push('Le manager est requis');
+    }
+
+    if (!data.date_naissance) {
+      errors.push('La date de naissance est requise');
+    } else {
+      // Validation date de naissance (pas dans le futur, âge raisonnable)
+      const birthDate = new Date(data.date_naissance);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      
+      if (birthDate > today) {
+        errors.push('La date de naissance ne peut pas être dans le futur');
+      }
+      
+      if (age < 16 || age > 100) {
+        errors.push('L\'âge doit être compris entre 16 et 100 ans');
+      }
+    }
+
+    return errors;
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    
+    // Empêcher les soumissions multiples
+    if (submitting) {
+      console.log('Submission already in progress, ignoring...');
+      return;
+    }
+
+    setSubmitting(true);
     setError(null);
     setSuccess(null);
 
+    // Sauvegarde temporaire des données du formulaire
+    const formBackup = { ...formData };
+
     try {
-      console.log('=== STARTING USER CREATION ===');
+      console.log('=== STARTING USER CREATION PROCESS ===');
       console.log('Form data:', formData);
 
       // Validation côté client
-      if (!formData.email || !formData.full_name || !formData.role) {
-        throw new Error('Les champs obligatoires doivent être remplis');
+      const validationErrors = validateFormData(formData);
+      if (validationErrors.length > 0) {
+        throw new Error(`Erreurs de validation: ${validationErrors.join(', ')}`);
       }
 
-      if (!formData.date_naissance) {
-        throw new Error('La date de naissance est requise pour générer le mot de passe');
-      }
+      // Vérification que l'utilisateur n'existe pas déjà
+      const { data: existingUsers } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('email', formData.email.trim().toLowerCase());
 
-      if (!formData.manager_id) {
-        throw new Error('Le manager est requis');
+      if (existingUsers && existingUsers.length > 0) {
+        throw new Error('Un utilisateur avec cet email existe déjà');
       }
 
       const password = generatePasswordFromBirthdate(formData.date_naissance);
@@ -203,28 +348,31 @@ const Administration = () => {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error('Session non trouvée');
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
       }
 
-      console.log('Session found, making request to edge function...');
+      console.log('Session found, preparing request...');
 
       const requestBody = {
-        email: formData.email.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: password,
         userData: {
           full_name: formData.full_name.trim(),
-          email: formData.email.trim(),
+          email: formData.email.trim().toLowerCase(),
           phone: formData.phone.trim() || null,
           department: formData.department || null,
           role: formData.role,
-          manager_id: formData.manager_id,
+          manager_id: formData.manager_id || null,
           date_naissance: formData.date_naissance,
           fiche_poste: formData.fiche_poste.trim() || null,
           is_active: true
         }
       };
 
-      console.log('Request body:', requestBody);
+      console.log('Request body prepared:', {
+        ...requestBody,
+        password: '[HIDDEN]'
+      });
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
         method: 'POST',
@@ -235,36 +383,78 @@ const Administration = () => {
         body: JSON.stringify(requestBody)
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
 
       const responseText = await response.text();
-      console.log('Response text:', responseText);
+      console.log('Response body:', responseText);
 
       let result;
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', parseError);
-        throw new Error(`Invalid response from server: ${responseText}`);
+        throw new Error(`Réponse serveur invalide. Veuillez contacter l'administrateur système.`);
       }
 
       if (!response.ok) {
-        console.error('Request failed:', result);
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+        console.error('Request failed with result:', result);
+        
+        // Messages d'erreur plus conviviaux
+        let userFriendlyMessage = 'La création du compte a échoué. ';
+        
+        if (response.status === 401) {
+          userFriendlyMessage += 'Problème d\'authentification. Veuillez vous reconnecter.';
+        } else if (response.status === 403) {
+          userFriendlyMessage += 'Vous n\'avez pas les droits nécessaires.';
+        } else if (response.status === 400) {
+          if (result.error?.includes('already exists')) {
+            userFriendlyMessage += 'Un utilisateur avec cet email existe déjà.';
+          } else if (result.error?.includes('Invalid email')) {
+            userFriendlyMessage += 'Format d\'email invalide.';
+          } else {
+            userFriendlyMessage += 'Données invalides. Vérifiez le formulaire.';
+          }
+        } else if (response.status >= 500) {
+          userFriendlyMessage += 'Erreur serveur temporaire. Veuillez réessayer dans quelques minutes.';
+        } else {
+          userFriendlyMessage += 'Erreur inattendue. Veuillez contacter l\'administrateur.';
+        }
+
+        throw new Error(userFriendlyMessage);
       }
 
       console.log('User created successfully:', result);
 
-      setSuccess(`Utilisateur créé avec succès. Mot de passe généré: ${password}`);
+      setSuccess(`✅ Utilisateur créé avec succès ! 
+      📧 Email: ${formData.email}
+      🔑 Mot de passe temporaire: ${password}
+      
+      ⚠️ Communiquez ces informations à l'employé de manière sécurisée.`);
+      
       resetForm();
       setShowCreateForm(false);
       fetchUsers();
+      
+      // Relancer le diagnostic après succès
+      setTimeout(() => runDiagnostic(), 1000);
+
     } catch (err) {
       console.error('Error creating user:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création de l\'utilisateur');
+      
+      // Restaurer les données du formulaire en cas d'erreur
+      setFormData(formBackup);
+      
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue lors de la création de l\'utilisateur';
+      setError(errorMessage);
+      
+      // Relancer le diagnostic en cas d'erreur
+      setTimeout(() => runDiagnostic(), 1000);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -272,7 +462,7 @@ const Administration = () => {
     e.preventDefault();
     if (!editingUser) return;
 
-    setLoading(true);
+    setSubmitting(true);
     setError(null);
     setSuccess(null);
 
@@ -299,7 +489,7 @@ const Administration = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la modification de l\'utilisateur');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -394,7 +584,8 @@ const Administration = () => {
         {activeTab === 'users' && (
           <button
             onClick={() => setShowCreateForm(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            disabled={submitting}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-5 h-5" />
             Nouvel employé
@@ -404,23 +595,80 @@ const Administration = () => {
 
       {/* Messages */}
       {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg">
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <XCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Erreur</h3>
+              <div className="mt-1 text-sm text-red-700 whitespace-pre-line">
+                {error}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 text-green-700 p-4 rounded-lg">
-          {success}
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <CheckCircle className="h-5 w-5 text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-green-800">Succès</h3>
+              <div className="mt-1 text-sm text-green-700 whitespace-pre-line">
+                {success}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-blue-50 text-blue-700 p-4 rounded-lg text-sm">
-          <strong>Debug Info:</strong><br />
-          Supabase URL: {import.meta.env.VITE_SUPABASE_URL ? 'Configuré' : 'Manquant'}<br />
-          Edge Function URL: {import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user
+      {/* Diagnostic Info (Development only) */}
+      {process.env.NODE_ENV === 'development' && diagnosticInfo && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-blue-800">Diagnostic Système</h3>
+              <div className="mt-2 text-sm text-blue-700 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${diagnosticInfo.supabaseConnection ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  Connexion Supabase: {diagnosticInfo.supabaseConnection ? 'OK' : 'Échec'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${diagnosticInfo.edgeFunctionAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  Edge Function: {diagnosticInfo.edgeFunctionAvailable ? 'Disponible' : 'Indisponible'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${diagnosticInfo.userPermissions ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  Permissions: {diagnosticInfo.userPermissions || 'Non définies'}
+                </div>
+                {diagnosticInfo.lastError && (
+                  <div className="text-red-600 text-xs mt-2">
+                    Dernière erreur: {diagnosticInfo.lastError}
+                  </div>
+                )}
+                <div className="text-xs text-gray-500 mt-2">
+                  Dernière vérification: {new Date(diagnosticInfo.timestamp).toLocaleString('fr-FR')}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={runDiagnostic}
+              className="text-blue-600 hover:text-blue-800 text-xs underline"
+            >
+              Actualiser
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading indicator during submission */}
+      {submitting && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-3"></div>
+            <span className="text-sm text-yellow-800">Opération en cours, veuillez patienter...</span>
+          </div>
         </div>
       )}
 
@@ -500,7 +748,7 @@ const Administration = () => {
         managers={managers}
         departments={departments}
         roles={roles}
-        loading={loading}
+        loading={submitting}
         fieldConfig={fieldConfig}
       />
 
@@ -518,7 +766,7 @@ const Administration = () => {
         managers={managers}
         departments={departments}
         roles={roles}
-        loading={loading}
+        loading={submitting}
         fieldConfig={fieldConfig}
       />
     </div>
