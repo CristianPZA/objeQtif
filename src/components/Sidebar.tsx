@@ -204,6 +204,21 @@ const Sidebar = () => {
           )}
         </div>
 
+         <div className="absolute bottom-4 left-4 right-4 space-y-2">
+        <div className="border-t border-gray-800 pt-2">
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex items-center gap-2 w-full p-3 rounded-lg transition-colors ${
+                isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`
+            }
+          >
+            <Settings className="w-5 h-5" />
+            {t('settings.title')}
+          </NavLink>
+        </div>
+
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 w-full p-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
