@@ -8,6 +8,7 @@ import {
   HelpCircle,
   LogOut, 
   Settings,
+  Briefcase,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -64,6 +65,15 @@ const Sidebar = () => {
       label: 'Aide',
     },
   ];
+
+  // Add projects menu item for direction and referent_projet roles
+  if (userRole === 'direction' || userRole === 'referent_projet' || userRole === 'admin') {
+    menuItems.splice(2, 0, {
+      to: '/projets',
+      icon: <Briefcase className="w-5 h-5" />,
+      label: 'Projets',
+    });
+  }
 
   // Add administration menu item for direction and admin roles
   if (userRole === 'direction' || userRole === 'admin') {
