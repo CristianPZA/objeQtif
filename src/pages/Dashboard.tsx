@@ -9,14 +9,17 @@ interface UserProfile {
   full_name: string | null;
   role: string | null;
   department: string | null;
-  manager: {
-    full_name: string;
-  } | null;
+  manager_id: string | null;
+}
+
+interface ManagerProfile {
+  full_name: string;
 }
 
 const DashboardContent = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [manager, setManager] = useState<ManagerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -34,15 +37,10 @@ const DashboardContent = () => {
           throw new Error('No authenticated user found');
         }
 
-        // Query for the user's profile
+        // Query for the user's profile without the manager join to avoid recursion
         const { data: profileData, error: profileError } = await supabase
           .from('user_profiles')
-          .select(`
-            full_name, 
-            role, 
-            department,
-            manager:user_profiles!manager_id(full_name)
-          `)
+          .select('full_name, role, department, manager_id')
           .eq('id', user.id)
           .limit(1);
 
@@ -67,6 +65,19 @@ const DashboardContent = () => {
         }
 
         setProfile(userProfile);
+
+        // Fetch manager details separately if manager_id exists
+        if (userProfile.manager_id) {
+          const { data: managerData, error: managerError } = await supabase
+            .from('user_profiles')
+            .select('full_name')
+            .eq('id', userProfile.manager_id)
+            .limit(1);
+
+          if (!managerError && managerData && managerData.length > 0) {
+            setManager(managerData[0]);
+          }
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
         setError(errorMessage);
@@ -172,10 +183,10 @@ const DashboardContent = () => {
                     <span>{profile.department}</span>
                   </div>
                 )}
-                {profile.manager && (
+                {manager && (
                   <div className="flex items-center">
                     <Star className="w-4 h-4 mr-2" />
-                    <span>Manager: {profile.manager.full_name}</span>
+                    <span>Manager: {manager.full_name}</span>
                   </div>
                 )}
               </div>
