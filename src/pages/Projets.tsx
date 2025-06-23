@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -51,6 +51,7 @@ const Projets = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -91,13 +92,14 @@ const Projets = () => {
         .eq('id', user.id)
         .single();
 
-      if (!profile || !['direction', 'referent_projet', 'admin'].includes(profile.role)) {
-        throw new Error('Accès non autorisé');
+      if (!profile) {
+        throw new Error('Profil utilisateur non trouvé');
       }
 
       setCurrentUserRole(profile.role);
+      setCurrentUserId(user.id);
     } catch (err) {
-      setError('Vous n\'avez pas les droits pour accéder à cette page');
+      setError('Erreur lors de la vérification des droits utilisateur');
       setLoading(false);
     }
   };
@@ -147,8 +149,34 @@ const Projets = () => {
     }
   };
 
+  const canCreateOrEdit = () => {
+    return currentUserRole && ['direction', 'referent_projet', 'admin'].includes(currentUserRole);
+  };
+
+  const canEditProject = (projet: Projet) => {
+    if (!currentUserRole || !currentUserId) return false;
+    
+    // Admin et direction peuvent tout modifier
+    if (['admin', 'direction'].includes(currentUserRole)) return true;
+    
+    // Référent projet peut modifier ses projets
+    if (currentUserRole === 'referent_projet' && projet.referent_projet_id === currentUserId) return true;
+    
+    return false;
+  };
+
+  const canDeleteProject = (projet: Projet) => {
+    return canEditProject(projet);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!canCreateOrEdit()) {
+      setError('Vous n\'avez pas les droits pour créer un projet');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -202,7 +230,10 @@ const Projets = () => {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProjet) return;
+    if (!editingProjet || !canEditProject(editingProjet)) {
+      setError('Vous n\'avez pas les droits pour modifier ce projet');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -259,6 +290,12 @@ const Projets = () => {
   };
 
   const handleDelete = async (projetId: string, nomClient: string) => {
+    const projet = projets.find(p => p.id === projetId);
+    if (!projet || !canDeleteProject(projet)) {
+      setError('Vous n\'avez pas les droits pour supprimer ce projet');
+      return;
+    }
+
     if (!confirm(`Êtes-vous sûr de vouloir supprimer le projet "${nomClient}" ? Cette action est irréversible.`)) {
       return;
     }
@@ -285,6 +322,11 @@ const Projets = () => {
   };
 
   const openEditForm = (projet: Projet) => {
+    if (!canEditProject(projet)) {
+      setError('Vous n\'avez pas les droits pour modifier ce projet');
+      return;
+    }
+
     setEditingProjet(projet);
     setFormData({
       nom_client: projet.nom_client,
@@ -352,31 +394,23 @@ const Projets = () => {
     );
   }
 
-  if (error && !projets.length) {
-    return (
-      <div className="text-center py-12">
-        <Target className="mx-auto h-12 w-12 text-red-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Accès refusé</h3>
-        <p className="text-gray-600">{error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Projets</h1>
-          <p className="text-gray-600 mt-1">Créez et gérez les projets clients avec leurs équipes</p>
+          <p className="text-gray-600 mt-1">Consultez et gérez les projets clients avec leurs équipes</p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Nouveau projet
-        </button>
+        {canCreateOrEdit() && (
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Nouveau projet
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -389,6 +423,21 @@ const Projets = () => {
       {success && (
         <div className="bg-green-50 text-green-700 p-4 rounded-lg">
           {success}
+        </div>
+      )}
+
+      {/* Access Info for non-privileged users */}
+      {!canCreateOrEdit() && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <Lock className="w-5 h-5 text-blue-600" />
+            <div>
+              <h3 className="text-sm font-medium text-blue-800">Mode consultation</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                Vous pouvez consulter les projets mais seuls les référents projet, la direction et les administrateurs peuvent créer ou modifier des projets.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -419,20 +468,28 @@ const Projets = () => {
                   </div>
                   <p className="text-gray-600 mb-3">{projet.description}</p>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openEditForm(projet)}
-                    className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(projet.id, projet.nom_client)}
-                    className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                {(canEditProject(projet) || canDeleteProject(projet)) && (
+                  <div className="flex gap-2">
+                    {canEditProject(projet) && (
+                      <button
+                        onClick={() => openEditForm(projet)}
+                        className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50"
+                        title="Modifier le projet"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    )}
+                    {canDeleteProject(projet) && (
+                      <button
+                        onClick={() => handleDelete(projet.id, projet.nom_client)}
+                        className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
+                        title="Supprimer le projet"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -480,7 +537,7 @@ const Projets = () => {
             <p className="text-gray-600">
               {searchTerm 
                 ? 'Aucun projet ne correspond à vos critères de recherche.'
-                : 'Commencez par créer votre premier projet.'
+                : 'Aucun projet n\'a encore été créé.'
               }
             </p>
           </div>
@@ -488,7 +545,7 @@ const Projets = () => {
       </div>
 
       {/* Create/Edit Form Modal */}
-      {(showCreateForm || showEditForm) && (
+      {(showCreateForm || showEditForm) && canCreateOrEdit() && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
