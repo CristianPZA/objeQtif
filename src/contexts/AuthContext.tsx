@@ -17,8 +17,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Check active sessions and sets the user
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error && error.message === 'User from sub claim in JWT does not exist') {
+        // Clear the invalid session
+        supabase.auth.signOut();
+        setUser(null);
+      } else {
+        setUser(user);
+      }
       setLoading(false);
     });
 
