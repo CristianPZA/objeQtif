@@ -69,6 +69,19 @@ const Administration = () => {
     loadDepartments();
   }, []);
 
+  const formatManagerName = (fullName: string) => {
+    if (!fullName) return 'Aucun';
+    
+    const nameParts = fullName.trim().split(' ');
+    if (nameParts.length < 2) return fullName;
+    
+    const firstName = nameParts[0];
+    const lastName = nameParts[nameParts.length - 1];
+    const lastNameInitial = lastName.charAt(0).toUpperCase();
+    
+    return `${firstName} ${lastNameInitial}.`;
+  };
+
   const checkAdminAccess = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -394,7 +407,7 @@ const Administration = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {user.manager?.full_name || 'Aucun'}
+                        {user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
