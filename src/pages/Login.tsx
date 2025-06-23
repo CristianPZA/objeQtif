@@ -18,9 +18,9 @@ const Login = () => {
           .from('user_profiles')
           .select('full_name, role')
           .eq('id', session.user.id)
-          .single();
+          .limit(1);
 
-        if (!profile?.full_name || !profile?.role) {
+        if (!profile || profile.length === 0 || !profile[0]?.full_name || !profile[0]?.role) {
           navigate('/complete-profile');
         } else {
           navigate('/dashboard');
@@ -47,9 +47,9 @@ const Login = () => {
         .from('user_profiles')
         .select('full_name, role')
         .eq('id', data.user.id)
-        .single();
+        .limit(1);
 
-      if (!profile?.full_name || !profile?.role) {
+      if (!profile || profile.length === 0 || !profile[0]?.full_name || !profile[0]?.role) {
         navigate('/complete-profile');
       } else {
         navigate('/dashboard');

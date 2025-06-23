@@ -61,19 +61,19 @@ const DashboardContent = () => {
           .from('user_profiles')
           .select('full_name, role')
           .eq('id', user.id)
-          .maybeSingle();
+          .limit(1);
 
         if (profileError) {
           throw new Error(`Profile fetch error: ${profileError.message}`);
         }
 
         // If no profile exists, redirect to complete profile page
-        if (!profileData) {
+        if (!profileData || profileData.length === 0) {
           navigate('/complete-profile');
           return;
         }
 
-        setProfile(profileData);
+        setProfile(profileData[0]);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
         setError(errorMessage);

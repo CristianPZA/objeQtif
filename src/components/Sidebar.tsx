@@ -32,9 +32,9 @@ const Sidebar = () => {
         .from('user_profiles')
         .select('role')
         .eq('id', session.user.id)
-        .single();
+        .limit(1);
 
-      if (data) setUserRole(data.role);
+      if (data && data.length > 0) setUserRole(data[0].role);
     };
 
     fetchUserRole();
