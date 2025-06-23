@@ -6,26 +6,19 @@ import { fr } from 'date-fns/locale';
 
 interface Projet {
   id: string;
-  nom_client: string;
+  titre: string;
   date_debut: string;
   description: string;
-  referent_projet_id: string;
+  referent_id: string;
   created_at: string;
   referent: {
     full_name: string;
   };
-  collaborateurs: ProjetCollaborateur[];
-}
-
-interface ProjetCollaborateur {
-  id: string;
-  projet_id: string;
-  employe_id: string;
-  role_projet: string;
-  employe: {
+  auteur: {
     full_name: string;
-    role: string;
   };
+  statut: string;
+  taux_avancement: number;
 }
 
 interface UserProfile {
@@ -33,11 +26,6 @@ interface UserProfile {
   full_name: string;
   role: string;
   department: string | null;
-}
-
-interface CollaborateurForm {
-  employe_id: string;
-  role_projet: string;
 }
 
 const Projets = () => {
@@ -55,25 +43,14 @@ const Projets = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    nom_client: '',
+    titre: '',
     date_debut: '',
     description: '',
-    referent_projet_id: '',
-    collaborateurs: [{ employe_id: '', role_projet: '' }] as CollaborateurForm[]
+    referent_id: '',
+    objectifs: [] as string[],
+    budget_estime: '',
+    date_fin_prevue: ''
   });
-
-  const rolesProjet = [
-    'Chef de projet',
-    'Développeur Senior',
-    'Développeur Junior',
-    'Designer',
-    'Analyste',
-    'Testeur',
-    'Consultant',
-    'Support technique',
-    'Coordinateur',
-    'Autre'
-  ];
 
   useEffect(() => {
     checkUserAccess();
@@ -107,21 +84,19 @@ const Projets = () => {
   const fetchProjets = async () => {
     try {
       const { data, error } = await supabase
-        .from('projets')
+        .from('fiches_projets')
         .select(`
           id,
-          nom_client,
+          titre,
           date_debut,
           description,
-          referent_projet_id,
+          referent_id,
+          auteur_id,
           created_at,
-          referent:user_profiles!referent_projet_id(full_name),
-          collaborateurs:projet_collaborateurs(
-            id,
-            employe_id,
-            role_projet,
-            employe:user_profiles!employe_id(full_name, role)
-          )
+          statut,
+          taux_avancement,
+          referent:user_profiles!referent_id(full_name),
+          auteur:user_profiles!auteur_id(full_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -160,7 +135,7 @@ const Projets = () => {
     if (['admin', 'direction'].includes(currentUserRole)) return true;
     
     // Référent projet peut modifier ses projets
-    if (currentUserRole === 'referent_projet' && projet.referent_projet_id === currentUserId) return true;
+    if (currentUserRole === 'referent_projet' && projet.referent_id === currentUserId) return true;
     
     return false;
   };
@@ -187,35 +162,21 @@ const Projets = () => {
 
       // Créer le projet
       const { data: projetData, error: projetError } = await supabase
-        .from('projets')
+        .from('fiches_projets')
         .insert([{
-          nom_client: formData.nom_client,
+          titre: formData.titre,
           date_debut: formData.date_debut,
           description: formData.description,
-          referent_projet_id: formData.referent_projet_id,
-          created_by: user.id
+          referent_id: formData.referent_id,
+          auteur_id: user.id,
+          objectifs: formData.objectifs,
+          budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
+          date_fin_prevue: formData.date_fin_prevue || null
         }])
         .select()
         .single();
 
       if (projetError) throw projetError;
-
-      // Ajouter les collaborateurs
-      const collaborateursData = formData.collaborateurs
-        .filter(collab => collab.employe_id && collab.role_projet)
-        .map(collab => ({
-          projet_id: projetData.id,
-          employe_id: collab.employe_id,
-          role_projet: collab.role_projet
-        }));
-
-      if (collaborateursData.length > 0) {
-        const { error: collabError } = await supabase
-          .from('projet_collaborateurs')
-          .insert(collaborateursData);
-
-        if (collabError) throw collabError;
-      }
 
       setSuccess('Projet créé avec succès');
       resetForm();
@@ -242,41 +203,19 @@ const Projets = () => {
     try {
       // Mettre à jour le projet
       const { error: projetError } = await supabase
-        .from('projets')
+        .from('fiches_projets')
         .update({
-          nom_client: formData.nom_client,
+          titre: formData.titre,
           date_debut: formData.date_debut,
           description: formData.description,
-          referent_projet_id: formData.referent_projet_id
+          referent_id: formData.referent_id,
+          objectifs: formData.objectifs,
+          budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
+          date_fin_prevue: formData.date_fin_prevue || null
         })
         .eq('id', editingProjet.id);
 
       if (projetError) throw projetError;
-
-      // Supprimer les anciens collaborateurs
-      const { error: deleteError } = await supabase
-        .from('projet_collaborateurs')
-        .delete()
-        .eq('projet_id', editingProjet.id);
-
-      if (deleteError) throw deleteError;
-
-      // Ajouter les nouveaux collaborateurs
-      const collaborateursData = formData.collaborateurs
-        .filter(collab => collab.employe_id && collab.role_projet)
-        .map(collab => ({
-          projet_id: editingProjet.id,
-          employe_id: collab.employe_id,
-          role_projet: collab.role_projet
-        }));
-
-      if (collaborateursData.length > 0) {
-        const { error: collabError } = await supabase
-          .from('projet_collaborateurs')
-          .insert(collaborateursData);
-
-        if (collabError) throw collabError;
-      }
 
       setSuccess('Projet modifié avec succès');
       setShowEditForm(false);
@@ -289,14 +228,14 @@ const Projets = () => {
     }
   };
 
-  const handleDelete = async (projetId: string, nomClient: string) => {
+  const handleDelete = async (projetId: string, titre: string) => {
     const projet = projets.find(p => p.id === projetId);
     if (!projet || !canDeleteProject(projet)) {
       setError('Vous n\'avez pas les droits pour supprimer ce projet');
       return;
     }
 
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer le projet "${nomClient}" ? Cette action est irréversible.`)) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le projet "${titre}" ? Cette action est irréversible.`)) {
       return;
     }
 
@@ -306,7 +245,7 @@ const Projets = () => {
 
     try {
       const { error } = await supabase
-        .from('projets')
+        .from('fiches_projets')
         .delete()
         .eq('id', projetId);
 
@@ -329,55 +268,31 @@ const Projets = () => {
 
     setEditingProjet(projet);
     setFormData({
-      nom_client: projet.nom_client,
+      titre: projet.titre,
       date_debut: projet.date_debut,
       description: projet.description,
-      referent_projet_id: projet.referent_projet_id,
-      collaborateurs: projet.collaborateurs.length > 0 
-        ? projet.collaborateurs.map(collab => ({
-            employe_id: collab.employe_id,
-            role_projet: collab.role_projet
-          }))
-        : [{ employe_id: '', role_projet: '' }]
+      referent_id: projet.referent_id,
+      objectifs: [],
+      budget_estime: '',
+      date_fin_prevue: ''
     });
     setShowEditForm(true);
   };
 
   const resetForm = () => {
     setFormData({
-      nom_client: '',
+      titre: '',
       date_debut: '',
       description: '',
-      referent_projet_id: '',
-      collaborateurs: [{ employe_id: '', role_projet: '' }]
+      referent_id: '',
+      objectifs: [],
+      budget_estime: '',
+      date_fin_prevue: ''
     });
   };
 
-  const addCollaborateur = () => {
-    setFormData(prev => ({
-      ...prev,
-      collaborateurs: [...prev.collaborateurs, { employe_id: '', role_projet: '' }]
-    }));
-  };
-
-  const removeCollaborateur = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      collaborateurs: prev.collaborateurs.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateCollaborateur = (index: number, field: keyof CollaborateurForm, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      collaborateurs: prev.collaborateurs.map((collab, i) => 
-        i === index ? { ...collab, [field]: value } : collab
-      )
-    }));
-  };
-
   const filteredProjets = projets.filter(projet =>
-    projet.nom_client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    projet.titre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     projet.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
     projet.referent?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -400,7 +315,7 @@ const Projets = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Projets</h1>
-          <p className="text-gray-600 mt-1">Consultez et gérez les projets clients avec leurs équipes</p>
+          <p className="text-gray-600 mt-1">Consultez et gérez les fiches projets</p>
         </div>
         {canCreateOrEdit() && (
           <button
@@ -447,7 +362,7 @@ const Projets = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Rechercher par client, description ou référent..."
+            placeholder="Rechercher par titre, description ou référent..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -464,7 +379,16 @@ const Projets = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <Building className="w-5 h-5 text-indigo-600" />
-                    <h3 className="text-xl font-semibold text-gray-900">{projet.nom_client}</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">{projet.titre}</h3>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      projet.statut === 'brouillon' ? 'bg-gray-100 text-gray-800' :
+                      projet.statut === 'en_attente' ? 'bg-yellow-100 text-yellow-800' :
+                      projet.statut === 'validee' ? 'bg-green-100 text-green-800' :
+                      projet.statut === 'finalisee' ? 'bg-blue-100 text-blue-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {projet.statut}
+                    </span>
                   </div>
                   <p className="text-gray-600 mb-3">{projet.description}</p>
                 </div>
@@ -481,7 +405,7 @@ const Projets = () => {
                     )}
                     {canDeleteProject(projet) && (
                       <button
-                        onClick={() => handleDelete(projet.id, projet.nom_client)}
+                        onClick={() => handleDelete(projet.id, projet.titre)}
                         className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
                         title="Supprimer le projet"
                       >
@@ -492,7 +416,7 @@ const Projets = () => {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="w-4 h-4" />
                   <span>Début: {format(new Date(projet.date_debut), 'dd/MM/yyyy', { locale: fr })}</span>
@@ -501,31 +425,15 @@ const Projets = () => {
                   <User className="w-4 h-4" />
                   <span>Référent: {projet.referent?.full_name}</span>
                 </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Target className="w-4 h-4" />
+                  <span>Avancement: {projet.taux_avancement || 0}%</span>
+                </div>
               </div>
 
-              {projet.collaborateurs.length > 0 && (
-                <div className="border-t pt-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Équipe projet ({projet.collaborateurs.length})
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {projet.collaborateurs.map((collab) => (
-                      <div key={collab.id} className="bg-gray-50 rounded-lg p-3">
-                        <div className="text-sm font-medium text-gray-900">
-                          {collab.employe.full_name}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {collab.role_projet}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {collab.employe.role}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="text-sm text-gray-500">
+                Créé par: {projet.auteur?.full_name}
+              </div>
             </div>
           </div>
         ))}
@@ -562,13 +470,13 @@ const Projets = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom du client *
+                      Titre du projet *
                     </label>
                     <input
                       type="text"
                       required
-                      value={formData.nom_client}
-                      onChange={(e) => setFormData(prev => ({ ...prev, nom_client: e.target.value }))}
+                      value={formData.titre}
+                      onChange={(e) => setFormData(prev => ({ ...prev, titre: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
@@ -587,23 +495,50 @@ const Projets = () => {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Référent projet *
+                    </label>
+                    <select
+                      required
+                      value={formData.referent_id}
+                      onChange={(e) => setFormData(prev => ({ ...prev, referent_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">Sélectionner un référent</option>
+                      {referents.map(user => (
+                        <option key={user.id} value={user.id}>
+                          {user.full_name} ({user.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date de fin prévue
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.date_fin_prevue}
+                      onChange={(e) => setFormData(prev => ({ ...prev, date_fin_prevue: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Référent projet *
+                    Budget estimé (€)
                   </label>
-                  <select
-                    required
-                    value={formData.referent_projet_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, referent_projet_id: e.target.value }))}
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.budget_estime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, budget_estime: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un référent</option>
-                    {referents.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {user.full_name} ({user.role})
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
@@ -619,72 +554,6 @@ const Projets = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
                 </div>
-              </div>
-
-              {/* Équipe projet */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Équipe projet</h3>
-                  <button
-                    type="button"
-                    onClick={addCollaborateur}
-                    className="text-indigo-600 hover:text-indigo-700 text-sm flex items-center gap-1"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Ajouter un collaborateur
-                  </button>
-                </div>
-
-                {formData.collaborateurs.map((collab, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Collaborateur
-                      </label>
-                      <select
-                        value={collab.employe_id}
-                        onChange={(e) => updateCollaborateur(index, 'employe_id', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      >
-                        <option value="">Sélectionner un employé</option>
-                        {users.map(user => (
-                          <option key={user.id} value={user.id}>
-                            {user.full_name} ({user.role})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Rôle dans le projet
-                        </label>
-                        <select
-                          value={collab.role_projet}
-                          onChange={(e) => updateCollaborateur(index, 'role_projet', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                          <option value="">Sélectionner un rôle</option>
-                          {rolesProjet.map(role => (
-                            <option key={role} value={role}>{role}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {formData.collaborateurs.length > 1 && (
-                        <div className="flex items-end">
-                          <button
-                            type="button"
-                            onClick={() => removeCollaborateur(index)}
-                            className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
               </div>
 
               {/* Actions */}
