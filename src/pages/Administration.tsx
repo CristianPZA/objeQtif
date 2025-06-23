@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, User, Building, Shield, Calendar } from 'lucide-react';
+import { Edit, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, User, Building, Shield, Calendar, Plus, Trash2, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -24,7 +24,9 @@ interface UserProfile {
 
 interface EditUserForm {
   full_name: string;
+  email: string;
   date_naissance: string;
+  date_entree_entreprise: string;
   fiche_poste: string;
   manager_id: string;
   department: string;
@@ -33,16 +35,21 @@ interface EditUserForm {
 const Administration = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [managers, setManagers] = useState<UserProfile[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [newDepartment, setNewDepartment] = useState('');
 
   const [formData, setFormData] = useState<EditUserForm>({
     full_name: '',
+    email: '',
     date_naissance: '',
+    date_entree_entreprise: '',
     fiche_poste: '',
     manager_id: '',
     department: ''
@@ -56,21 +63,10 @@ const Administration = () => {
     { value: 'admin', label: 'Administrateur' }
   ];
 
-  const departments = [
-    'Direction',
-    'Ressources Humaines',
-    'Informatique',
-    'Commercial',
-    'Marketing',
-    'Finance',
-    'Production',
-    'Qualité',
-    'Logistique'
-  ];
-
   useEffect(() => {
     checkAdminAccess();
     fetchUsers();
+    loadDepartments();
   }, []);
 
   const checkAdminAccess = async () => {
@@ -124,6 +120,62 @@ const Administration = () => {
     }
   };
 
+  const loadDepartments = () => {
+    const savedDepartments = localStorage.getItem('company_departments');
+    if (savedDepartments) {
+      try {
+        setDepartments(JSON.parse(savedDepartments));
+      } catch (err) {
+        console.error('Erreur lors du chargement des départements:', err);
+        setDepartments([
+          'Direction',
+          'Ressources Humaines',
+          'Informatique',
+          'Commercial',
+          'Marketing',
+          'Finance',
+          'Production',
+          'Qualité',
+          'Logistique'
+        ]);
+      }
+    } else {
+      setDepartments([
+        'Direction',
+        'Ressources Humaines',
+        'Informatique',
+        'Commercial',
+        'Marketing',
+        'Finance',
+        'Production',
+        'Qualité',
+        'Logistique'
+      ]);
+    }
+  };
+
+  const saveDepartments = (newDepartments: string[]) => {
+    setDepartments(newDepartments);
+    localStorage.setItem('company_departments', JSON.stringify(newDepartments));
+    setSuccess('Liste des départements mise à jour avec succès');
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const addDepartment = () => {
+    if (newDepartment.trim() && !departments.includes(newDepartment.trim())) {
+      const updatedDepartments = [...departments, newDepartment.trim()].sort();
+      saveDepartments(updatedDepartments);
+      setNewDepartment('');
+    }
+  };
+
+  const removeDepartment = (departmentToRemove: string) => {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le département "${departmentToRemove}" ?`)) {
+      const updatedDepartments = departments.filter(dept => dept !== departmentToRemove);
+      saveDepartments(updatedDepartments);
+    }
+  };
+
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
@@ -133,7 +185,8 @@ const Administration = () => {
     setSuccess(null);
 
     try {
-      const { error } = await supabase
+      // Mettre à jour le profil utilisateur
+      const { error: profileError } = await supabase
         .from('user_profiles')
         .update({
           full_name: formData.full_name,
@@ -144,9 +197,31 @@ const Administration = () => {
         })
         .eq('id', editingUser.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      setSuccess('Informations employé modifiées avec succès');
+      // Mettre à jour l'email dans Supabase Auth si différent
+      if (formData.email !== editingUser.email) {
+        const { error: authError } = await supabase.auth.admin.updateUserById(
+          editingUser.id,
+          { email: formData.email }
+        );
+
+        if (authError) {
+          console.warn('Impossible de mettre à jour l\'email dans Auth:', authError.message);
+          setSuccess('Informations employé modifiées avec succès (sauf l\'email - contactez l\'administrateur système)');
+        } else {
+          // Mettre à jour l'email dans le profil aussi
+          await supabase
+            .from('user_profiles')
+            .update({ email: formData.email })
+            .eq('id', editingUser.id);
+          
+          setSuccess('Informations employé modifiées avec succès');
+        }
+      } else {
+        setSuccess('Informations employé modifiées avec succès');
+      }
+
       setShowEditForm(false);
       setEditingUser(null);
       fetchUsers();
@@ -161,7 +236,9 @@ const Administration = () => {
     setEditingUser(user);
     setFormData({
       full_name: user.full_name || '',
+      email: user.email || '',
       date_naissance: user.date_naissance || '',
+      date_entree_entreprise: user.created_at ? user.created_at.split('T')[0] : '',
       fiche_poste: user.fiche_poste || '',
       manager_id: user.manager_id || '',
       department: user.department || ''
@@ -172,7 +249,9 @@ const Administration = () => {
   const resetForm = () => {
     setFormData({
       full_name: '',
+      email: '',
       date_naissance: '',
+      date_entree_entreprise: '',
       fiche_poste: '',
       manager_id: '',
       department: ''
@@ -211,21 +290,7 @@ const Administration = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Administration</h1>
-          <p className="text-gray-600 mt-1">Gestion des profils employés</p>
-        </div>
-      </div>
-
-      {/* Info Box */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start">
-          <Info className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-          <div>
-            <h3 className="text-sm font-medium text-blue-800">Gestion des employés</h3>
-            <div className="mt-1 text-sm text-blue-700">
-              <p>Les nouveaux employés doivent être créés via l'onglet "Authentication" de Supabase.</p>
-              <p>Une fois créés, ils apparaîtront automatiquement dans ce tableau et vous pourrez modifier leurs informations.</p>
-            </div>
-          </div>
+          <p className="text-gray-600 mt-1">Gestion des profils employés et paramètres</p>
         </div>
       </div>
 
@@ -258,76 +323,196 @@ const Administration = () => {
         </div>
       )}
 
-      {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employé
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rôle
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsable direct
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-indigo-600" />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
-                      <Shield className="w-3 h-3 mr-1" />
-                      {roles.find(r => r.value === user.role)?.label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.manager?.full_name || 'Aucun'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => openEditForm(user)}
-                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50 flex items-center gap-1"
-                    >
-                      <Edit className="h-4 w-4" />
-                      Modifier
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {users.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun employé trouvé</h3>
-            <p className="text-gray-600">
-              Les employés créés via Supabase Auth apparaîtront ici automatiquement.
-            </p>
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'users'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Gestion des employés
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'settings'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Paramètres
+            </div>
+          </button>
+        </nav>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          {/* Info Box */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <Info className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">Gestion des employés</h3>
+                <div className="mt-1 text-sm text-blue-700">
+                  <p>Les nouveaux employés doivent être créés via l'onglet "Authentication" de Supabase.</p>
+                  <p>Une fois créés, ils apparaîtront automatiquement dans ce tableau et vous pourrez modifier leurs informations.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Employé
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Rôle
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Responsable direct
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <User className="h-5 w-5 text-indigo-600" />
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
+                            <div className="text-sm text-gray-500">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
+                          <Shield className="w-3 h-3 mr-1" />
+                          {roles.find(r => r.value === user.role)?.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {user.manager?.full_name || 'Aucun'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => openEditForm(user)}
+                          className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50 flex items-center gap-1"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Modifier
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {users.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun employé trouvé</h3>
+                <p className="text-gray-600">
+                  Les employés créés via Supabase Auth apparaîtront ici automatiquement.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          {/* Gestion des départements */}
+          <div className="bg-white rounded-lg shadow-sm border">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <Building className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Gestion des départements</h2>
+                  <p className="text-sm text-gray-600">Ajoutez ou supprimez les départements de votre entreprise</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Ajouter un département */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Ajouter un département</h3>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newDepartment}
+                    onChange={(e) => setNewDepartment(e.target.value)}
+                    placeholder="Nom du nouveau département"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    onKeyPress={(e) => e.key === 'Enter' && addDepartment()}
+                  />
+                  <button
+                    onClick={addDepartment}
+                    disabled={!newDepartment.trim() || departments.includes(newDepartment.trim())}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+
+              {/* Liste des départements */}
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Départements existants</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {departments.map((department) => (
+                    <div
+                      key={department}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                    >
+                      <span className="text-sm font-medium text-gray-900">{department}</span>
+                      <button
+                        onClick={() => removeDepartment(department)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                        title="Supprimer ce département"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {departments.length === 0 && (
+                  <p className="text-gray-500 text-center py-4">Aucun département configuré</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Form Modal */}
       {showEditForm && editingUser && (
@@ -355,6 +540,23 @@ const Administration = () => {
                   />
                 </div>
 
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Modifiera également l'email dans Supabase Auth
+                  </p>
+                </div>
+
                 {/* Date de naissance */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -368,10 +570,23 @@ const Administration = () => {
                   />
                 </div>
 
-                {/* Fiche de poste */}
+                {/* Date d'entrée dans l'entreprise */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fiche de poste
+                    Date d'entrée dans l'entreprise
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date_entree_entreprise}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date_entree_entreprise: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Poste */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Poste
                   </label>
                   <input
                     type="text"
@@ -422,10 +637,6 @@ const Administration = () => {
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Informations système (lecture seule)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-600">Email:</span>
-                    <span className="ml-2 text-gray-900">{editingUser.email}</span>
-                  </div>
-                  <div>
                     <span className="font-medium text-gray-600">Rôle:</span>
                     <span className="ml-2 text-gray-900">{roles.find(r => r.value === editingUser.role)?.label}</span>
                   </div>
@@ -436,11 +647,12 @@ const Administration = () => {
                     </span>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-600">Statut:</span>
-                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                      editingUser.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {editingUser.is_active ? 'Actif' : 'Inactif'}
+                    <span className="font-medium text-gray-600">Dernière connexion:</span>
+                    <span className="ml-2 text-gray-900">
+                      {editingUser.last_login 
+                        ? format(new Date(editingUser.last_login), 'dd/MM/yyyy à HH:mm', { locale: fr })
+                        : 'Jamais'
+                      }
                     </span>
                   </div>
                 </div>
@@ -461,8 +673,9 @@ const Administration = () => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
+                  <Save className="w-4 h-4" />
                   {submitting ? 'Modification...' : 'Enregistrer les modifications'}
                 </button>
               </div>
