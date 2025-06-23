@@ -160,32 +160,41 @@ const Administration = () => {
       // Générer le mot de passe à partir de la date de naissance
       const password = generatePasswordFromBirthdate(formData.date_naissance);
 
-      // Créer l'utilisateur dans Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: password,
-        email_confirm: true
+      // Get the current user's session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Session non trouvée');
+      }
+
+      // Call the Edge Function to create the user
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: password,
+          userData: {
+            full_name: formData.full_name,
+            email: formData.email,
+            phone: formData.phone || null,
+            department: formData.department || null,
+            role: formData.role,
+            manager_id: formData.manager_id || null,
+            date_naissance: formData.date_naissance,
+            fiche_poste: formData.fiche_poste || null,
+            is_active: true
+          }
+        })
       });
 
-      if (authError) throw authError;
+      const result = await response.json();
 
-      // Créer le profil utilisateur
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert([{
-          id: authData.user.id,
-          full_name: formData.full_name,
-          email: formData.email,
-          phone: formData.phone || null,
-          department: formData.department || null,
-          role: formData.role,
-          manager_id: formData.manager_id || null,
-          date_naissance: formData.date_naissance,
-          fiche_poste: formData.fiche_poste || null,
-          is_active: true
-        }]);
-
-      if (profileError) throw profileError;
+      if (!response.ok) {
+        throw new Error(result.error || 'Erreur lors de la création de l\'utilisateur');
+      }
 
       setSuccess(`Utilisateur créé avec succès. Mot de passe généré: ${password}`);
       setFormData({
