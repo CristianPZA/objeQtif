@@ -182,7 +182,7 @@ const Administration = () => {
                 .from('user_profiles')
                 .select('full_name')
                 .eq('id', user.manager_id)
-                .single();
+                .maybeSingle();
               manager = managerData;
             } catch (err) {
               console.warn(`Failed to fetch manager for user ${user.id}:`, err);
@@ -196,7 +196,7 @@ const Administration = () => {
                 .from('user_profiles')
                 .select('full_name')
                 .eq('id', user.coach_id)
-                .single();
+                .maybeSingle();
               coach = coachData;
             } catch (err) {
               console.warn(`Failed to fetch coach for user ${user.id}:`, err);
@@ -210,7 +210,7 @@ const Administration = () => {
                 .from('career_levels')
                 .select('name, color')
                 .eq('id', user.career_level_id)
-                .single();
+                .maybeSingle();
               career_level = careerLevelData;
             } catch (err) {
               console.warn(`Failed to fetch career level for user ${user.id}:`, err);
