@@ -45,6 +45,11 @@ const Sidebar = () => {
       label: 'Tableau de bord',
     },
     {
+      to: '/objectifs-annuels',
+      icon: <Target className="w-5 h-5" />,
+      label: 'Mes objectifs annuels',
+    },    
+    {
       to: '/fiches-projets',
       icon: <FolderKanban className="w-5 h-5" />,
       label: 'Mes fiches projets',
@@ -53,11 +58,6 @@ const Sidebar = () => {
       to: '/projets',
       icon: <Briefcase className="w-5 h-5" />,
       label: 'Projets en cours',
-    },
-    {
-      to: '/objectifs-annuels',
-      icon: <Target className="w-5 h-5" />,
-      label: 'Mes objectifs annuels',
     },
     {
       to: '/archives',
