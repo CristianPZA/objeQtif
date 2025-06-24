@@ -172,29 +172,29 @@ const CareerPathways = () => {
               <div
                 key={area.id}
                 onClick={() => handleAreaClick(area.id)}
-                className="group cursor-pointer transform transition-all duration-300 hover:scale-105"
+                className="group cursor-pointer transform transition-all duration-300 hover:scale-105 h-full"
               >
-                <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 hover:shadow-2xl transition-all duration-300 overflow-hidden">
-                  {/* Header with gradient */}
-                  <div className={`bg-gradient-to-r ${colors.gradient} p-6 text-white`}>
+                <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-100 hover:shadow-2xl transition-all duration-300 overflow-hidden h-full flex flex-col">
+                  {/* Header with gradient - Fixed height */}
+                  <div className={`bg-gradient-to-r ${colors.gradient} p-6 text-white flex-shrink-0`} style={{ minHeight: '160px' }}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="p-3 bg-white bg-opacity-20 rounded-xl">
                         {getIconComponent(area.icon)}
                       </div>
                       <ArrowRight className="w-6 h-6 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
                     </div>
-                    <h3 className="text-xl font-bold mb-2 leading-tight">
+                    <h3 className="text-xl font-bold mb-2 leading-tight line-clamp-2">
                       {area.name}
                     </h3>
                   </div>
                   
-                  {/* Content */}
-                  <div className="p-6">
-                    <p className="text-gray-600 leading-relaxed mb-4">
+                  {/* Content - Flexible height with minimum */}
+                  <div className="p-6 flex-1 flex flex-col" style={{ minHeight: '180px' }}>
+                    <p className="text-gray-600 leading-relaxed mb-4 flex-1 line-clamp-3">
                       {area.description}
                     </p>
                     
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-auto">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${colors.bg} ${colors.text}`}>
                         Parcours disponible
                       </span>
