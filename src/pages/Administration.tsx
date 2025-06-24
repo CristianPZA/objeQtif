@@ -245,12 +245,15 @@ const Administration = () => {
         ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
       );
       
+      // CORRECTION: Permettre à tous les utilisateurs d'être des coaches potentiels
+      // Les coaches peuvent être de n'importe quel rôle, pas seulement coach_rh
       const coachUsers = enrichedUsers.filter(user => 
-        user.role === 'coach_rh'
+        user.is_active && user.full_name && user.full_name.trim() !== ''
       );
       
       console.log('Manager users:', managerUsers.length);
-      console.log('Coach users:', coachUsers.length);
+      console.log('Coach users (all active users):', coachUsers.length);
+      console.log('Available coaches:', coachUsers.map(c => ({ id: c.id, name: c.full_name, role: c.role })));
       
       setManagers(managerUsers);
       setCoaches(coachUsers);
@@ -275,6 +278,12 @@ const Administration = () => {
           role: u.role, 
           email: u.email,
           is_active: u.is_active 
+        })),
+        coachesDetails: coachUsers.map(c => ({ 
+          id: c.id, 
+          name: c.full_name, 
+          role: c.role,
+          is_active: c.is_active 
         }))
       });
 
@@ -581,6 +590,14 @@ const Administration = () => {
                 )}
                 {debugInfo.error && (
                   <div className="text-red-600">Error: {debugInfo.error}</div>
+                )}
+                {debugInfo.coachesDetails && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-yellow-800 font-medium">Available coaches details</summary>
+                    <pre className="mt-1 text-xs bg-yellow-100 p-2 rounded overflow-auto max-h-32">
+                      {JSON.stringify(debugInfo.coachesDetails, null, 2)}
+                    </pre>
+                  </details>
                 )}
                 {debugInfo.rawData && (
                   <details className="mt-2">
@@ -992,9 +1009,14 @@ const Administration = () => {
                   >
                     <option value="">Sélectionner un coach</option>
                     {coaches.filter(c => c.id !== editingUser?.id).map(coach => (
-                      <option key={coach.id} value={coach.id}>{coach.full_name}</option>
+                      <option key={coach.id} value={coach.id}>
+                        {coach.full_name} ({roles.find(r => r.value === coach.role)?.label || coach.role})
+                      </option>
                     ))}
                   </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tous les utilisateurs actifs peuvent être assignés comme coach
+                  </p>
                 </div>
               </div>
 
