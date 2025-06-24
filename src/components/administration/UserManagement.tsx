@@ -232,8 +232,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
     onSuccess('Informations employé modifiées avec succès');
   };
 
-  const formatManagerName = (fullName: string) => {
-    if (!fullName) return 'Aucun';
+  // Fonction pour formater le nom : Prénom + Initiale du nom
+  const formatEmployeeName = (fullName: string) => {
+    if (!fullName) return 'Non défini';
     
     const nameParts = fullName.trim().split(' ');
     if (nameParts.length < 2) return fullName;
@@ -243,6 +244,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
     const lastNameInitial = lastName.charAt(0).toUpperCase();
     
     return `${firstName} ${lastNameInitial}.`;
+  };
+
+  const formatManagerName = (fullName: string) => {
+    if (!fullName) return 'Aucun';
+    return formatEmployeeName(fullName);
   };
 
   const roleColors = {
@@ -323,34 +329,34 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
         </div>
       )}
 
-      {/* Users Table - Optimisé pour éviter le défilement horizontal */}
+      {/* Users Table - Optimisé sans emails et avec noms raccourcis */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Employé
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Département
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Rôle
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Niveau
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
                   Career Pathway
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
-                  Responsable
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                  Responsable Direct
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Coach
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
                   Actions
                 </th>
               </tr>
@@ -358,8 +364,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  {/* Employé - Compact */}
-                  <td className="px-3 py-3">
+                  {/* Employé - Format optimisé */}
+                  <td className="px-4 py-3">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-8 w-8">
                         <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -367,18 +373,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                         </div>
                       </div>
                       <div className="ml-3 min-w-0 flex-1">
-                        <div className="text-sm font-medium text-gray-900 truncate" title={user.full_name}>
-                          {truncateText(user.full_name, 20)}
+                        <div className="text-sm font-medium text-gray-900" title={user.full_name}>
+                          {formatEmployeeName(user.full_name)}
                         </div>
-                        <div className="text-xs text-gray-500 truncate" title={user.email}>
-                          {truncateText(user.email, 25)}
-                        </div>
+                        {user.fiche_poste && (
+                          <div className="text-xs text-gray-500 truncate" title={user.fiche_poste}>
+                            {truncateText(user.fiche_poste, 20)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
 
-                  {/* Département - Compact */}
-                  <td className="px-2 py-3">
+                  {/* Département */}
+                  <td className="px-3 py-3">
                     <div className="flex items-center">
                       <Building className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
                       <span className="text-xs text-gray-900 truncate" title={user.department || 'Non défini'}>
@@ -387,8 +395,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                     </div>
                   </td>
 
-                  {/* Rôle - Compact */}
-                  <td className="px-2 py-3">
+                  {/* Rôle */}
+                  <td className="px-3 py-3">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
                       <Shield className="w-2 h-2 mr-1" />
                       <span className="truncate">
@@ -397,8 +405,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                     </span>
                   </td>
 
-                  {/* Niveau - Compact */}
-                  <td className="px-2 py-3">
+                  {/* Niveau */}
+                  <td className="px-3 py-3">
                     {user.career_level ? (
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCareerLevelColor(user.career_level.color)}`} title={user.career_level.name}>
                         {user.career_level.name.substring(0, 8)}
@@ -408,13 +416,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                     )}
                   </td>
 
-                  {/* Career Pathway - Compact */}
-                  <td className="px-2 py-3">
+                  {/* Career Pathway */}
+                  <td className="px-3 py-3">
                     {user.career_pathway ? (
                       <div className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${getCareerPathwayColor(user.career_pathway.color)}`} title={user.career_pathway.name}>
                         <BookOpen className="w-2 h-2 mr-1 flex-shrink-0" />
-                        <span className="truncate max-w-20">
-                          {truncateText(user.career_pathway.name, 15)}
+                        <span className="truncate max-w-24">
+                          {truncateText(user.career_pathway.name, 18)}
                         </span>
                       </div>
                     ) : (
@@ -422,28 +430,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                     )}
                   </td>
 
-                  {/* Responsable - Compact */}
-                  <td className="px-2 py-3">
+                  {/* Responsable Direct */}
+                  <td className="px-3 py-3">
                     <div className="flex items-center">
                       <User className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
                       <span className="text-xs text-gray-900 truncate" title={user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}>
-                        {user.manager?.full_name ? formatManagerName(user.manager.full_name).substring(0, 10) : 'Aucun'}
+                        {formatManagerName(user.manager?.full_name || '')}
                       </span>
                     </div>
                   </td>
 
-                  {/* Coach - Compact */}
-                  <td className="px-2 py-3">
+                  {/* Coach */}
+                  <td className="px-3 py-3">
                     <div className="flex items-center">
                       <UserCheck className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
                       <span className="text-xs text-gray-900 truncate" title={user.coach?.full_name ? formatManagerName(user.coach.full_name) : 'Aucun'}>
-                        {user.coach?.full_name ? formatManagerName(user.coach.full_name).substring(0, 10) : 'Aucun'}
+                        {formatManagerName(user.coach?.full_name || '')}
                       </span>
                     </div>
                   </td>
 
-                  {/* Actions - Compact */}
-                  <td className="px-2 py-3">
+                  {/* Actions */}
+                  <td className="px-3 py-3">
                     <button
                       onClick={() => openEditForm(user)}
                       className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 flex items-center"
