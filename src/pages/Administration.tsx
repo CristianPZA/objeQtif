@@ -13,6 +13,7 @@ interface UserProfile {
   role: string;
   manager_id: string | null;
   coach_id: string | null;
+  career_level_id: string | null;
   is_active: boolean;
   last_login: string | null;
   created_at: string;
@@ -25,6 +26,27 @@ interface UserProfile {
   coach: {
     full_name: string;
   } | null;
+  career_level: {
+    name: string;
+    color: string;
+  } | null;
+}
+
+interface Department {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+interface CareerLevel {
+  id: string;
+  name: string;
+  short_name: string;
+  description: string;
+  color: string;
+  sort_order: number;
 }
 
 interface EditUserForm {
@@ -36,13 +58,15 @@ interface EditUserForm {
   manager_id: string;
   coach_id: string;
   department: string;
+  career_level_id: string;
 }
 
 const Administration = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [managers, setManagers] = useState<UserProfile[]>([]);
   const [coaches, setCoaches] = useState<UserProfile[]>([]);
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [careerLevels, setCareerLevels] = useState<CareerLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
@@ -60,7 +84,8 @@ const Administration = () => {
     fiche_poste: '',
     manager_id: '',
     coach_id: '',
-    department: ''
+    department: '',
+    career_level_id: ''
   });
 
   const roles = [
@@ -74,7 +99,8 @@ const Administration = () => {
   useEffect(() => {
     checkAdminAccess();
     fetchUsers();
-    loadDepartments();
+    fetchDepartments();
+    fetchCareerLevels();
   }, []);
 
   const formatManagerName = (fullName: string) => {
@@ -112,9 +138,9 @@ const Administration = () => {
 
   const fetchUsers = async () => {
     try {
-      console.log('=== FETCHING USERS WITH MANAGER AND COACH INFO ===');
+      console.log('=== FETCHING ALL USERS ===');
       
-      // Première requête : récupérer tous les utilisateurs
+      // Requête pour récupérer tous les utilisateurs avec leurs relations
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select(`
@@ -126,12 +152,16 @@ const Administration = () => {
           role,
           manager_id,
           coach_id,
+          career_level_id,
           is_active,
           last_login,
           created_at,
           date_naissance,
           date_entree_entreprise,
-          fiche_poste
+          fiche_poste,
+          manager:manager_id(full_name),
+          coach:coach_id(full_name),
+          career_level:career_level_id(name, color)
         `)
         .order('full_name');
 
@@ -141,63 +171,22 @@ const Administration = () => {
       }
 
       console.log('Users data fetched:', usersData?.length || 0, 'users');
+      console.log('Sample user data:', usersData?.[0]);
 
-      // Deuxième requête : récupérer les informations des managers et coaches
-      const managerIds = usersData?.map(user => user.manager_id).filter(Boolean) || [];
-      const coachIds = usersData?.map(user => user.coach_id).filter(Boolean) || [];
-      const allIds = [...new Set([...managerIds, ...coachIds])];
-      
-      console.log('Manager IDs to fetch:', managerIds);
-      console.log('Coach IDs to fetch:', coachIds);
-
-      let managersAndCoachesData: any[] = [];
-      if (allIds.length > 0) {
-        const { data: managersInfo, error: managersError } = await supabase
-          .from('user_profiles')
-          .select('id, full_name')
-          .in('id', allIds);
-
-        if (managersError) {
-          console.error('Error fetching managers and coaches:', managersError);
-        } else {
-          managersAndCoachesData = managersInfo || [];
-          console.log('Managers and coaches data fetched:', managersAndCoachesData);
-        }
-      }
-
-      // Combiner les données
-      const usersWithManagersAndCoaches = usersData?.map(user => {
-        const manager = managersAndCoachesData.find(m => m.id === user.manager_id);
-        const coach = managersAndCoachesData.find(c => c.id === user.coach_id);
-        return {
-          ...user,
-          manager: manager ? { full_name: manager.full_name } : null,
-          coach: coach ? { full_name: coach.full_name } : null
-        };
-      }) || [];
-
-      console.log('Final users with managers and coaches:', usersWithManagersAndCoaches.map(u => ({
-        name: u.full_name,
-        manager_id: u.manager_id,
-        manager_name: u.manager?.full_name || 'None',
-        coach_id: u.coach_id,
-        coach_name: u.coach?.full_name || 'None'
-      })));
-
-      setUsers(usersWithManagersAndCoaches);
+      setUsers(usersData || []);
       
       // Filtrer les managers (direction, coach_rh, referent_projet)
-      const managerUsers = usersWithManagersAndCoaches.filter(user => 
+      const managerUsers = (usersData || []).filter(user => 
         ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
       );
       
       // Filtrer les coaches (coach_rh uniquement)
-      const coachUsers = usersWithManagersAndCoaches.filter(user => 
+      const coachUsers = (usersData || []).filter(user => 
         user.role === 'coach_rh'
       );
       
-      console.log('Manager users:', managerUsers.map(u => ({ name: u.full_name, role: u.role })));
-      console.log('Coach users:', coachUsers.map(u => ({ name: u.full_name, role: u.role })));
+      console.log('Manager users:', managerUsers.length);
+      console.log('Coach users:', coachUsers.length);
       
       setManagers(managerUsers);
       setCoaches(coachUsers);
@@ -209,59 +198,86 @@ const Administration = () => {
     }
   };
 
-  const loadDepartments = () => {
-    const savedDepartments = localStorage.getItem('company_departments');
-    if (savedDepartments) {
-      try {
-        setDepartments(JSON.parse(savedDepartments));
-      } catch (err) {
-        console.error('Erreur lors du chargement des départements:', err);
-        setDepartments([
-          'Direction',
-          'Ressources Humaines',
-          'Informatique',
-          'Commercial',
-          'Marketing',
-          'Finance',
-          'Production',
-          'Qualité',
-          'Logistique'
-        ]);
-      }
-    } else {
-      setDepartments([
-        'Direction',
-        'Ressources Humaines',
-        'Informatique',
-        'Commercial',
-        'Marketing',
-        'Finance',
-        'Production',
-        'Qualité',
-        'Logistique'
-      ]);
+  const fetchDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (error) throw error;
+      setDepartments(data || []);
+    } catch (err) {
+      console.error('Error fetching departments:', err);
     }
   };
 
-  const saveDepartments = (newDepartments: string[]) => {
-    setDepartments(newDepartments);
-    localStorage.setItem('company_departments', JSON.stringify(newDepartments));
-    setSuccess('Liste des départements mise à jour avec succès');
-    setTimeout(() => setSuccess(null), 3000);
+  const fetchCareerLevels = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('career_levels')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (error) throw error;
+      setCareerLevels(data || []);
+    } catch (err) {
+      console.error('Error fetching career levels:', err);
+    }
   };
 
-  const addDepartment = () => {
-    if (newDepartment.trim() && !departments.includes(newDepartment.trim())) {
-      const updatedDepartments = [...departments, newDepartment.trim()].sort();
-      saveDepartments(updatedDepartments);
+  const addDepartment = async () => {
+    if (!newDepartment.trim()) return;
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      const maxSortOrder = Math.max(...departments.map(d => d.sort_order), 0);
+      
+      const { error } = await supabase
+        .from('departments')
+        .insert([{
+          name: newDepartment.trim(),
+          sort_order: maxSortOrder + 1
+        }]);
+
+      if (error) throw error;
+
+      setSuccess('Département ajouté avec succès');
       setNewDepartment('');
+      fetchDepartments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de l\'ajout du département');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const removeDepartment = (departmentToRemove: string) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le département "${departmentToRemove}" ?`)) {
-      const updatedDepartments = departments.filter(dept => dept !== departmentToRemove);
-      saveDepartments(updatedDepartments);
+  const removeDepartment = async (departmentId: string, departmentName: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le département "${departmentName}" ?`)) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      const { error } = await supabase
+        .from('departments')
+        .update({ is_active: false })
+        .eq('id', departmentId);
+
+      if (error) throw error;
+
+      setSuccess('Département supprimé avec succès');
+      fetchDepartments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du département');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -274,7 +290,13 @@ const Administration = () => {
     setSuccess(null);
 
     try {
-      // Mettre à jour le profil utilisateur
+      // Trouver l'ID du département sélectionné
+      let departmentName = null;
+      if (formData.department) {
+        const selectedDept = departments.find(d => d.id === formData.department);
+        departmentName = selectedDept?.name || null;
+      }
+
       const updateData: any = {
         full_name: formData.full_name,
         date_naissance: formData.date_naissance || null,
@@ -282,7 +304,8 @@ const Administration = () => {
         fiche_poste: formData.fiche_poste || null,
         manager_id: formData.manager_id || null,
         coach_id: formData.coach_id || null,
-        department: formData.department || null
+        department: departmentName,
+        career_level_id: formData.career_level_id || null
       };
 
       console.log('Updating user with data:', updateData);
@@ -312,6 +335,14 @@ const Administration = () => {
   const openEditForm = (user: UserProfile) => {
     console.log('Opening edit form for user:', user);
     setEditingUser(user);
+    
+    // Trouver l'ID du département actuel
+    let departmentId = '';
+    if (user.department) {
+      const dept = departments.find(d => d.name === user.department);
+      departmentId = dept?.id || '';
+    }
+
     setFormData({
       full_name: user.full_name || '',
       email: user.email || '',
@@ -320,7 +351,8 @@ const Administration = () => {
       fiche_poste: user.fiche_poste || '',
       manager_id: user.manager_id || '',
       coach_id: user.coach_id || '',
-      department: user.department || ''
+      department: departmentId,
+      career_level_id: user.career_level_id || ''
     });
     setShowEditForm(true);
   };
@@ -334,7 +366,8 @@ const Administration = () => {
       fiche_poste: '',
       manager_id: '',
       coach_id: '',
-      department: ''
+      department: '',
+      career_level_id: ''
     });
   };
 
@@ -344,6 +377,19 @@ const Administration = () => {
     coach_rh: 'bg-green-100 text-green-800',
     direction: 'bg-purple-100 text-purple-800',
     admin: 'bg-red-100 text-red-800'
+  };
+
+  const getCareerLevelColor = (color: string) => {
+    const colorMap: Record<string, string> = {
+      green: 'bg-green-100 text-green-800',
+      blue: 'bg-blue-100 text-blue-800',
+      purple: 'bg-purple-100 text-purple-800',
+      orange: 'bg-orange-100 text-orange-800',
+      red: 'bg-red-100 text-red-800',
+      indigo: 'bg-indigo-100 text-indigo-800',
+      gray: 'bg-gray-100 text-gray-800'
+    };
+    return colorMap[color] || 'bg-gray-100 text-gray-800';
   };
 
   if (loading && !showEditForm) {
@@ -414,8 +460,11 @@ const Administration = () => {
                 <div>Total users: {users.length}</div>
                 <div>Users with managers: {users.filter(u => u.manager?.full_name).length}</div>
                 <div>Users with coaches: {users.filter(u => u.coach?.full_name).length}</div>
+                <div>Users with career levels: {users.filter(u => u.career_level?.name).length}</div>
                 <div>Available managers: {managers.length}</div>
                 <div>Available coaches: {coaches.length}</div>
+                <div>Available departments: {departments.length}</div>
+                <div>Available career levels: {careerLevels.length}</div>
               </div>
             </div>
             <button
@@ -494,6 +543,9 @@ const Administration = () => {
                       Rôle
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Niveau
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Responsable direct
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -534,6 +586,15 @@ const Administration = () => {
                           <Shield className="w-3 h-3 mr-1" />
                           {roles.find(r => r.value === user.role)?.label}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {user.career_level ? (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCareerLevelColor(user.career_level.color)}`}>
+                            {user.career_level.name}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">Non défini</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -610,11 +671,11 @@ const Administration = () => {
                   />
                   <button
                     onClick={addDepartment}
-                    disabled={!newDepartment.trim() || departments.includes(newDepartment.trim())}
+                    disabled={!newDepartment.trim() || departments.some(d => d.name === newDepartment.trim()) || submitting}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    Ajouter
+                    {submitting ? 'Ajout...' : 'Ajouter'}
                   </button>
                 </div>
               </div>
@@ -625,13 +686,19 @@ const Administration = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {departments.map((department) => (
                     <div
-                      key={department}
+                      key={department.id}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
                     >
-                      <span className="text-sm font-medium text-gray-900">{department}</span>
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">{department.name}</span>
+                        {department.description && (
+                          <p className="text-xs text-gray-500">{department.description}</p>
+                        )}
+                      </div>
                       <button
-                        onClick={() => removeDepartment(department)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                        onClick={() => removeDepartment(department.id, department.name)}
+                        disabled={submitting}
+                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 disabled:opacity-50"
                         title="Supprimer ce département"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -742,7 +809,24 @@ const Administration = () => {
                   >
                     <option value="">Sélectionner un département</option>
                     {departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Niveau de carrière */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Niveau de carrière
+                  </label>
+                  <select
+                    value={formData.career_level_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, career_level_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Sélectionner un niveau</option>
+                    {careerLevels.map(level => (
+                      <option key={level.id} value={level.id}>{level.name} - {level.description}</option>
                     ))}
                   </select>
                 </div>
@@ -815,6 +899,12 @@ const Administration = () => {
                     <span className="font-medium text-gray-600">Coach actuel:</span>
                     <span className="ml-2 text-gray-900">
                       {editingUser.coach?.full_name ? formatManagerName(editingUser.coach.full_name) : 'Aucun'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Niveau actuel:</span>
+                    <span className="ml-2 text-gray-900">
+                      {editingUser.career_level?.name || 'Aucun'}
                     </span>
                   </div>
                 </div>
