@@ -75,6 +75,7 @@ const Administration = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [newDepartment, setNewDepartment] = useState('');
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const [formData, setFormData] = useState<EditUserForm>({
     full_name: '',
@@ -140,29 +141,10 @@ const Administration = () => {
     try {
       console.log('=== FETCHING ALL USERS ===');
       
-      // Requête pour récupérer tous les utilisateurs avec leurs relations
+      // D'abord, récupérer tous les utilisateurs de base
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
-        .select(`
-          id,
-          full_name,
-          email,
-          phone,
-          department,
-          role,
-          manager_id,
-          coach_id,
-          career_level_id,
-          is_active,
-          last_login,
-          created_at,
-          date_naissance,
-          date_entree_entreprise,
-          fiche_poste,
-          manager:manager_id(full_name),
-          coach:coach_id(full_name),
-          career_level:career_level_id(name, color)
-        `)
+        .select('*')
         .order('full_name');
 
       if (usersError) {
@@ -170,18 +152,90 @@ const Administration = () => {
         throw usersError;
       }
 
-      console.log('Users data fetched:', usersData?.length || 0, 'users');
-      console.log('Sample user data:', usersData?.[0]);
+      console.log('Raw users data:', usersData?.length || 0, 'users');
+      console.log('Sample user:', usersData?.[0]);
 
-      setUsers(usersData || []);
+      if (!usersData || usersData.length === 0) {
+        console.warn('No users found in user_profiles table');
+        setUsers([]);
+        setManagers([]);
+        setCoaches([]);
+        setDebugInfo({ 
+          totalUsers: 0, 
+          error: 'No users found in database',
+          query: 'SELECT * FROM user_profiles ORDER BY full_name'
+        });
+        return;
+      }
+
+      // Ensuite, enrichir avec les relations
+      const enrichedUsers = await Promise.all(
+        usersData.map(async (user) => {
+          let manager = null;
+          let coach = null;
+          let career_level = null;
+
+          // Récupérer le manager
+          if (user.manager_id) {
+            try {
+              const { data: managerData } = await supabase
+                .from('user_profiles')
+                .select('full_name')
+                .eq('id', user.manager_id)
+                .single();
+              manager = managerData;
+            } catch (err) {
+              console.warn(`Failed to fetch manager for user ${user.id}:`, err);
+            }
+          }
+
+          // Récupérer le coach
+          if (user.coach_id) {
+            try {
+              const { data: coachData } = await supabase
+                .from('user_profiles')
+                .select('full_name')
+                .eq('id', user.coach_id)
+                .single();
+              coach = coachData;
+            } catch (err) {
+              console.warn(`Failed to fetch coach for user ${user.id}:`, err);
+            }
+          }
+
+          // Récupérer le niveau de carrière
+          if (user.career_level_id) {
+            try {
+              const { data: careerLevelData } = await supabase
+                .from('career_levels')
+                .select('name, color')
+                .eq('id', user.career_level_id)
+                .single();
+              career_level = careerLevelData;
+            } catch (err) {
+              console.warn(`Failed to fetch career level for user ${user.id}:`, err);
+            }
+          }
+
+          return {
+            ...user,
+            manager,
+            coach,
+            career_level
+          };
+        })
+      );
+
+      console.log('Enriched users:', enrichedUsers.length);
       
-      // Filtrer les managers (direction, coach_rh, referent_projet)
-      const managerUsers = (usersData || []).filter(user => 
+      setUsers(enrichedUsers);
+      
+      // Filtrer les managers et coaches
+      const managerUsers = enrichedUsers.filter(user => 
         ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
       );
       
-      // Filtrer les coaches (coach_rh uniquement)
-      const coachUsers = (usersData || []).filter(user => 
+      const coachUsers = enrichedUsers.filter(user => 
         user.role === 'coach_rh'
       );
       
@@ -190,9 +244,28 @@ const Administration = () => {
       
       setManagers(managerUsers);
       setCoaches(coachUsers);
+
+      // Informations de debug
+      setDebugInfo({
+        totalUsers: enrichedUsers.length,
+        usersWithManagers: enrichedUsers.filter(u => u.manager?.full_name).length,
+        usersWithCoaches: enrichedUsers.filter(u => u.coach?.full_name).length,
+        usersWithCareerLevels: enrichedUsers.filter(u => u.career_level?.name).length,
+        availableManagers: managerUsers.length,
+        availableCoaches: coachUsers.length,
+        roles: enrichedUsers.reduce((acc, user) => {
+          acc[user.role] = (acc[user.role] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
+
     } catch (err) {
       console.error('Error in fetchUsers:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement des utilisateurs');
+      setDebugInfo({ 
+        error: err instanceof Error ? err.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setLoading(false);
     }
@@ -450,21 +523,37 @@ const Administration = () => {
       )}
 
       {/* Debug Info (Development only) */}
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === 'development' && debugInfo && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-start">
             <Info className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
             <div className="flex-1">
               <h3 className="text-sm font-medium text-yellow-800">Debug Info</h3>
               <div className="mt-2 text-sm text-yellow-700 space-y-1">
-                <div>Total users: {users.length}</div>
-                <div>Users with managers: {users.filter(u => u.manager?.full_name).length}</div>
-                <div>Users with coaches: {users.filter(u => u.coach?.full_name).length}</div>
-                <div>Users with career levels: {users.filter(u => u.career_level?.name).length}</div>
-                <div>Available managers: {managers.length}</div>
-                <div>Available coaches: {coaches.length}</div>
+                <div>Total users: {debugInfo.totalUsers}</div>
+                {debugInfo.usersWithManagers !== undefined && (
+                  <div>Users with managers: {debugInfo.usersWithManagers}</div>
+                )}
+                {debugInfo.usersWithCoaches !== undefined && (
+                  <div>Users with coaches: {debugInfo.usersWithCoaches}</div>
+                )}
+                {debugInfo.usersWithCareerLevels !== undefined && (
+                  <div>Users with career levels: {debugInfo.usersWithCareerLevels}</div>
+                )}
+                {debugInfo.availableManagers !== undefined && (
+                  <div>Available managers: {debugInfo.availableManagers}</div>
+                )}
+                {debugInfo.availableCoaches !== undefined && (
+                  <div>Available coaches: {debugInfo.availableCoaches}</div>
+                )}
                 <div>Available departments: {departments.length}</div>
                 <div>Available career levels: {careerLevels.length}</div>
+                {debugInfo.roles && (
+                  <div>Roles: {Object.entries(debugInfo.roles).map(([role, count]) => `${role}: ${count}`).join(', ')}</div>
+                )}
+                {debugInfo.error && (
+                  <div className="text-red-600">Error: {debugInfo.error}</div>
+                )}
               </div>
             </div>
             <button
@@ -634,6 +723,12 @@ const Administration = () => {
                 <p className="text-gray-600">
                   Les employés créés via Supabase Auth apparaîtront ici automatiquement.
                 </p>
+                <button
+                  onClick={fetchUsers}
+                  className="mt-4 px-4 py-2 bg-indigo-100 hover:bg-indigo-200 rounded-md transition-colors text-sm text-indigo-700"
+                >
+                  Actualiser la liste
+                </button>
               </div>
             )}
           </div>
