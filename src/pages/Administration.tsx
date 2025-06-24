@@ -140,8 +140,22 @@ const Administration = () => {
   const fetchUsers = async () => {
     try {
       console.log('=== FETCHING ALL USERS ===');
+      setError(null);
       
-      // D'abord, récupérer tous les utilisateurs de base
+      // Test de connexion à Supabase
+      const { data: testData, error: testError } = await supabase
+        .from('user_profiles')
+        .select('count')
+        .limit(1);
+
+      if (testError) {
+        console.error('Supabase connection test failed:', testError);
+        throw new Error(`Erreur de connexion Supabase: ${testError.message}`);
+      }
+
+      console.log('Supabase connection test successful');
+
+      // Récupérer tous les utilisateurs de base
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -149,7 +163,7 @@ const Administration = () => {
 
       if (usersError) {
         console.error('Error fetching users:', usersError);
-        throw usersError;
+        throw new Error(`Erreur lors de la récupération des utilisateurs: ${usersError.message}`);
       }
 
       console.log('Raw users data:', usersData?.length || 0, 'users');
@@ -163,12 +177,13 @@ const Administration = () => {
         setDebugInfo({ 
           totalUsers: 0, 
           error: 'No users found in database',
-          query: 'SELECT * FROM user_profiles ORDER BY full_name'
+          query: 'SELECT * FROM user_profiles ORDER BY full_name',
+          timestamp: new Date().toISOString()
         });
         return;
       }
 
-      // Ensuite, enrichir avec les relations
+      // Enrichir avec les relations
       const enrichedUsers = await Promise.all(
         usersData.map(async (user) => {
           let manager = null;
@@ -256,7 +271,9 @@ const Administration = () => {
         roles: enrichedUsers.reduce((acc, user) => {
           acc[user.role] = (acc[user.role] || 0) + 1;
           return acc;
-        }, {} as Record<string, number>)
+        }, {} as Record<string, number>),
+        timestamp: new Date().toISOString(),
+        rawData: usersData.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, email: u.email }))
       });
 
     } catch (err) {
@@ -477,8 +494,14 @@ const Administration = () => {
     return (
       <div className="text-center py-12">
         <AlertTriangle className="mx-auto h-12 w-12 text-red-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Accès refusé</h3>
-        <p className="text-gray-600">{error}</p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de chargement</h3>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button
+          onClick={fetchUsers}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+        >
+          Réessayer
+        </button>
       </div>
     );
   }
@@ -523,7 +546,7 @@ const Administration = () => {
       )}
 
       {/* Debug Info (Development only) */}
-      {process.env.NODE_ENV === 'development' && debugInfo && (
+      {debugInfo && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-start">
             <Info className="h-5 w-5 text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
@@ -554,6 +577,15 @@ const Administration = () => {
                 {debugInfo.error && (
                   <div className="text-red-600">Error: {debugInfo.error}</div>
                 )}
+                {debugInfo.rawData && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-yellow-800 font-medium">Raw user data</summary>
+                    <pre className="mt-1 text-xs bg-yellow-100 p-2 rounded overflow-auto max-h-32">
+                      {JSON.stringify(debugInfo.rawData, null, 2)}
+                    </pre>
+                  </details>
+                )}
+                <div className="text-xs text-yellow-600">Last updated: {debugInfo.timestamp}</div>
               </div>
             </div>
             <button
