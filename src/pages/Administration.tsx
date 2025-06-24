@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, User, Building, Shield, Calendar, Plus, Trash2, Save, UserCheck } from 'lucide-react';
+import { Edit, Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, User, Building, Shield, Calendar, Plus, Trash2, Save, UserCheck, BookOpen } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -14,6 +14,7 @@ interface UserProfile {
   manager_id: string | null;
   coach_id: string | null;
   career_level_id: string | null;
+  career_pathway_id: string | null;
   is_active: boolean;
   last_login: string | null;
   created_at: string;
@@ -27,6 +28,10 @@ interface UserProfile {
     full_name: string;
   } | null;
   career_level: {
+    name: string;
+    color: string;
+  } | null;
+  career_pathway: {
     name: string;
     color: string;
   } | null;
@@ -49,6 +54,15 @@ interface CareerLevel {
   sort_order: number;
 }
 
+interface CareerArea {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  sort_order: number;
+}
+
 interface EditUserForm {
   full_name: string;
   email: string;
@@ -59,6 +73,7 @@ interface EditUserForm {
   coach_id: string;
   department: string;
   career_level_id: string;
+  career_pathway_id: string;
 }
 
 const Administration = () => {
@@ -67,6 +82,7 @@ const Administration = () => {
   const [coaches, setCoaches] = useState<UserProfile[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [careerLevels, setCareerLevels] = useState<CareerLevel[]>([]);
+  const [careerAreas, setCareerAreas] = useState<CareerArea[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
@@ -86,7 +102,8 @@ const Administration = () => {
     manager_id: '',
     coach_id: '',
     department: '',
-    career_level_id: ''
+    career_level_id: '',
+    career_pathway_id: ''
   });
 
   const roles = [
@@ -102,6 +119,7 @@ const Administration = () => {
     fetchUsers();
     fetchDepartments();
     fetchCareerLevels();
+    fetchCareerAreas();
   }, []);
 
   const formatManagerName = (fullName: string) => {
@@ -142,7 +160,6 @@ const Administration = () => {
       console.log('=== FETCHING ALL USERS ===');
       setError(null);
       
-      // Test de connexion à Supabase
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) {
         throw new Error('Utilisateur non connecté');
@@ -150,8 +167,6 @@ const Administration = () => {
 
       console.log('Current user:', currentUser.id);
 
-      // Récupérer TOUS les utilisateurs directement depuis user_profiles
-      // En utilisant le service role ou une requête simple
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select('*');
@@ -162,7 +177,6 @@ const Administration = () => {
       }
 
       console.log('Raw users data:', usersData?.length || 0, 'users');
-      console.log('Users found:', usersData?.map(u => ({ id: u.id, name: u.full_name, role: u.role })));
 
       if (!usersData || usersData.length === 0) {
         console.warn('No users found in user_profiles table');
@@ -178,14 +192,13 @@ const Administration = () => {
         return;
       }
 
-      // Enrichir avec les relations de manière sécurisée
       const enrichedUsers = await Promise.all(
         usersData.map(async (user) => {
           let manager = null;
           let coach = null;
           let career_level = null;
+          let career_pathway = null;
 
-          // Récupérer le manager
           if (user.manager_id) {
             try {
               const { data: managerData } = await supabase
@@ -199,7 +212,6 @@ const Administration = () => {
             }
           }
 
-          // Récupérer le coach
           if (user.coach_id) {
             try {
               const { data: coachData } = await supabase
@@ -213,7 +225,6 @@ const Administration = () => {
             }
           }
 
-          // Récupérer le niveau de carrière
           if (user.career_level_id) {
             try {
               const { data: careerLevelData } = await supabase
@@ -227,11 +238,25 @@ const Administration = () => {
             }
           }
 
+          if (user.career_pathway_id) {
+            try {
+              const { data: careerPathwayData } = await supabase
+                .from('career_areas')
+                .select('name, color')
+                .eq('id', user.career_pathway_id)
+                .maybeSingle();
+              career_pathway = careerPathwayData;
+            } catch (err) {
+              console.warn(`Failed to fetch career pathway for user ${user.id}:`, err);
+            }
+          }
+
           return {
             ...user,
             manager,
             coach,
-            career_level
+            career_level,
+            career_pathway
           };
         })
       );
@@ -240,30 +265,26 @@ const Administration = () => {
       
       setUsers(enrichedUsers);
       
-      // Filtrer les managers et coaches
       const managerUsers = enrichedUsers.filter(user => 
         ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
       );
       
-      // CORRECTION: Permettre à tous les utilisateurs d'être des coaches potentiels
-      // Les coaches peuvent être de n'importe quel rôle, pas seulement coach_rh
       const coachUsers = enrichedUsers.filter(user => 
         user.is_active && user.full_name && user.full_name.trim() !== ''
       );
       
       console.log('Manager users:', managerUsers.length);
       console.log('Coach users (all active users):', coachUsers.length);
-      console.log('Available coaches:', coachUsers.map(c => ({ id: c.id, name: c.full_name, role: c.role })));
       
       setManagers(managerUsers);
       setCoaches(coachUsers);
 
-      // Informations de debug
       setDebugInfo({
         totalUsers: enrichedUsers.length,
         usersWithManagers: enrichedUsers.filter(u => u.manager?.full_name).length,
         usersWithCoaches: enrichedUsers.filter(u => u.coach?.full_name).length,
         usersWithCareerLevels: enrichedUsers.filter(u => u.career_level?.name).length,
+        usersWithCareerPathways: enrichedUsers.filter(u => u.career_pathway?.name).length,
         availableManagers: managerUsers.length,
         availableCoaches: coachUsers.length,
         roles: enrichedUsers.reduce((acc, user) => {
@@ -271,20 +292,7 @@ const Administration = () => {
           return acc;
         }, {} as Record<string, number>),
         currentUser: currentUser.id,
-        timestamp: new Date().toISOString(),
-        rawData: usersData.map(u => ({ 
-          id: u.id, 
-          full_name: u.full_name, 
-          role: u.role, 
-          email: u.email,
-          is_active: u.is_active 
-        })),
-        coachesDetails: coachUsers.map(c => ({ 
-          id: c.id, 
-          name: c.full_name, 
-          role: c.role,
-          is_active: c.is_active 
-        }))
+        timestamp: new Date().toISOString()
       });
 
     } catch (err) {
@@ -326,6 +334,21 @@ const Administration = () => {
       setCareerLevels(data || []);
     } catch (err) {
       console.error('Error fetching career levels:', err);
+    }
+  };
+
+  const fetchCareerAreas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('career_areas')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (error) throw error;
+      setCareerAreas(data || []);
+    } catch (err) {
+      console.error('Error fetching career areas:', err);
     }
   };
 
@@ -391,7 +414,6 @@ const Administration = () => {
     setSuccess(null);
 
     try {
-      // Trouver l'ID du département sélectionné
       let departmentName = null;
       if (formData.department) {
         const selectedDept = departments.find(d => d.id === formData.department);
@@ -406,7 +428,8 @@ const Administration = () => {
         manager_id: formData.manager_id || null,
         coach_id: formData.coach_id || null,
         department: departmentName,
-        career_level_id: formData.career_level_id || null
+        career_level_id: formData.career_level_id || null,
+        career_pathway_id: formData.career_pathway_id || null
       };
 
       console.log('Updating user with data:', updateData);
@@ -424,7 +447,7 @@ const Administration = () => {
       setSuccess('Informations employé modifiées avec succès');
       setShowEditForm(false);
       setEditingUser(null);
-      fetchUsers(); // Recharger les données pour voir les changements
+      fetchUsers();
     } catch (err) {
       console.error('Error updating user:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors de la modification des informations');
@@ -437,7 +460,6 @@ const Administration = () => {
     console.log('Opening edit form for user:', user);
     setEditingUser(user);
     
-    // Trouver l'ID du département actuel
     let departmentId = '';
     if (user.department) {
       const dept = departments.find(d => d.name === user.department);
@@ -453,7 +475,8 @@ const Administration = () => {
       manager_id: user.manager_id || '',
       coach_id: user.coach_id || '',
       department: departmentId,
-      career_level_id: user.career_level_id || ''
+      career_level_id: user.career_level_id || '',
+      career_pathway_id: user.career_pathway_id || ''
     });
     setShowEditForm(true);
   };
@@ -468,7 +491,8 @@ const Administration = () => {
       manager_id: '',
       coach_id: '',
       department: '',
-      career_level_id: ''
+      career_level_id: '',
+      career_pathway_id: ''
     });
   };
 
@@ -491,6 +515,19 @@ const Administration = () => {
       gray: 'bg-gray-100 text-gray-800'
     };
     return colorMap[color] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getCareerPathwayColor = (color: string) => {
+    const colorMap: Record<string, string> = {
+      green: 'bg-green-50 text-green-700 border-green-200',
+      blue: 'bg-blue-50 text-blue-700 border-blue-200',
+      purple: 'bg-purple-50 text-purple-700 border-purple-200',
+      orange: 'bg-orange-50 text-orange-700 border-orange-200',
+      red: 'bg-red-50 text-red-700 border-red-200',
+      indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      gray: 'bg-gray-50 text-gray-700 border-gray-200'
+    };
+    return colorMap[color] || 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
   if (loading && !showEditForm) {
@@ -574,6 +611,9 @@ const Administration = () => {
                 {debugInfo.usersWithCareerLevels !== undefined && (
                   <div>Users with career levels: {debugInfo.usersWithCareerLevels}</div>
                 )}
+                {debugInfo.usersWithCareerPathways !== undefined && (
+                  <div>Users with career pathways: {debugInfo.usersWithCareerPathways}</div>
+                )}
                 {debugInfo.availableManagers !== undefined && (
                   <div>Available managers: {debugInfo.availableManagers}</div>
                 )}
@@ -582,6 +622,7 @@ const Administration = () => {
                 )}
                 <div>Available departments: {departments.length}</div>
                 <div>Available career levels: {careerLevels.length}</div>
+                <div>Available career pathways: {careerAreas.length}</div>
                 {debugInfo.roles && (
                   <div>Roles: {Object.entries(debugInfo.roles).map(([role, count]) => `${role}: ${count}`).join(', ')}</div>
                 )}
@@ -590,22 +631,6 @@ const Administration = () => {
                 )}
                 {debugInfo.error && (
                   <div className="text-red-600">Error: {debugInfo.error}</div>
-                )}
-                {debugInfo.coachesDetails && (
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-yellow-800 font-medium">Available coaches details</summary>
-                    <pre className="mt-1 text-xs bg-yellow-100 p-2 rounded overflow-auto max-h-32">
-                      {JSON.stringify(debugInfo.coachesDetails, null, 2)}
-                    </pre>
-                  </details>
-                )}
-                {debugInfo.rawData && (
-                  <details className="mt-2">
-                    <summary className="cursor-pointer text-yellow-800 font-medium">Raw user data</summary>
-                    <pre className="mt-1 text-xs bg-yellow-100 p-2 rounded overflow-auto max-h-32">
-                      {JSON.stringify(debugInfo.rawData, null, 2)}
-                    </pre>
-                  </details>
                 )}
                 <div className="text-xs text-yellow-600">Last updated: {debugInfo.timestamp}</div>
               </div>
@@ -689,6 +714,9 @@ const Administration = () => {
                       Niveau
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Career Pathway
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Responsable direct
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -735,6 +763,18 @@ const Administration = () => {
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCareerLevelColor(user.career_level.color)}`}>
                             {user.career_level.name}
                           </span>
+                        ) : (
+                          <span className="text-sm text-gray-500">Non défini</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {user.career_pathway ? (
+                          <div className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium border ${getCareerPathwayColor(user.career_pathway.color)}`}>
+                            <BookOpen className="w-3 h-3 mr-1" />
+                            <span className="truncate max-w-32" title={user.career_pathway.name}>
+                              {user.career_pathway.name}
+                            </span>
+                          </div>
                         ) : (
                           <span className="text-sm text-gray-500">Non défini</span>
                         )}
@@ -867,7 +907,7 @@ const Administration = () => {
       {/* Edit Form Modal */}
       {showEditForm && editingUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold text-gray-900">
                 Modifier les informations de {editingUser.full_name}
@@ -980,6 +1020,26 @@ const Administration = () => {
                   </select>
                 </div>
 
+                {/* Career Pathway */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Career Pathway
+                  </label>
+                  <select
+                    value={formData.career_pathway_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, career_pathway_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">Sélectionner un parcours de carrière</option>
+                    {careerAreas.map(area => (
+                      <option key={area.id} value={area.id}>{area.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Le parcours de carrière définit les compétences et évolutions possibles pour cet employé
+                  </p>
+                </div>
+
                 {/* Responsable direct */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1059,6 +1119,12 @@ const Administration = () => {
                     <span className="font-medium text-gray-600">Niveau actuel:</span>
                     <span className="ml-2 text-gray-900">
                       {editingUser.career_level?.name || 'Aucun'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600">Career Pathway actuel:</span>
+                    <span className="ml-2 text-gray-900">
+                      {editingUser.career_pathway?.name || 'Aucun'}
                     </span>
                   </div>
                 </div>
