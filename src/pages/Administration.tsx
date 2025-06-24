@@ -143,23 +143,18 @@ const Administration = () => {
       setError(null);
       
       // Test de connexion à Supabase
-      const { data: testData, error: testError } = await supabase
-        .from('user_profiles')
-        .select('count')
-        .limit(1);
-
-      if (testError) {
-        console.error('Supabase connection test failed:', testError);
-        throw new Error(`Erreur de connexion Supabase: ${testError.message}`);
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('Utilisateur non connecté');
       }
 
-      console.log('Supabase connection test successful');
+      console.log('Current user:', currentUser.id);
 
-      // Récupérer tous les utilisateurs de base
+      // Récupérer TOUS les utilisateurs directement depuis user_profiles
+      // En utilisant le service role ou une requête simple
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
-        .select('*')
-        .order('full_name');
+        .select('*');
 
       if (usersError) {
         console.error('Error fetching users:', usersError);
@@ -167,7 +162,7 @@ const Administration = () => {
       }
 
       console.log('Raw users data:', usersData?.length || 0, 'users');
-      console.log('Sample user:', usersData?.[0]);
+      console.log('Users found:', usersData?.map(u => ({ id: u.id, name: u.full_name, role: u.role })));
 
       if (!usersData || usersData.length === 0) {
         console.warn('No users found in user_profiles table');
@@ -177,13 +172,13 @@ const Administration = () => {
         setDebugInfo({ 
           totalUsers: 0, 
           error: 'No users found in database',
-          query: 'SELECT * FROM user_profiles ORDER BY full_name',
+          currentUser: currentUser.id,
           timestamp: new Date().toISOString()
         });
         return;
       }
 
-      // Enrichir avec les relations
+      // Enrichir avec les relations de manière sécurisée
       const enrichedUsers = await Promise.all(
         usersData.map(async (user) => {
           let manager = null;
@@ -272,8 +267,15 @@ const Administration = () => {
           acc[user.role] = (acc[user.role] || 0) + 1;
           return acc;
         }, {} as Record<string, number>),
+        currentUser: currentUser.id,
         timestamp: new Date().toISOString(),
-        rawData: usersData.map(u => ({ id: u.id, full_name: u.full_name, role: u.role, email: u.email }))
+        rawData: usersData.map(u => ({ 
+          id: u.id, 
+          full_name: u.full_name, 
+          role: u.role, 
+          email: u.email,
+          is_active: u.is_active 
+        }))
       });
 
     } catch (err) {
@@ -545,7 +547,7 @@ const Administration = () => {
         </div>
       )}
 
-      {/* Debug Info (Development only) */}
+      {/* Debug Info */}
       {debugInfo && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -573,6 +575,9 @@ const Administration = () => {
                 <div>Available career levels: {careerLevels.length}</div>
                 {debugInfo.roles && (
                   <div>Roles: {Object.entries(debugInfo.roles).map(([role, count]) => `${role}: ${count}`).join(', ')}</div>
+                )}
+                {debugInfo.currentUser && (
+                  <div>Current user ID: {debugInfo.currentUser}</div>
                 )}
                 {debugInfo.error && (
                   <div className="text-red-600">Error: {debugInfo.error}</div>
@@ -752,12 +757,12 @@ const Administration = () => {
               <div className="text-center py-12">
                 <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun employé trouvé</h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 mb-4">
                   Les employés créés via Supabase Auth apparaîtront ici automatiquement.
                 </p>
                 <button
                   onClick={fetchUsers}
-                  className="mt-4 px-4 py-2 bg-indigo-100 hover:bg-indigo-200 rounded-md transition-colors text-sm text-indigo-700"
+                  className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 rounded-md transition-colors text-sm text-indigo-700"
                 >
                   Actualiser la liste
                 </button>
