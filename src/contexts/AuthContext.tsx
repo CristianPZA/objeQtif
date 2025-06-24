@@ -21,14 +21,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (error) {
+        // Provide more detailed error logging
+        console.error('Auth error details:', {
+          message: error.message,
+          status: error.status,
+          statusText: error.statusText,
+          url: import.meta.env.VITE_SUPABASE_URL
+        });
+        
         // Don't log "Auth session missing!" as an error since it's a normal state
         if (error.message !== 'Auth session missing!') {
           console.error('Auth error:', error);
@@ -45,6 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUser(user);
       }
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Failed to get user:', error);
       setLoading(false);
     });
 
@@ -74,6 +89,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await originalFetch(...args);
         if (!response.ok && args[0]?.toString().includes('supabase.co')) {
           const errorText = await response.clone().text();
+          console.error('Supabase fetch error:', {
+            url: args[0],
+            status: response.status,
+            statusText: response.statusText,
+            errorText
+          });
           if (errorText.includes('User from sub claim in JWT does not exist')) {
             handleSupabaseError({ message: 'User from sub claim in JWT does not exist' });
           }
@@ -81,6 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return response;
       } catch (error) {
         if (args[0]?.toString().includes('supabase.co')) {
+          console.error('Network error connecting to Supabase:', {
+            url: args[0],
+            error: error.message
+          });
           handleSupabaseError(error);
         }
         throw error;
