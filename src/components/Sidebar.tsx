@@ -57,7 +57,7 @@ const Sidebar = () => {
     {
       to: '/objectifs-annuels',
       icon: <Target className="w-5 h-5" />,
-      label: 'Objectifs annuels',
+      label: 'Mes objectifs annuels',
     },
     {
       to: '/archives',
