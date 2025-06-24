@@ -167,12 +167,12 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           </div>
         </div>
 
-        {/* Résumé des thèmes */}
+        {/* Résumé des compétences */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">
-              {objective.objectives.length} objectifs définis
+              {objective.objectives.length} compétences à développer
             </span>
             <button
               onClick={() => setExpanded(!expanded)}
@@ -187,6 +187,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
               <span
                 key={index}
                 className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800"
+                title={obj.skill_description}
               >
                 {obj.theme_name}
               </span>
@@ -199,8 +200,13 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           <div className="border-t pt-4 space-y-4">
             {objective.objectives.map((obj: any, index: number) => (
               <div key={index} className="bg-gray-50 rounded-lg p-4">
+                <div className="mb-2">
+                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
+                    {obj.theme_name}
+                  </span>
+                </div>
                 <h4 className="font-medium text-gray-900 mb-2">
-                  {index + 1}. {obj.theme_name}
+                  {index + 1}. {obj.skill_description}
                 </h4>
                 <p className="text-sm text-gray-700 mb-3">
                   <strong>Objectif:</strong> {obj.smart_objective}
