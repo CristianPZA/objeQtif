@@ -8,7 +8,7 @@ interface FicheProjet {
   id: string;
   titre: string;
   description: string;
-  statut: 'brouillon' | 'en_attente' | 'validee' | 'finalisee' | 'archivee' | 'retour_demande';
+  statut: 'brouillon' | 'en_cours' | 'termine' | 'suspendu' | 'annule';
   date_debut: string | null;
   date_fin_prevue: string | null;
   taux_avancement: number;
@@ -134,29 +134,26 @@ const FichesProjets = () => {
 
   const statusLabels = {
     brouillon: 'Brouillon',
-    en_attente: 'En attente',
-    validee: 'Validée',
-    finalisee: 'Finalisée',
-    archivee: 'Archivée',
-    retour_demande: 'Retour demandé'
+    en_cours: 'En cours',
+    termine: 'Terminé',
+    suspendu: 'Suspendu',
+    annule: 'Annulé'
   };
 
   const statusColors = {
     brouillon: 'bg-gray-100 text-gray-800',
-    en_attente: 'bg-yellow-100 text-yellow-800',
-    validee: 'bg-green-100 text-green-800',
-    finalisee: 'bg-blue-100 text-blue-800',
-    archivee: 'bg-purple-100 text-purple-800',
-    retour_demande: 'bg-red-100 text-red-800'
+    en_cours: 'bg-blue-100 text-blue-800',
+    termine: 'bg-green-100 text-green-800',
+    suspendu: 'bg-yellow-100 text-yellow-800',
+    annule: 'bg-red-100 text-red-800'
   };
 
   const statusIcons = {
     brouillon: <AlertCircle className="w-4 h-4" />,
-    en_attente: <Clock className="w-4 h-4" />,
-    validee: <CheckCircle className="w-4 h-4" />,
-    finalisee: <Target className="w-4 h-4" />,
-    archivee: <Archive className="w-4 h-4" />,
-    retour_demande: <AlertCircle className="w-4 h-4" />
+    en_cours: <Clock className="w-4 h-4" />,
+    termine: <CheckCircle className="w-4 h-4" />,
+    suspendu: <Target className="w-4 h-4" />,
+    annule: <Archive className="w-4 h-4" />
   };
 
   const objectifStatusOptions = [
@@ -194,7 +191,7 @@ const FichesProjets = () => {
   const fetchFiches = async () => {
     try {
       const { data, error } = await supabase
-        .from('fiches_projets')
+        .from('projets')
         .select(`
           id,
           titre,
@@ -206,7 +203,7 @@ const FichesProjets = () => {
           budget_estime,
           created_at,
           auteur:user_profiles!auteur_id(full_name, role),
-          referent:user_profiles!referent_id(full_name)
+          referent:user_profiles!referent_projet_id(full_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -332,23 +329,18 @@ const FichesProjets = () => {
         titre: formData.titre,
         description: formData.description,
         auteur_id: user.id,
-        referent_id: formData.referent_id || null,
+        referent_projet_id: formData.referent_id || null,
         objectifs: formData.objectifs.filter(obj => obj.trim() !== ''),
         date_debut: formData.date_debut || null,
         date_fin_prevue: formData.date_fin_prevue || null,
         budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
-        ressources: {
-          humaines: formData.ressources.humaines.filter(r => r.trim() !== ''),
-          materielles: formData.ressources.materielles.filter(r => r.trim() !== ''),
-          financieres: formData.ressources.financieres
-        },
         risques: formData.risques.filter(r => r.trim() !== ''),
-        indicateurs: formData.indicateurs.filter(i => i.trim() !== ''),
-        statut: 'brouillon'
+        statut: 'brouillon',
+        nom_client: 'Client par défaut' // Add required field
       };
 
       const { error } = await supabase
-        .from('fiches_projets')
+        .from('projets')
         .insert([ficheData]);
 
       if (error) throw error;
