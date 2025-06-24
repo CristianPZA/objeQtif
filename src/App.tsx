@@ -7,7 +7,8 @@ import FichesProjets from './pages/FichesProjets';
 import Projets from './pages/Projets';
 import Administration from './pages/Administration';
 import Settings from './pages/Settings';
-import Aide from './pages/Aide';
+import CareerPathways from './pages/CareerPathways';
+import CareerPathwayDetail from './pages/CareerPathwayDetail';
 import CompleteProfile from './pages/CompleteProfile';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -36,7 +37,8 @@ function App() {
             <Route path="projets" element={<Projets />} />
             <Route path="administration" element={<Administration />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="aide" element={<Aide />} />
+            <Route path="career-pathways" element={<CareerPathways />} />
+            <Route path="career-pathway/:areaId" element={<CareerPathwayDetail />} />
           </Route>
         </Routes>
       </AuthProvider>

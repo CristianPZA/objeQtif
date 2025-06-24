@@ -5,7 +5,7 @@ import {
   FolderKanban,
   Target,
   Archive,
-  HelpCircle,
+  BookOpen,
   LogOut, 
   Settings,
   Briefcase,
@@ -65,8 +65,8 @@ const Sidebar = () => {
       label: 'Archives',
     },
     {
-      to: '/aide',
-      icon: <HelpCircle className="w-5 h-5" />,
+      to: '/career-pathways',
+      icon: <BookOpen className="w-5 h-5" />,
       label: 'Career Pathways',
     },
   ];
