@@ -116,7 +116,25 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
     try {
       setLoading(true);
       
-      // Récupérer les compétences pour le niveau et le pathway de l'employé
+      // First, fetch the development theme IDs for the career pathway
+      const { data: themeData, error: themeError } = await supabase
+        .from('development_themes')
+        .select('id')
+        .eq('career_area_id', selectedEmployee.career_pathway_id)
+        .eq('is_active', true);
+
+      if (themeError) throw themeError;
+
+      // Extract the theme IDs into a flat array
+      const themeIds = (themeData || []).map(theme => theme.id);
+
+      if (themeIds.length === 0) {
+        setAvailableSkills([]);
+        onError('Aucun thème de développement trouvé pour ce parcours de carrière');
+        return;
+      }
+
+      // Now fetch the pathway skills using the theme IDs
       const { data, error } = await supabase
         .from('pathway_skills')
         .select(`
@@ -130,14 +148,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
           )
         `)
         .eq('career_level_id', selectedEmployee.career_level_id)
-        .in('development_theme_id', 
-          // Sous-requête pour récupérer les thèmes du career pathway
-          supabase
-            .from('development_themes')
-            .select('id')
-            .eq('career_area_id', selectedEmployee.career_pathway_id)
-            .eq('is_active', true)
-        );
+        .in('development_theme_id', themeIds);
 
       if (error) throw error;
       
