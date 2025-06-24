@@ -25,8 +25,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
 
   const roles = [
     { value: 'employe', label: 'Employé' },
-    { value: 'referent_projet', label: 'Référent Projet' },
-    { value: 'coach_rh', label: 'Coach RH' },
+    { value: 'coach', label: 'Coach' },
     { value: 'direction', label: 'Direction' },
     { value: 'admin', label: 'Administrateur' }
   ];
@@ -141,7 +140,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
       setUsers(enrichedUsers);
       
       const managerUsers = enrichedUsers.filter(user => 
-        ['direction', 'coach_rh', 'referent_projet'].includes(user.role)
+        ['direction', 'coach'].includes(user.role)
       );
       
       const coachUsers = enrichedUsers.filter(user => 
@@ -253,8 +252,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
 
   const roleColors = {
     employe: 'bg-gray-100 text-gray-800',
-    referent_projet: 'bg-blue-100 text-blue-800',
-    coach_rh: 'bg-green-100 text-green-800',
+    coach: 'bg-green-100 text-green-800',
     direction: 'bg-purple-100 text-purple-800',
     admin: 'bg-red-100 text-red-800'
   };

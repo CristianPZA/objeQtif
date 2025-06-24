@@ -164,7 +164,7 @@ const Projets = () => {
   };
 
   const canCreateOrEdit = () => {
-    return currentUserRole && ['direction', 'referent_projet', 'admin'].includes(currentUserRole);
+    return currentUserRole && ['direction', 'coach', 'admin'].includes(currentUserRole);
   };
 
   const canEditProject = (projet: Projet) => {
@@ -173,8 +173,8 @@ const Projets = () => {
     // Admin et direction peuvent tout modifier
     if (['admin', 'direction'].includes(currentUserRole)) return true;
     
-    // Référent projet peut modifier ses projets ou ceux dont il est référent
-    if (currentUserRole === 'referent_projet' && 
+    // Coach peut modifier ses projets ou ceux dont il est référent
+    if (currentUserRole === 'coach' && 
         (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId)) return true;
     
     return false;
@@ -184,13 +184,13 @@ const Projets = () => {
     if (!currentUserRole || !currentUserId) return false;
     
     // Le projet doit être en cours pour pouvoir être terminé
-    if (projet.statut !== 'en_cours') return false;
+    if (projet.stat !== 'en_cours') return false;
     
     // Admin et direction peuvent terminer tous les projets
     if (['admin', 'direction'].includes(currentUserRole)) return true;
     
-    // Référent projet peut terminer ses projets ou ceux dont il est référent
-    if (currentUserRole === 'referent_projet' && 
+    // Coach peut terminer ses projets ou ceux dont il est référent
+    if (currentUserRole === 'coach' && 
         (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId)) return true;
     
     return false;
@@ -528,7 +528,7 @@ const Projets = () => {
   );
 
   const referents = users.filter(user => 
-    ['referent_projet', 'direction', 'admin'].includes(user.role)
+    ['coach', 'direction', 'admin'].includes(user.role)
   );
 
   const getStatutColor = (statut: string) => {
@@ -587,7 +587,7 @@ const Projets = () => {
             <div>
               <h3 className="text-sm font-medium text-blue-800">Mode consultation</h3>
               <p className="text-sm text-blue-700 mt-1">
-                Vous pouvez consulter les projets mais seuls les référents projet, la direction et les administrateurs peuvent créer ou modifier des projets.
+                Vous pouvez consulter les projets mais seuls les coaches, la direction et les administrateurs peuvent créer ou modifier des projets.
               </p>
             </div>
           </div>

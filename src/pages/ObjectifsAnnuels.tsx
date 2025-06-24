@@ -234,7 +234,7 @@ const ObjectifsAnnuels = () => {
               <h3 className="text-sm font-medium text-yellow-800">Configuration requise</h3>
               <p className="text-sm text-yellow-700 mt-1">
                 Pour créer des objectifs annuels, vous devez avoir un Career Pathway et un niveau de carrière assignés. 
-                Contactez votre administrateur ou votre coach RH pour configurer votre profil.
+                Contactez votre administrateur ou votre coach pour configurer votre profil.
               </p>
               <div className="mt-2 text-xs text-yellow-600">
                 <p>• Career Pathway: {currentUser?.career_pathway_id ? '✓ Configuré' : '✗ Non configuré'}</p>

@@ -68,7 +68,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
 
   const checkUserPermissions = async () => {
     // Vérifier si l'utilisateur peut sélectionner d'autres employés
-    const canSelect = ['admin', 'direction', 'coach_rh'].includes(user.role);
+    const canSelect = ['admin', 'direction', 'coach'].includes(user.role);
     setCanSelectEmployee(canSelect);
 
     if (canSelect) {
