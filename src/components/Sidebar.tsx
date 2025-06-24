@@ -52,7 +52,7 @@ const Sidebar = () => {
     {
       to: '/projets',
       icon: <Briefcase className="w-5 h-5" />,
-      label: 'Projets',
+      label: 'Projets en cours',
     },
     {
       to: '/objectifs-annuels',
