@@ -5,6 +5,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import FichesProjets from './pages/FichesProjets';
 import Projets from './pages/Projets';
+import ObjectifsAnnuels from './pages/ObjectifsAnnuels';
 import Administration from './pages/Administration';
 import Settings from './pages/Settings';
 import CareerPathways from './pages/CareerPathways';
@@ -33,6 +34,7 @@ function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="objectifs-annuels" element={<ObjectifsAnnuels />} />
             <Route path="fiches-projets" element={<FichesProjets />} />
             <Route path="projets" element={<Projets />} />
             <Route path="administration" element={<Administration />} />
