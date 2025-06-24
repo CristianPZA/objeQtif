@@ -279,6 +279,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
     return colorMap[color] || 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
+  // Fonction pour tronquer le texte
+  const truncateText = (text: string, maxLength: number) => {
+    if (!text) return 'Non défini';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -295,15 +302,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
           <div className="flex items-start">
             <div className="flex-1">
               <h3 className="text-sm font-medium text-yellow-800">Statistiques</h3>
-              <div className="mt-2 text-sm text-yellow-700 space-y-1">
-                <div>Total users: {debugInfo.totalUsers}</div>
-                <div>Users with managers: {debugInfo.usersWithManagers}</div>
-                <div>Users with coaches: {debugInfo.usersWithCoaches}</div>
-                <div>Users with career levels: {debugInfo.usersWithCareerLevels}</div>
-                <div>Users with career pathways: {debugInfo.usersWithCareerPathways}</div>
-                <div>Available departments: {departments.length}</div>
-                <div>Available career levels: {careerLevels.length}</div>
-                <div>Available career pathways: {careerAreas.length}</div>
+              <div className="mt-2 text-sm text-yellow-700 grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div>Total: {debugInfo.totalUsers}</div>
+                <div>Managers: {debugInfo.usersWithManagers}</div>
+                <div>Coaches: {debugInfo.usersWithCoaches}</div>
+                <div>Niveaux: {debugInfo.usersWithCareerLevels}</div>
+                <div>Pathways: {debugInfo.usersWithCareerPathways}</div>
+                <div>Départements: {departments.length}</div>
+                <div>Niveaux dispo: {careerLevels.length}</div>
+                <div>Pathways dispo: {careerAreas.length}</div>
               </div>
             </div>
             <button
@@ -316,34 +323,34 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
         </div>
       )}
 
-      {/* Users Table */}
+      {/* Users Table - Optimisé pour éviter le défilement horizontal */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
                   Employé
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Département
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Rôle
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Niveau
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Career Pathway
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsable direct
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                  Responsable
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Coach
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
                   Actions
                 </th>
               </tr>
@@ -351,78 +358,98 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  {/* Employé - Compact */}
+                  <td className="px-3 py-3">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-indigo-600" />
+                      <div className="flex-shrink-0 h-8 w-8">
+                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                          <User className="h-4 w-4 text-indigo-600" />
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                        {user.phone && (
-                          <div className="text-sm text-gray-500">{user.phone}</div>
-                        )}
+                      <div className="ml-3 min-w-0 flex-1">
+                        <div className="text-sm font-medium text-gray-900 truncate" title={user.full_name}>
+                          {truncateText(user.full_name, 20)}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate" title={user.email}>
+                          {truncateText(user.email, 25)}
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Département - Compact */}
+                  <td className="px-2 py-3">
                     <div className="flex items-center">
-                      <Building className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900">{user.department || 'Non défini'}</span>
+                      <Building className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
+                      <span className="text-xs text-gray-900 truncate" title={user.department || 'Non défini'}>
+                        {truncateText(user.department || 'Non défini', 12)}
+                      </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
-                      <Shield className="w-3 h-3 mr-1" />
-                      {roles.find(r => r.value === user.role)?.label}
+
+                  {/* Rôle - Compact */}
+                  <td className="px-2 py-3">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
+                      <Shield className="w-2 h-2 mr-1" />
+                      <span className="truncate">
+                        {roles.find(r => r.value === user.role)?.label.substring(0, 8)}
+                      </span>
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Niveau - Compact */}
+                  <td className="px-2 py-3">
                     {user.career_level ? (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getCareerLevelColor(user.career_level.color)}`}>
-                        {user.career_level.name}
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCareerLevelColor(user.career_level.color)}`} title={user.career_level.name}>
+                        {user.career_level.name.substring(0, 8)}
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-500">Non défini</span>
+                      <span className="text-xs text-gray-500">Non défini</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Career Pathway - Compact */}
+                  <td className="px-2 py-3">
                     {user.career_pathway ? (
-                      <div className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium border ${getCareerPathwayColor(user.career_pathway.color)}`}>
-                        <BookOpen className="w-3 h-3 mr-1" />
-                        <span className="truncate max-w-32" title={user.career_pathway.name}>
-                          {user.career_pathway.name}
+                      <div className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${getCareerPathwayColor(user.career_pathway.color)}`} title={user.career_pathway.name}>
+                        <BookOpen className="w-2 h-2 mr-1 flex-shrink-0" />
+                        <span className="truncate max-w-20">
+                          {truncateText(user.career_pathway.name, 15)}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-500">Non défini</span>
+                      <span className="text-xs text-gray-500">Non défini</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Responsable - Compact */}
+                  <td className="px-2 py-3">
                     <div className="flex items-center">
-                      <User className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900">
-                        {user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}
+                      <User className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
+                      <span className="text-xs text-gray-900 truncate" title={user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}>
+                        {user.manager?.full_name ? formatManagerName(user.manager.full_name).substring(0, 10) : 'Aucun'}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+
+                  {/* Coach - Compact */}
+                  <td className="px-2 py-3">
                     <div className="flex items-center">
-                      <UserCheck className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-900">
-                        {user.coach?.full_name ? formatManagerName(user.coach.full_name) : 'Aucun'}
+                      <UserCheck className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
+                      <span className="text-xs text-gray-900 truncate" title={user.coach?.full_name ? formatManagerName(user.coach.full_name) : 'Aucun'}>
+                        {user.coach?.full_name ? formatManagerName(user.coach.full_name).substring(0, 10) : 'Aucun'}
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+
+                  {/* Actions - Compact */}
+                  <td className="px-2 py-3">
                     <button
                       onClick={() => openEditForm(user)}
-                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50 flex items-center gap-1"
+                      className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 flex items-center"
+                      title="Modifier"
                     >
-                      <Edit className="h-4 w-4" />
-                      Modifier
+                      <Edit className="h-3 w-3" />
                     </button>
                   </td>
                 </tr>
