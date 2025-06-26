@@ -319,53 +319,58 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
         </div>
       )}
 
-      {/* Users Table - Optimisé sans la colonne rôle */}
+      {/* Users Table - Optimisé pour une meilleure lisibilité */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                   Employé
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Département
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Niveau
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                   Career Pathway
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Responsable
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Coach
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  {/* Employé - Format optimisé */}
-                  <td className="px-4 py-3">
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  {/* Employé - Format optimisé avec plus d'espace */}
+                  <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8">
-                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <User className="h-4 w-4 text-indigo-600" />
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                          <User className="h-5 w-5 text-indigo-600" />
                         </div>
                       </div>
-                      <div className="ml-3 min-w-0 flex-1">
-                        <div className="text-sm font-medium text-gray-900" title={user.full_name}>
-                          {formatEmployeeName(user.full_name)}
+                      <div className="ml-4 min-w-0 flex-1">
+                        <div className="text-sm font-medium text-gray-900 truncate" title={user.full_name}>
+                          {user.full_name || 'Non défini'}
                         </div>
                         {user.fiche_poste && (
-                          <div className="text-xs text-gray-500 truncate" title={user.fiche_poste}>
-                            {truncateText(user.fiche_poste, 20)}
+                          <div className="text-xs text-gray-500 truncate mt-1" title={user.fiche_poste}>
+                            {truncateText(user.fiche_poste, 30)}
+                          </div>
+                        )}
+                        {user.email && (
+                          <div className="text-xs text-gray-400 truncate mt-1" title={user.email}>
+                            {user.email}
                           </div>
                         )}
                       </div>
@@ -373,68 +378,74 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                   </td>
 
                   {/* Département */}
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     <div className="flex items-center">
-                      <Building className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
-                      <span className="text-xs text-gray-900 truncate" title={user.department || 'Non défini'}>
-                        {truncateText(user.department || 'Non défini', 12)}
+                      <Building className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                      <span className="text-sm text-gray-900 truncate" title={user.department || 'Non défini'}>
+                        {truncateText(user.department || 'Non défini', 15)}
                       </span>
                     </div>
                   </td>
 
                   {/* Niveau */}
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     {user.career_level ? (
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCareerLevelColor(user.career_level.color)}`} title={user.career_level.name}>
-                        {user.career_level.name.substring(0, 8)}
+                      <span 
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getCareerLevelColor(user.career_level.color)}`} 
+                        title={user.career_level.name}
+                      >
+                        {user.career_level.name}
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-500">Non défini</span>
+                      <span className="text-xs text-gray-500 italic">Non défini</span>
                     )}
                   </td>
 
                   {/* Career Pathway */}
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     {user.career_pathway ? (
-                      <div className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium border ${getCareerPathwayColor(user.career_pathway.color)}`} title={user.career_pathway.name}>
-                        <BookOpen className="w-2 h-2 mr-1 flex-shrink-0" />
-                        <span className="truncate max-w-24">
-                          {truncateText(user.career_pathway.name, 18)}
+                      <div 
+                        className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium border ${getCareerPathwayColor(user.career_pathway.color)}`} 
+                        title={user.career_pathway.name}
+                      >
+                        <BookOpen className="w-3 h-3 mr-2 flex-shrink-0" />
+                        <span className="truncate">
+                          {truncateText(user.career_pathway.name, 20)}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-500">Non défini</span>
+                      <span className="text-xs text-gray-500 italic">Non défini</span>
                     )}
                   </td>
 
                   {/* Responsable */}
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     <div className="flex items-center">
-                      <User className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
-                      <span className="text-xs text-gray-900 truncate" title={user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}>
+                      <User className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                      <span className="text-sm text-gray-900 truncate" title={user.manager?.full_name ? formatManagerName(user.manager.full_name) : 'Aucun'}>
                         {formatManagerName(user.manager?.full_name || '')}
                       </span>
                     </div>
                   </td>
 
                   {/* Coach */}
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     <div className="flex items-center">
-                      <UserCheck className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />
-                      <span className="text-xs text-gray-900 truncate" title={user.coach?.full_name ? formatManagerName(user.coach.full_name) : 'Aucun'}>
+                      <UserCheck className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                      <span className="text-sm text-gray-900 truncate" title={user.coach?.full_name ? formatManagerName(user.coach.full_name) : 'Aucun'}>
                         {formatManagerName(user.coach?.full_name || '')}
                       </span>
                     </div>
                   </td>
 
                   {/* Actions */}
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-4">
                     <button
                       onClick={() => openEditForm(user)}
-                      className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 flex items-center"
+                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 flex items-center transition-colors"
                       title="Modifier"
                     >
-                      <Edit className="h-3 w-3" />
+                      <Edit className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
