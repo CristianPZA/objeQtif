@@ -38,6 +38,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="objectifs-annuels" element={<ObjectifsAnnuels />} />
             <Route path="fiches-projets" element={<FichesProjets />} />
+            <Route path="fiche-projet/:collaborationId" element={<FicheProjetDetail />} />
             <Route path="projets" element={<Projets />} />
             <Route path="projet/:id" element={<ProjetDetail />} />
             <Route path="administration" element={<Administration />} />
