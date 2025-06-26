@@ -272,7 +272,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
             {/* Responsable direct */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Responsable direct
+                Responsable
               </label>
               <select
                 value={formData.manager_id}
