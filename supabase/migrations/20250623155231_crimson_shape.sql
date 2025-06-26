@@ -264,4 +264,4 @@ CREATE TRIGGER validate_evaluations_status
 -- Commentaires
 COMMENT ON TABLE objectifs_collaborateurs IS 'Objectifs définis par les collaborateurs pour leurs projets';
 COMMENT ON TABLE evaluations_objectifs IS 'Auto-évaluations et validations hiérarchiques des objectifs';
-COMMENT ON COLUMN user_profiles.coach_id IS 'Référence vers le coach RH assigné';
+COMMENT ON COLUMN user_profiles.coach_id IS 'Référence vers le coach assigné';
