@@ -1042,10 +1042,10 @@ const Projets = () => {
                 />
               </div>
 
-              {/* Actions */}
+              {/* Actions avec bouton Finir le projet */}
               <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                {/* Bouton Finir le projet */}
-                {canTerminateProject(editingProjet) && (
+                {/* Bouton Finir le projet - TOUJOURS VISIBLE EN MODE ÉDITION */}
+                {editingProjet && canTerminateProject(editingProjet) && (
                   <button
                     type="button"
                     onClick={() => setShowTerminateConfirm(true)}
@@ -1056,7 +1056,10 @@ const Projets = () => {
                   </button>
                 )}
 
-                <div className={`flex gap-3 ${canTerminateProject(editingProjet) ? '' : 'ml-auto'}`}>
+                {/* Spacer si pas de bouton finir */}
+                {!(editingProjet && canTerminateProject(editingProjet)) && <div></div>}
+
+                <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => {
