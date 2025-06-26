@@ -108,8 +108,8 @@ const ProjetDetail = () => {
     { value: 'urgente', label: 'Urgente', color: 'bg-red-100 text-red-600' }
   ];
 
+  // SUPPRESSION DU STATUT BROUILLON - Plus que 4 statuts
   const statutOptions = [
-    { value: 'brouillon', label: 'Brouillon', color: 'bg-gray-100 text-gray-800' },
     { value: 'en_cours', label: 'En cours', color: 'bg-blue-100 text-blue-800' },
     { value: 'termine', label: 'Terminé', color: 'bg-green-100 text-green-800' },
     { value: 'suspendu', label: 'Suspendu', color: 'bg-yellow-100 text-yellow-800' },
@@ -453,7 +453,7 @@ const ProjetDetail = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Bouton Finir le projet - TOUJOURS VISIBLE EN HAUT */}
+          {/* BOUTON FINIR LE PROJET - MAINTENANT VISIBLE EN HAUT À GAUCHE DU BOUTON MODIFIER */}
           {canTerminateProject() && (
             <button
               onClick={() => setShowTerminateConfirm(true)}
