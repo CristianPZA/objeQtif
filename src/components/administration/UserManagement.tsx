@@ -319,7 +319,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
         </div>
       )}
 
-      {/* Users Table - Optimisé pour une meilleure lisibilité */}
+      {/* Users Table - Sans affichage de l'email */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -351,7 +351,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
             <tbody className="bg-white divide-y divide-gray-200">
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                  {/* Employé - Format optimisé avec plus d'espace */}
+                  {/* Employé - Sans email */}
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -365,12 +365,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                         </div>
                         {user.fiche_poste && (
                           <div className="text-xs text-gray-500 truncate mt-1" title={user.fiche_poste}>
-                            {truncateText(user.fiche_poste, 30)}
-                          </div>
-                        )}
-                        {user.email && (
-                          <div className="text-xs text-gray-400 truncate mt-1" title={user.email}>
-                            {user.email}
+                            {truncateText(user.fiche_poste, 35)}
                           </div>
                         )}
                       </div>
