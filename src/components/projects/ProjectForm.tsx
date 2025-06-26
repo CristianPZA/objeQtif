@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building, Calendar, Euro, Target, Users, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { X, Save, Building, Calendar, Euro, Target, Users, AlertTriangle, Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import CollaboratorSection from './CollaboratorSection';
 import { ProjectFormData, UserProfile, Collaborator } from './types';
@@ -45,9 +45,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   ];
 
   const steps = [
-    { id: 1, title: 'Informations générales', icon: Building },
-    { id: 2, title: 'Objectifs & Risques', icon: Target },
-    { id: 3, title: 'Équipe projet', icon: Users }
+    { 
+      id: 1, 
+      title: 'Informations générales', 
+      subtitle: 'Définissez les détails de base du projet',
+      icon: Building,
+      color: 'from-blue-500 to-indigo-600'
+    },
+    { 
+      id: 2, 
+      title: 'Équipe du projet', 
+      subtitle: 'Assignez les collaborateurs au projet',
+      icon: Users,
+      color: 'from-purple-500 to-pink-600'
+    }
   ];
 
   useEffect(() => {
@@ -179,193 +190,204 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   };
 
   const canProceedToNextStep = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.nom_client.trim() && formData.titre.trim() && formData.description.trim() && formData.date_debut;
-      case 2:
-        return formData.objectifs.some(obj => obj.trim() !== '');
-      case 3:
-        return true; // Les collaborateurs sont optionnels
-      default:
-        return false;
+    if (currentStep === 1) {
+      return formData.nom_client.trim() && 
+             formData.titre.trim() && 
+             formData.description.trim() && 
+             formData.date_debut &&
+             formData.objectifs.some(obj => obj.trim() !== '');
     }
+    return true;
   };
 
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center mb-8">
-      {steps.map((step, index) => {
-        const StepIcon = step.icon;
-        const isActive = currentStep === step.id;
-        const isCompleted = currentStep > step.id;
-        
-        return (
-          <div key={step.id} className="flex items-center">
-            <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all ${
-              isCompleted 
-                ? 'bg-green-500 border-green-500 text-white' 
-                : isActive 
-                ? 'bg-indigo-600 border-indigo-600 text-white' 
-                : 'bg-gray-100 border-gray-300 text-gray-400'
-            }`}>
-              <StepIcon className="w-5 h-5" />
+  const renderStepIndicator = () => {
+    const currentStepData = steps.find(s => s.id === currentStep);
+    
+    return (
+      <div className="mb-8">
+        {/* Progress Bar */}
+        <div className="flex items-center justify-center mb-6">
+          {steps.map((step, index) => {
+            const StepIcon = step.icon;
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            
+            return (
+              <div key={step.id} className="flex items-center">
+                <div className={`relative flex items-center justify-center w-16 h-16 rounded-full border-4 transition-all duration-300 ${
+                  isCompleted 
+                    ? 'bg-green-500 border-green-500 text-white shadow-lg' 
+                    : isActive 
+                    ? 'bg-white border-indigo-500 text-indigo-600 shadow-lg' 
+                    : 'bg-gray-100 border-gray-300 text-gray-400'
+                }`}>
+                  <StepIcon className="w-6 h-6" />
+                  {isCompleted && (
+                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                  )}
+                </div>
+                
+                {index < steps.length - 1 && (
+                  <div className={`w-24 h-1 mx-4 rounded-full transition-all duration-300 ${
+                    isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                  }`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Current Step Info */}
+        {currentStepData && (
+          <div className="text-center">
+            <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r ${currentStepData.color} text-white shadow-lg`}>
+              Étape {currentStep} sur {steps.length}
             </div>
-            <div className="ml-3 mr-6">
-              <p className={`text-sm font-medium ${isActive ? 'text-indigo-600' : 'text-gray-500'}`}>
-                Étape {step.id}
-              </p>
-              <p className={`text-xs ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
-                {step.title}
-              </p>
-            </div>
-            {index < steps.length - 1 && (
-              <div className={`w-8 h-0.5 mr-6 ${isCompleted ? 'bg-green-500' : 'bg-gray-300'}`} />
-            )}
+            <h3 className="text-2xl font-bold text-gray-900 mt-4 mb-2">{currentStepData.title}</h3>
+            <p className="text-gray-600">{currentStepData.subtitle}</p>
           </div>
-        );
-      })}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   const renderStep1 = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <Building className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900">Informations générales</h3>
-        <p className="text-sm text-gray-600">Définissez les informations de base de votre projet</p>
-      </div>
+    <div className="space-y-8">
+      {/* Informations de base */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Building className="w-5 h-5 mr-2 text-indigo-600" />
+          Informations de base
+        </h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nom du client *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.nom_client}
+              onChange={(e) => setFormData(prev => ({ ...prev, nom_client: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              placeholder="Ex: Entreprise ABC"
+            />
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Titre du projet *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.titre}
+              onChange={(e) => setFormData(prev => ({ ...prev, titre: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              placeholder="Ex: Refonte du site web"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Building className="w-4 h-4 inline mr-2" />
-            Nom du client *
+            Description du projet *
           </label>
-          <input
-            type="text"
+          <textarea
             required
-            value={formData.nom_client}
-            onChange={(e) => setFormData(prev => ({ ...prev, nom_client: e.target.value }))}
+            rows={4}
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            placeholder="Décrivez le contexte, les enjeux et les objectifs généraux du projet..."
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-            placeholder="Ex: Entreprise ABC"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Target className="w-4 h-4 inline mr-2" />
-            Titre du projet *
-          </label>
-          <input
-            type="text"
-            required
-            value={formData.titre}
-            onChange={(e) => setFormData(prev => ({ ...prev, titre: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-            placeholder="Ex: Refonte du site web"
           />
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Description du projet *
-        </label>
-        <textarea
-          required
-          rows={4}
-          value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          placeholder="Décrivez le contexte, les enjeux et les objectifs généraux du projet..."
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-        />
-      </div>
+      {/* Planification */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Calendar className="w-5 h-5 mr-2 text-indigo-600" />
+          Planification
+        </h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date de début *
+            </label>
+            <input
+              type="date"
+              required
+              value={formData.date_debut}
+              onChange={(e) => setFormData(prev => ({ ...prev, date_debut: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+            />
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Calendar className="w-4 h-4 inline mr-2" />
-            Date de début *
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date de fin prévue
+            </label>
+            <input
+              type="date"
+              value={formData.date_fin_prevue}
+              onChange={(e) => setFormData(prev => ({ ...prev, date_fin_prevue: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Budget estimé (€)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.budget_estime}
+              onChange={(e) => setFormData(prev => ({ ...prev, budget_estime: e.target.value }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Priorité du projet
           </label>
-          <input
-            type="date"
-            required
-            value={formData.date_debut}
-            onChange={(e) => setFormData(prev => ({ ...prev, date_debut: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {prioriteOptions.map(option => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, priorite: option.value }))}
+                className={`p-4 rounded-lg border-2 transition-all text-center hover:shadow-md ${
+                  formData.priorite === option.value
+                    ? 'border-indigo-500 bg-indigo-50 shadow-md'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-2xl mb-2">{option.icon}</div>
+                <div className={`text-sm font-medium ${
+                  formData.priorite === option.value ? 'text-indigo-700' : 'text-gray-700'
+                }`}>
+                  {option.label}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Calendar className="w-4 h-4 inline mr-2" />
-            Date de fin prévue
-          </label>
-          <input
-            type="date"
-            value={formData.date_fin_prevue}
-            onChange={(e) => setFormData(prev => ({ ...prev, date_fin_prevue: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Euro className="w-4 h-4 inline mr-2" />
-            Budget estimé (€)
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            value={formData.budget_estime}
-            onChange={(e) => setFormData(prev => ({ ...prev, budget_estime: e.target.value }))}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-            placeholder="0.00"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Priorité du projet
-        </label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {prioriteOptions.map(option => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setFormData(prev => ({ ...prev, priorite: option.value }))}
-              className={`p-4 rounded-lg border-2 transition-all text-center ${
-                formData.priorite === option.value
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="text-2xl mb-2">{option.icon}</div>
-              <div className={`text-sm font-medium ${
-                formData.priorite === option.value ? 'text-indigo-700' : 'text-gray-700'
-              }`}>
-                {option.label}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <Target className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900">Objectifs & Risques</h3>
-        <p className="text-sm text-gray-600">Définissez les objectifs et identifiez les risques potentiels</p>
       </div>
 
       {/* Objectifs */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+      <div className="bg-green-50 border border-green-200 rounded-xl p-6">
         <h4 className="text-lg font-semibold text-green-800 mb-4 flex items-center">
           <Target className="w-5 h-5 mr-2" />
-          Objectifs du projet
+          Objectifs du projet *
         </h4>
         <div className="space-y-3">
           {formData.objectifs.map((objectif, index) => (
@@ -405,7 +427,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       </div>
 
       {/* Risques */}
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+      <div className="bg-orange-50 border border-orange-200 rounded-xl p-6">
         <h4 className="text-lg font-semibold text-orange-800 mb-4 flex items-center">
           <AlertTriangle className="w-5 h-5 mr-2" />
           Risques identifiés
@@ -448,10 +470,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       </div>
 
       {/* Notes */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4">
           Notes additionnelles
-        </label>
+        </h4>
         <textarea
           rows={3}
           value={formData.notes}
@@ -463,21 +485,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     </div>
   );
 
-  const renderStep3 = () => (
+  const renderStep2 = () => (
     <div className="space-y-6">
-      <div className="text-center mb-6">
-        <Users className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900">Équipe projet</h3>
-        <p className="text-sm text-gray-600">Ajoutez les collaborateurs qui participeront au projet</p>
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <CollaboratorSection
+          collaborators={formData.collaborateurs}
+          users={users}
+          onAddCollaborator={addCollaborator}
+          onRemoveCollaborator={removeCollaborator}
+          isEditMode={false}
+        />
       </div>
-
-      <CollaboratorSection
-        collaborators={formData.collaborateurs}
-        users={users}
-        onAddCollaborator={addCollaborator}
-        onRemoveCollaborator={removeCollaborator}
-        isEditMode={false}
-      />
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
@@ -519,10 +537,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
           {!isEdit && renderStepIndicator()}
 
           {/* Form Content */}
-          <div className="min-h-[400px]">
+          <div className="min-h-[500px]">
             {(isEdit || currentStep === 1) && renderStep1()}
             {!isEdit && currentStep === 2 && renderStep2()}
-            {!isEdit && currentStep === 3 && renderStep3()}
           </div>
 
           {/* Navigation */}
@@ -532,8 +549,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 <button
                   type="button"
                   onClick={() => setCurrentStep(prev => prev - 1)}
-                  className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+                  className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium flex items-center gap-2"
                 >
+                  <ArrowLeft className="w-4 h-4" />
                   Précédent
                 </button>
               )}
@@ -548,19 +566,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
                 Annuler
               </button>
 
-              {!isEdit && currentStep < 3 ? (
+              {!isEdit && currentStep < 2 ? (
                 <button
                   type="button"
                   onClick={() => setCurrentStep(prev => prev + 1)}
                   disabled={!canProceedToNextStep()}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg"
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
                 >
                   Suivant
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button
                   type="submit"
-                  disabled={loading || (!isEdit && !canProceedToNextStep())}
+                  disabled={loading}
                   className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
