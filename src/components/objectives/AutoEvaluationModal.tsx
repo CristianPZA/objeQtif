@@ -61,10 +61,10 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
   };
 
   const validateEvaluations = () => {
-    return evaluations.every(eval => 
-      eval.auto_evaluation_comment.trim() !== '' &&
-      eval.achievements.trim() !== '' &&
-      eval.learnings.trim() !== ''
+    return evaluations.every(evaluationItem => 
+      evaluationItem.auto_evaluation_comment.trim() !== '' &&
+      evaluationItem.achievements.trim() !== '' &&
+      evaluationItem.learnings.trim() !== ''
     );
   };
 
