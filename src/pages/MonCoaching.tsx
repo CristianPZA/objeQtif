@@ -118,13 +118,13 @@ const MonCoaching = () => {
   };
 
   const getUniqueEmployees = () => {
-    const employees = evaluations.reduce((acc, eval) => {
-      if (!acc.find(emp => emp.id === eval.employe_id)) {
+    const employees = evaluations.reduce((acc, currentEval) => {
+      if (!acc.find(emp => emp.id === currentEval.employe_id)) {
         acc.push({
-          id: eval.employe_id,
-          name: eval.employe_nom,
-          role: eval.employe_role,
-          department: eval.employe_department
+          id: currentEval.employe_id,
+          name: currentEval.employe_nom,
+          role: currentEval.employe_role,
+          department: currentEval.employe_department
         });
       }
       return acc;
@@ -133,13 +133,13 @@ const MonCoaching = () => {
   };
 
   const filteredEvaluations = selectedEmployee 
-    ? evaluations.filter(eval => eval.employe_id === selectedEmployee)
+    ? evaluations.filter(currentEval => currentEval.employe_id === selectedEmployee)
     : evaluations;
 
   const getEmployeeStats = (employeeId: string) => {
-    const employeeEvals = evaluations.filter(eval => eval.employe_id === employeeId);
+    const employeeEvals = evaluations.filter(currentEval => currentEval.employe_id === employeeId);
     const avgScore = employeeEvals.length > 0 
-      ? employeeEvals.reduce((sum, eval) => sum + eval.note_finale, 0) / employeeEvals.length
+      ? employeeEvals.reduce((sum, currentEval) => sum + currentEval.note_finale, 0) / employeeEvals.length
       : 0;
     return {
       totalEvaluations: employeeEvals.length,
@@ -208,7 +208,7 @@ const MonCoaching = () => {
               <p className="text-sm font-medium text-gray-600">Note moyenne</p>
               <p className="text-2xl font-bold text-gray-900">
                 {evaluations.length > 0 
-                  ? (evaluations.reduce((sum, eval) => sum + eval.note_finale, 0) / evaluations.length).toFixed(1)
+                  ? (evaluations.reduce((sum, currentEval) => sum + currentEval.note_finale, 0) / evaluations.length).toFixed(1)
                   : '0.0'
                 }/5
               </p>
@@ -224,7 +224,7 @@ const MonCoaching = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Projets</p>
               <p className="text-2xl font-bold text-gray-900">
-                {new Set(evaluations.map(eval => eval.projet_id)).size}
+                {new Set(evaluations.map(currentEval => currentEval.projet_id)).size}
               </p>
             </div>
           </div>
