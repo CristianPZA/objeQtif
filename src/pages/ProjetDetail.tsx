@@ -211,8 +211,8 @@ const ProjetDetail = () => {
   const canTerminateProject = () => {
     if (!currentUserRole || !currentUserId || !projet) return false;
     
-    // Le projet doit être en cours pour pouvoir être terminé
-    if (projet.statut !== 'en_cours') return false;
+    // MODIFICATION: Permettre de terminer les projets qui ne sont PAS déjà terminés
+    if (projet.statut === 'termine') return false;
     
     // Admin peut terminer tous les projets
     if (currentUserRole === 'admin') return true;
@@ -438,6 +438,25 @@ const ProjetDetail = () => {
     );
   }
 
+  // DEBUG: Afficher les informations de debug
+  console.log('DEBUG ProjetDetail:', {
+    projet: {
+      id: projet.id,
+      titre: projet.titre,
+      statut: projet.statut,
+      auteur_id: projet.auteur_id,
+      referent_projet_id: projet.referent_projet_id
+    },
+    currentUser: {
+      id: currentUserId,
+      role: currentUserRole
+    },
+    permissions: {
+      canEdit: canEditProject(),
+      canTerminate: canTerminateProject()
+    }
+  });
+
   return (
     <div className="space-y-6">
       {/* Header avec bouton retour et actions */}
@@ -453,8 +472,8 @@ const ProjetDetail = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* BOUTON FINIR LE PROJET - MAINTENANT VISIBLE EN HAUT À GAUCHE DU BOUTON MODIFIER */}
-          {canTerminateProject() && (
+          {/* DEBUG: Affichage conditionnel avec informations de debug */}
+          {canTerminateProject() ? (
             <button
               onClick={() => setShowTerminateConfirm(true)}
               className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all font-medium shadow-lg flex items-center gap-2"
@@ -462,6 +481,11 @@ const ProjetDetail = () => {
               <CheckCircle className="w-5 h-5" />
               Finir le projet
             </button>
+          ) : (
+            // DEBUG: Afficher pourquoi le bouton n'est pas visible
+            <div className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+              Debug: Bouton masqué - Statut: {projet.statut}, User: {currentUserId === projet.auteur_id ? 'Auteur' : currentUserId === projet.referent_projet_id ? 'Référent' : 'Autre'}, Role: {currentUserRole}
+            </div>
           )}
 
           {canEditProject() && (
@@ -503,7 +527,7 @@ const ProjetDetail = () => {
             
             <div className="flex items-center gap-4">
               <span className={`px-3 py-1 text-sm rounded-full ${getStatutColor(projet.statut)}`}>
-                {statutOptions.find(s => s.value === projet.statut)?.label}
+                {statutOptions.find(s => s.value === projet.statut)?.label || projet.statut}
               </span>
               <span className={`px-3 py-1 text-sm rounded-full ${getPrioriteColor(projet.priorite)}`}>
                 Priorité {prioriteOptions.find(p => p.value === projet.priorite)?.label}
