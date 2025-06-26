@@ -795,7 +795,7 @@ const CareerPathwayDetail = () => {
               <p>• <strong>Explorez les thèmes</strong> pour identifier les compétences à développer dans votre domaine</p>
               <p>• <strong>Utilisez les filtres</strong> pour vous concentrer sur un niveau spécifique</p>
               <p>• <strong>Consultez les exemples</strong> pour comprendre l'application pratique des compétences</p>
-              <p>• <strong>Discutez avec votre manager ou coach RH</strong> pour définir votre plan de développement personnalisé</p>
+              <p>• <strong>Discutez avec votre manager ou coach </strong> pour définir votre plan de développement personnalisé</p>
             </div>
           </div>
         </div>
