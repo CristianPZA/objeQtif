@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, User, Calendar, Percent, FileText, UserPlus } from 'lucide-react';
+import { Plus, Trash2, User, Calendar, Percent, FileText, UserPlus, Users } from 'lucide-react';
 import { Collaborator, UserProfile } from './types';
 
 interface CollaboratorSectionProps {
