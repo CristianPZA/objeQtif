@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users, CheckCircle, Clock, AlertCircle, X, UserPlus } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, Edit, CheckCircle, Clock, AlertCircle, X, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -11,33 +11,13 @@ const Projets = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [showCollaborateursModal, setShowCollaborateursModal] = useState(false);
   const [editingProjet, setEditingProjet] = useState<Projet | null>(null);
-  const [selectedProjet, setSelectedProjet] = useState<Projet | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [users, setUsers] = useState<UserProfile[]>([]);
-
-  // Collaborateur form state
-  const [collaborateurForm, setCollaborateurForm] = useState({
-    employe_id: '',
-    role_projet: '',
-    taux_allocation: '100',
-    responsabilites: '',
-    date_debut: '',
-    date_fin: ''
-  });
-
-  const statutOptions = [
-    { value: 'brouillon', label: 'Brouillon', color: 'bg-gray-100 text-gray-800' },
-    { value: 'en_cours', label: 'En cours', color: 'bg-blue-100 text-blue-800' },
-    { value: 'termine', label: 'Terminé', color: 'bg-green-100 text-green-800' },
-    { value: 'suspendu', label: 'Suspendu', color: 'bg-yellow-100 text-yellow-800' },
-    { value: 'annule', label: 'Annulé', color: 'bg-red-100 text-red-800' }
-  ];
 
   const prioriteOptions = [
     { value: 'basse', label: 'Basse', color: 'bg-gray-100 text-gray-600' },
@@ -200,95 +180,6 @@ const Projets = () => {
     }
   };
 
-  const handleDelete = async (projetId: string, titre: string) => {
-    const projet = projets.find(p => p.id === projetId);
-    if (!projet || !canEditProject(projet)) {
-      setError('Vous n\'avez pas les droits pour supprimer ce projet');
-      return;
-    }
-
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer le projet "${titre}" ? Cette action est irréversible.`)) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { error } = await supabase
-        .from('projets')
-        .delete()
-        .eq('id', projetId);
-
-      if (error) throw error;
-
-      setSuccess('Projet supprimé avec succès');
-      fetchProjets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du projet');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddCollaborateur = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedProjet) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { error } = await supabase
-        .from('projet_collaborateurs')
-        .insert([{
-          projet_id: selectedProjet.id,
-          employe_id: collaborateurForm.employe_id,
-          role_projet: collaborateurForm.role_projet,
-          taux_allocation: parseFloat(collaborateurForm.taux_allocation),
-          responsabilites: collaborateurForm.responsabilites || null,
-          date_debut: collaborateurForm.date_debut || null,
-          date_fin: collaborateurForm.date_fin || null
-        }]);
-
-      if (error) throw error;
-
-      setSuccess('Collaborateur ajouté avec succès');
-      resetCollaborateurForm();
-      fetchProjets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de l\'ajout du collaborateur');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRemoveCollaborateur = async (collaborateurId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir retirer ce collaborateur du projet ?')) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { error } = await supabase
-        .from('projet_collaborateurs')
-        .delete()
-        .eq('id', collaborateurId);
-
-      if (error) throw error;
-
-      setSuccess('Collaborateur retiré avec succès');
-      fetchProjets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du retrait du collaborateur');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const openEditForm = (projet: Projet) => {
     if (!canEditProject(projet)) {
       setError('Vous n\'avez pas les droits pour modifier ce projet');
@@ -297,22 +188,6 @@ const Projets = () => {
 
     setEditingProjet(projet);
     setShowEditForm(true);
-  };
-
-  const openCollaborateursModal = (projet: Projet) => {
-    setSelectedProjet(projet);
-    setShowCollaborateursModal(true);
-  };
-
-  const resetCollaborateurForm = () => {
-    setCollaborateurForm({
-      employe_id: '',
-      role_projet: '',
-      taux_allocation: '100',
-      responsabilites: '',
-      date_debut: '',
-      date_fin: ''
-    });
   };
 
   const handleProjectSuccess = () => {
@@ -336,15 +211,11 @@ const Projets = () => {
     projet.referent_nom.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatutColor = (statut: string) => {
-    return statutOptions.find(s => s.value === statut)?.color || 'bg-gray-100 text-gray-800';
-  };
-
   const getPrioriteColor = (priorite: string) => {
     return prioriteOptions.find(p => p.value === priorite)?.color || 'bg-gray-100 text-gray-600';
   };
 
-  if (loading && !showCreateForm && !showEditForm && !showCollaborateursModal) {
+  if (loading && !showCreateForm && !showEditForm) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -419,9 +290,6 @@ const Projets = () => {
                   <div className="flex items-center gap-3 mb-2">
                     <Building className="w-5 h-5 text-indigo-600" />
                     <h3 className="text-xl font-semibold text-gray-900">{projet.titre}</h3>
-                    <span className={`px-2 py-1 text-xs rounded-full ${getStatutColor(projet.statut)}`}>
-                      {statutOptions.find(s => s.value === projet.statut)?.label}
-                    </span>
                     <span className={`px-2 py-1 text-xs rounded-full ${getPrioriteColor(projet.priorite)}`}>
                       {prioriteOptions.find(p => p.value === projet.priorite)?.label}
                     </span>
@@ -429,7 +297,6 @@ const Projets = () => {
                   <p className="text-sm text-gray-600 mb-1">
                     <strong>Client:</strong> {projet.nom_client}
                   </p>
-                  <p className="text-gray-600 mb-3">{projet.description}</p>
                 </div>
                 <div className="flex gap-2">
                   {/* Bouton Terminer le projet */}
@@ -452,30 +319,14 @@ const Projets = () => {
                     </div>
                   )}
 
-                  <button
-                    onClick={() => openCollaborateursModal(projet)}
-                    className="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50"
-                    title="Gérer les collaborateurs"
-                  >
-                    <Users className="h-4 w-4" />
-                  </button>
                   {canEditProject(projet) && (
-                    <>
-                      <button
-                        onClick={() => openEditForm(projet)}
-                        className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50"
-                        title="Modifier le projet"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(projet.id, projet.titre)}
-                        className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
-                        title="Supprimer le projet"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </>
+                    <button
+                      onClick={() => openEditForm(projet)}
+                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50"
+                      title="Modifier le projet"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -497,12 +348,6 @@ const Projets = () => {
                 </div>
               </div>
 
-              {projet.budget_estime && (
-                <div className="mb-4 text-sm text-gray-600">
-                  <strong>Budget estimé:</strong> {projet.budget_estime.toLocaleString('fr-FR')} €
-                </div>
-              )}
-
               {projet.collaborateurs.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Collaborateurs:</h4>
@@ -512,7 +357,7 @@ const Projets = () => {
                         key={collab.id}
                         className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700"
                       >
-                        {collab.employe_nom} ({collab.role_projet})
+                        {collab.employe_nom}
                       </span>
                     ))}
                   </div>
@@ -533,23 +378,6 @@ const Projets = () => {
                   </div>
                 </div>
               )}
-
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-500">
-                  Créé par: {projet.auteur_nom}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">Avancement: {projet.taux_avancement}%</span>
-                  <div className="w-24 bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all ${
-                        projet.statut === 'termine' ? 'bg-green-600' : 'bg-indigo-600'
-                      }`}
-                      style={{ width: `${projet.taux_avancement}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         ))}
@@ -592,179 +420,6 @@ const Projets = () => {
           onSuccess={handleProjectSuccess}
           onError={handleProjectError}
         />
-      )}
-
-      {/* Collaborateurs Modal */}
-      {showCollaborateursModal && selectedProjet && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Collaborateurs - {selectedProjet.titre}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCollaborateursModal(false);
-                  setSelectedProjet(null);
-                  resetCollaborateurForm();
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Liste des collaborateurs existants */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Collaborateurs actuels</h3>
-                {selectedProjet.collaborateurs.length > 0 ? (
-                  <div className="space-y-3">
-                    {selectedProjet.collaborateurs.map((collab) => (
-                      <div key={collab.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <div>
-                              <h4 className="font-medium text-gray-900">{collab.employe_nom}</h4>
-                              <p className="text-sm text-gray-600">
-                                {collab.role_projet} • {collab.taux_allocation}% • {collab.employe_role}
-                                {collab.employe_department && ` • ${collab.employe_department}`}
-                              </p>
-                              {collab.responsabilites && (
-                                <p className="text-sm text-gray-500 mt-1">{collab.responsabilites}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        {canEditProject(selectedProjet) && (
-                          <button
-                            onClick={() => handleRemoveCollaborateur(collab.id)}
-                            className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
-                            title="Retirer du projet"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-center py-4">Aucun collaborateur assigné</p>
-                )}
-              </div>
-
-              {/* Formulaire d'ajout de collaborateur */}
-              {canEditProject(selectedProjet) && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Ajouter un collaborateur</h3>
-                  <form onSubmit={handleAddCollaborateur} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Employé *
-                        </label>
-                        <select
-                          required
-                          value={collaborateurForm.employe_id}
-                          onChange={(e) => setCollaborateurForm(prev => ({ ...prev, employe_id: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                          <option value="">Sélectionner un employé</option>
-                          {users
-                            .filter(user => !selectedProjet.collaborateurs.some(c => c.employe_id === user.id))
-                            .map(user => (
-                              <option key={user.id} value={user.id}>
-                                {user.full_name} ({user.role})
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Rôle dans le projet *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={collaborateurForm.role_projet}
-                          onChange={(e) => setCollaborateurForm(prev => ({ ...prev, role_projet: e.target.value }))}
-                          placeholder="Ex: Développeur, Chef de projet, Designer..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Taux d'allocation (%)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={collaborateurForm.taux_allocation}
-                          onChange={(e) => setCollaborateurForm(prev => ({ ...prev, taux_allocation: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date de début
-                        </label>
-                        <input
-                          type="date"
-                          value={collaborateurForm.date_debut}
-                          onChange={(e) => setCollaborateurForm(prev => ({ ...prev, date_debut: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date de fin
-                        </label>
-                        <input
-                          type="date"
-                          value={collaborateurForm.date_fin}
-                          onChange={(e) => setCollaborateurForm(prev => ({ ...prev, date_fin: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Responsabilités
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={collaborateurForm.responsabilites}
-                        onChange={(e) => setCollaborateurForm(prev => ({ ...prev, responsabilites: e.target.value }))}
-                        placeholder="Décrivez les responsabilités de ce collaborateur sur le projet..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        {loading ? 'Ajout...' : 'Ajouter le collaborateur'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );
