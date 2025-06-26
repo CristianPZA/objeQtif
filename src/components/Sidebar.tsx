@@ -9,12 +9,14 @@ import {
   LogOut, 
   Settings,
   Briefcase,
+  Users,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isCoach, setIsCoach] = useState(false);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -23,11 +25,22 @@ const Sidebar = () => {
 
       const { data } = await supabase
         .from('user_profiles')
-        .select('role')
+        .select('role, id')
         .eq('id', session.user.id)
         .limit(1);
 
-      if (data && data.length > 0) setUserRole(data[0].role);
+      if (data && data.length > 0) {
+        setUserRole(data[0].role);
+        
+        // Vérifier si l'utilisateur est coach (a des coachés)
+        const { data: coachees } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('coach_id', session.user.id)
+          .limit(1);
+        
+        setIsCoach(coachees && coachees.length > 0);
+      }
     };
 
     fetchUserRole();
@@ -71,6 +84,15 @@ const Sidebar = () => {
     },
   ];
 
+  // Add coaching menu item if user is a coach
+  if (isCoach) {
+    menuItems.push({
+      to: '/mon-coaching',
+      icon: <Users className="w-5 h-5" />,
+      label: 'Mon Coaching',
+    });
+  }
+
   // Add administration menu item for admin role only
   if (userRole === 'admin') {
     menuItems.push({
@@ -84,7 +106,9 @@ const Sidebar = () => {
     <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
       <div className="flex flex-col items-center mb-8">
         <h1 className="text-2xl font-bold mb-2">objeQtifs</h1>
-        <p className="text-sm text-gray-400">{userRole === 'admin' ? 'Administrateur' : 'Employé'}</p>
+        <p className="text-sm text-gray-400">
+          {userRole === 'admin' ? 'Administrateur' : isCoach ? 'Coach' : 'Employé'}
+        </p>
       </div>
       
       <nav className="space-y-2">

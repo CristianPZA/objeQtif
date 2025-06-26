@@ -12,6 +12,7 @@ import Settings from './pages/Settings';
 import CareerPathways from './pages/CareerPathways';
 import CareerPathwayDetail from './pages/CareerPathwayDetail';
 import CompleteProfile from './pages/CompleteProfile';
+import MonCoaching from './pages/MonCoaching';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import MainLayout from './layouts/MainLayout';
@@ -43,6 +44,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="career-pathways" element={<CareerPathways />} />
             <Route path="career-pathway/:areaId" element={<CareerPathwayDetail />} />
+            <Route path="mon-coaching" element={<MonCoaching />} />
           </Route>
         </Routes>
       </AuthProvider>

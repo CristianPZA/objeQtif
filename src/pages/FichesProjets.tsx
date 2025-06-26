@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
+import ReferentEvaluationModal from '../components/objectives/ReferentEvaluationModal';
 
 interface Collaboration {
   id: string;
@@ -24,6 +25,8 @@ interface Collaboration {
     date_fin_prevue: string | null;
     auteur_nom: string;
     referent_nom: string;
+    referent_projet_id: string;
+    auteur_id: string;
   };
   objectifs?: {
     id: string;
@@ -68,18 +71,20 @@ interface PathwaySkill {
 const FichesProjets = () => {
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'mes_objectifs' | 'mes_projets' | 'mes_evaluations'>('mes_objectifs');
+  const [activeTab, setActiveTab] = useState<'mes_objectifs' | 'mes_projets' | 'mes_evaluations' | 'evaluations_a_faire'>('mes_objectifs');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showCreateObjectiveModal, setShowCreateObjectiveModal] = useState(false);
   const [showAutoEvaluationModal, setShowAutoEvaluationModal] = useState(false);
+  const [showReferentEvaluationModal, setShowReferentEvaluationModal] = useState(false);
   const [selectedCollaboration, setSelectedCollaboration] = useState<Collaboration | null>(null);
   const [availableSkills, setAvailableSkills] = useState<PathwaySkill[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [objectives, setObjectives] = useState<ObjectiveDetail[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [expandedEvaluations, setExpandedEvaluations] = useState<Set<string>>(new Set());
+  const [evaluationsToReview, setEvaluationsToReview] = useState<any[]>([]);
 
   useEffect(() => {
     checkUserAndFetchData();
@@ -102,6 +107,7 @@ const FichesProjets = () => {
 
       setCurrentUser(profile);
       await fetchCollaborations();
+      await fetchEvaluationsToReview();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
     } finally {
@@ -125,6 +131,8 @@ const FichesProjets = () => {
             statut,
             date_debut,
             date_fin_prevue,
+            referent_projet_id,
+            auteur_id,
             auteur:user_profiles!auteur_id(full_name),
             referent:user_profiles!referent_projet_id(full_name)
           )
@@ -173,6 +181,26 @@ const FichesProjets = () => {
     } catch (err) {
       console.error('Error fetching collaborations:', err);
       setError('Erreur lors du chargement des collaborations');
+    }
+  };
+
+  const fetchEvaluationsToReview = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Récupérer les évaluations en attente pour les projets où l'utilisateur est référent
+      const { data, error } = await supabase
+        .from('v_auto_evaluations_completes')
+        .select('*')
+        .eq('referent_projet_id', user.id)
+        .eq('statut', 'en_attente_referent')
+        .order('date_soumission', { ascending: false });
+
+      if (error) throw error;
+      setEvaluationsToReview(data || []);
+    } catch (err) {
+      console.error('Error fetching evaluations to review:', err);
     }
   };
 
@@ -245,6 +273,11 @@ const FichesProjets = () => {
   const handleAutoEvaluation = (collaboration: Collaboration) => {
     setSelectedCollaboration(collaboration);
     setShowAutoEvaluationModal(true);
+  };
+
+  const handleReferentEvaluation = (evaluation: any) => {
+    setSelectedCollaboration(evaluation);
+    setShowReferentEvaluationModal(true);
   };
 
   const handleSkillToggle = (skillId: string) => {
@@ -340,7 +373,11 @@ const FichesProjets = () => {
         return <Clock className="w-4 h-4 text-gray-500" />;
       case 'soumise':
         return <AlertCircle className="w-4 h-4 text-blue-500" />;
-      case 'validee':
+      case 'en_attente_referent':
+        return <Clock className="w-4 h-4 text-orange-500" />;
+      case 'evaluee_referent':
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'finalisee':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'rejetee':
         return <AlertCircle className="w-4 h-4 text-red-500" />;
@@ -355,8 +392,12 @@ const FichesProjets = () => {
         return 'Brouillon';
       case 'soumise':
         return 'Soumise';
-      case 'validee':
-        return 'Validée';
+      case 'en_attente_referent':
+        return 'En attente référent';
+      case 'evaluee_referent':
+        return 'Évaluée par référent';
+      case 'finalisee':
+        return 'Finalisée';
       case 'rejetee':
         return 'Rejetée';
       default:
@@ -370,7 +411,11 @@ const FichesProjets = () => {
         return 'bg-gray-100 text-gray-800';
       case 'soumise':
         return 'bg-blue-100 text-blue-800';
-      case 'validee':
+      case 'en_attente_referent':
+        return 'bg-orange-100 text-orange-800';
+      case 'evaluee_referent':
+        return 'bg-green-100 text-green-800';
+      case 'finalisee':
         return 'bg-green-100 text-green-800';
       case 'rejetee':
         return 'bg-red-100 text-red-800';
@@ -387,6 +432,11 @@ const FichesProjets = () => {
     return collaboration.objectifs && 
            collaboration.projet.statut === 'termine' && 
            (!collaboration.evaluation || collaboration.evaluation.statut === 'brouillon');
+  };
+
+  const canDoReferentEvaluation = (evaluation: any) => {
+    return evaluation.statut === 'en_attente_referent' && 
+           evaluation.referent_projet_id === currentUser?.id;
   };
 
   const toggleEvaluationExpansion = (evaluationId: string) => {
@@ -410,7 +460,7 @@ const FichesProjets = () => {
     ));
   };
 
-  if (loading && !showCreateObjectiveModal && !showAutoEvaluationModal) {
+  if (loading && !showCreateObjectiveModal && !showAutoEvaluationModal && !showReferentEvaluationModal) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -490,6 +540,24 @@ const FichesProjets = () => {
               Mes auto-évaluations
             </div>
           </button>
+          {evaluationsToReview.length > 0 && (
+            <button
+              onClick={() => setActiveTab('evaluations_a_faire')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm relative ${
+                activeTab === 'evaluations_a_faire'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Évaluations à faire
+                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 ml-1">
+                  {evaluationsToReview.length}
+                </span>
+              </div>
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('mes_projets')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -583,6 +651,63 @@ const FichesProjets = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun objectif défini</h3>
               <p className="text-gray-600">
                 Vous n'avez pas encore défini d'objectifs pour vos projets.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'evaluations_a_faire' && (
+        <div className="space-y-4">
+          {evaluationsToReview.length > 0 ? (
+            evaluationsToReview.map((evaluation) => (
+              <div key={evaluation.evaluation_id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CheckCircle className="w-5 h-5 text-orange-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Évaluation de {evaluation.employe_nom}
+                        </h3>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          En attente de votre évaluation
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        <strong>Projet:</strong> {evaluation.projet_titre} - {evaluation.nom_client}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <strong>Soumise le:</strong> {format(new Date(evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleReferentEvaluation(evaluation)}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-2 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Évaluer
+                    </button>
+                  </div>
+
+                  {/* Résumé de l'auto-évaluation */}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="font-medium text-blue-800 mb-2">
+                      Auto-évaluation de l'employé (Score moyen: {evaluation.score_moyen}/5)
+                    </h4>
+                    <div className="flex">
+                      {getScoreStars(evaluation.score_moyen)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
+              <CheckCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune évaluation en attente</h3>
+              <p className="text-gray-600">
+                Aucune auto-évaluation n'attend votre évaluation en tant que référent.
               </p>
             </div>
           )}
@@ -1076,6 +1201,30 @@ const FichesProjets = () => {
             setSuccess('Auto-évaluation soumise avec succès');
             setShowAutoEvaluationModal(false);
             setSelectedCollaboration(null);
+            fetchCollaborations();
+          }}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
+        />
+      )}
+
+      {/* Modal d'évaluation référent */}
+      {showReferentEvaluationModal && selectedCollaboration && (
+        <ReferentEvaluationModal
+          evaluation={selectedCollaboration}
+          objectives={selectedCollaboration.objectifs || []}
+          autoEvaluations={selectedCollaboration.auto_evaluation?.evaluations || []}
+          onClose={() => {
+            setShowReferentEvaluationModal(false);
+            setSelectedCollaboration(null);
+          }}
+          onSuccess={() => {
+            setSuccess('Évaluation référent soumise avec succès');
+            setShowReferentEvaluationModal(false);
+            setSelectedCollaboration(null);
+            fetchEvaluationsToReview();
             fetchCollaborations();
           }}
           onError={(error) => {
