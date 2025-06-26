@@ -349,7 +349,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                   Career Pathway
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
-                  Responsable Direct
+                  Responsable
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Coach
