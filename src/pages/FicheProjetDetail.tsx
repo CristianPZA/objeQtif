@@ -81,6 +81,7 @@ const FicheProjetDetail = () => {
   const [showObjectivesForm, setShowObjectivesForm] = useState(false);
   const [showAutoEvaluationModal, setShowAutoEvaluationModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'objectives' | 'evaluation'>('objectives');
 
   // Form state pour les objectifs
   const [objectivesForm, setObjectivesForm] = useState<ObjectiveDetail[]>([]);
@@ -306,6 +307,32 @@ const FicheProjetDetail = () => {
            (!collaboration.evaluation || collaboration.evaluation.statut === 'brouillon');
   };
 
+  const getEvaluationStatusBadge = () => {
+    if (!collaboration?.evaluation) {
+      if (collaboration?.projet.statut === 'termine') {
+        return { text: 'À faire', color: 'bg-orange-100 text-orange-800' };
+      }
+      return { text: 'En attente', color: 'bg-gray-100 text-gray-800' };
+    }
+
+    switch (collaboration.evaluation.statut) {
+      case 'brouillon':
+        return { text: 'Brouillon', color: 'bg-gray-100 text-gray-800' };
+      case 'soumise':
+        return { text: 'Soumise', color: 'bg-blue-100 text-blue-800' };
+      case 'en_attente_referent':
+        return { text: 'En attente référent', color: 'bg-yellow-100 text-yellow-800' };
+      case 'evaluee_referent':
+        return { text: 'Évaluée par référent', color: 'bg-purple-100 text-purple-800' };
+      case 'finalisee':
+        return { text: 'Finalisée', color: 'bg-green-100 text-green-800' };
+      case 'rejetee':
+        return { text: 'Rejetée', color: 'bg-red-100 text-red-800' };
+      default:
+        return { text: 'Statut inconnu', color: 'bg-gray-100 text-gray-800' };
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -348,6 +375,8 @@ const FicheProjetDetail = () => {
       </div>
     );
   }
+
+  const evaluationBadge = getEvaluationStatusBadge();
 
   return (
     <div className="space-y-6">
@@ -469,177 +498,269 @@ const FicheProjetDetail = () => {
         </div>
       </div>
 
-      {/* Section Objectifs */}
+      {/* Onglets */}
       <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Target className="w-6 h-6 text-indigo-600" />
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Mes objectifs de développement</h2>
-                <p className="text-sm text-gray-600">
-                  Définissez vos objectifs SMART pour ce projet
-                </p>
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex">
+            <button
+              onClick={() => setActiveTab('objectives')}
+              className={`py-4 px-6 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'objectives'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                Mes objectifs de développement
+                {collaboration.objectifs && (
+                  <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                    {collaboration.objectifs.objectifs.length}
+                  </span>
+                )}
               </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('evaluation')}
+              className={`py-4 px-6 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'evaluation'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Star className="w-5 h-5" />
+                Auto-évaluation
+                <span className={`text-xs px-2 py-1 rounded-full ${evaluationBadge.color}`}>
+                  {evaluationBadge.text}
+                </span>
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        {/* Contenu des onglets */}
+        <div className="p-6">
+          {activeTab === 'objectives' && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Mes objectifs de développement</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Définissez vos objectifs SMART pour ce projet
+                  </p>
+                </div>
+                {canDefineObjectives() && (
+                  <div className="flex gap-2">
+                    {collaboration.objectifs ? (
+                      <button
+                        onClick={handleEditObjectives}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Modifier les objectifs
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleCreateObjectives}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Définir mes objectifs
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {collaboration.objectifs ? (
+                <div className="space-y-4">
+                  {collaboration.objectifs.objectifs.map((objective, index) => (
+                    <div key={index} className="bg-gray-50 rounded-lg p-4 border">
+                      <div className="mb-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
+                            {objective.theme_name || `Objectif ${index + 1}`}
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-gray-900">
+                          {index + 1}. {objective.skill_description}
+                        </h4>
+                      </div>
+                      <p className="text-sm text-gray-700 mb-3">
+                        <strong>Objectif SMART:</strong> {objective.smart_objective}
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <strong className="text-gray-600">Spécifique:</strong>
+                          <p className="text-gray-700 mt-1">{objective.specific}</p>
+                        </div>
+                        <div>
+                          <strong className="text-gray-600">Mesurable:</strong>
+                          <p className="text-gray-700 mt-1">{objective.measurable}</p>
+                        </div>
+                        <div>
+                          <strong className="text-gray-600">Atteignable:</strong>
+                          <p className="text-gray-700 mt-1">{objective.achievable}</p>
+                        </div>
+                        <div>
+                          <strong className="text-gray-600">Pertinent:</strong>
+                          <p className="text-gray-700 mt-1">{objective.relevant}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <strong className="text-gray-600">Temporellement défini:</strong>
+                          <p className="text-gray-700 mt-1">{objective.time_bound}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun objectif défini</h3>
+                  <p className="text-gray-600 mb-4">
+                    Commencez par définir vos objectifs de développement pour ce projet.
+                  </p>
+                  {canDefineObjectives() && (
+                    <button
+                      onClick={handleCreateObjectives}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 mx-auto transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Définir mes objectifs
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-            {canDefineObjectives() && (
-              <div className="flex gap-2">
-                {collaboration.objectifs ? (
+          )}
+
+          {activeTab === 'evaluation' && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Auto-évaluation</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Évaluez l'atteinte de vos objectifs une fois le projet terminé
+                  </p>
+                </div>
+                {canAutoEvaluate() && (
                   <button
-                    onClick={handleEditObjectives}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                    onClick={handleStartAutoEvaluation}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center gap-2 transition-colors"
                   >
-                    <Edit className="w-4 h-4" />
-                    Modifier les objectifs
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleCreateObjectives}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Définir mes objectifs
+                    <Star className="w-4 h-4" />
+                    Commencer l'auto-évaluation
                   </button>
                 )}
               </div>
-            )}
-          </div>
-        </div>
 
-        <div className="p-6">
-          {collaboration.objectifs ? (
-            <div className="space-y-4">
-              {collaboration.objectifs.objectifs.map((objective, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4 border">
-                  <div className="mb-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                        {objective.theme_name || `Objectif ${index + 1}`}
-                      </span>
-                    </div>
-                    <h4 className="font-medium text-gray-900">
-                      {index + 1}. {objective.skill_description}
-                    </h4>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-3">
-                    <strong>Objectif SMART:</strong> {objective.smart_objective}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              {!collaboration.objectifs ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600" />
                     <div>
-                      <strong className="text-gray-600">Spécifique:</strong>
-                      <p className="text-gray-700 mt-1">{objective.specific}</p>
-                    </div>
-                    <div>
-                      <strong className="text-gray-600">Mesurable:</strong>
-                      <p className="text-gray-700 mt-1">{objective.measurable}</p>
-                    </div>
-                    <div>
-                      <strong className="text-gray-600">Atteignable:</strong>
-                      <p className="text-gray-700 mt-1">{objective.achievable}</p>
-                    </div>
-                    <div>
-                      <strong className="text-gray-600">Pertinent:</strong>
-                      <p className="text-gray-700 mt-1">{objective.relevant}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <strong className="text-gray-600">Temporellement défini:</strong>
-                      <p className="text-gray-700 mt-1">{objective.time_bound}</p>
+                      <h3 className="text-sm font-medium text-yellow-800">Objectifs requis</h3>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Vous devez d'abord définir vos objectifs de développement avant de pouvoir faire une auto-évaluation.
+                      </p>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun objectif défini</h3>
-              <p className="text-gray-600 mb-4">
-                Commencez par définir vos objectifs de développement pour ce projet.
-              </p>
-              {canDefineObjectives() && (
-                <button
-                  onClick={handleCreateObjectives}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 mx-auto transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Définir mes objectifs
-                </button>
+              ) : collaboration.evaluation ? (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <div>
+                        <h3 className="text-sm font-medium text-green-800">Auto-évaluation complétée</h3>
+                        <p className="text-sm text-green-700 mt-1">
+                          Soumise le {format(new Date(collaboration.evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+                        </p>
+                        <p className="text-sm text-green-700">
+                          Statut: {collaboration.evaluation.statut}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Affichage des résultats de l'auto-évaluation */}
+                  {collaboration.evaluation.auto_evaluation && collaboration.evaluation.auto_evaluation.evaluations && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Résultats de votre auto-évaluation</h3>
+                      {collaboration.evaluation.auto_evaluation.evaluations.map((evalItem: any, index: number) => {
+                        const objective = collaboration.objectifs?.objectifs[index];
+                        return (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4 border">
+                            <div className="mb-3">
+                              <h4 className="font-medium text-gray-900">
+                                {index + 1}. {objective?.skill_description}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-sm text-gray-600">Score:</span>
+                                <div className="flex">
+                                  {Array.from({ length: 5 }, (_, i) => (
+                                    <Star 
+                                      key={i} 
+                                      className={`w-4 h-4 ${i < evalItem.auto_evaluation_score ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
+                                    />
+                                  ))}
+                                </div>
+                                <span className="text-sm text-gray-600">({evalItem.auto_evaluation_score}/5)</span>
+                              </div>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <strong className="text-gray-600">Commentaire:</strong>
+                                <p className="text-gray-700 mt-1">{evalItem.auto_evaluation_comment}</p>
+                              </div>
+                              <div>
+                                <strong className="text-gray-600">Réalisations:</strong>
+                                <p className="text-gray-700 mt-1">{evalItem.achievements}</p>
+                              </div>
+                              {evalItem.learnings && (
+                                <div>
+                                  <strong className="text-gray-600">Apprentissages:</strong>
+                                  <p className="text-gray-700 mt-1">{evalItem.learnings}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : collaboration.projet.statut === 'termine' ? (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+                    <div>
+                      <h3 className="text-sm font-medium text-orange-800">Auto-évaluation requise</h3>
+                      <p className="text-sm text-orange-700 mt-1">
+                        Le projet est terminé. Vous pouvez maintenant évaluer l'atteinte de vos objectifs.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-800">En attente de la fin du projet</h3>
+                      <p className="text-sm text-blue-700 mt-1">
+                        L'auto-évaluation sera disponible une fois le projet terminé.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Section Auto-évaluation */}
-      {collaboration.objectifs && (
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Star className="w-6 h-6 text-orange-600" />
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Auto-évaluation</h2>
-                  <p className="text-sm text-gray-600">
-                    Évaluez l'atteinte de vos objectifs une fois le projet terminé
-                  </p>
-                </div>
-              </div>
-              {canAutoEvaluate() && (
-                <button
-                  onClick={handleStartAutoEvaluation}
-                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-                >
-                  <Star className="w-4 h-4" />
-                  Commencer l'auto-évaluation
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="p-6">
-            {collaboration.evaluation ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <div>
-                    <h3 className="text-sm font-medium text-green-800">Auto-évaluation complétée</h3>
-                    <p className="text-sm text-green-700 mt-1">
-                      Soumise le {format(new Date(collaboration.evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
-                    </p>
-                    <p className="text-sm text-green-700">
-                      Statut: {collaboration.evaluation.statut}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : collaboration.projet.statut === 'termine' ? (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-orange-600" />
-                  <div>
-                    <h3 className="text-sm font-medium text-orange-800">Auto-évaluation requise</h3>
-                    <p className="text-sm text-orange-700 mt-1">
-                      Le projet est terminé. Vous pouvez maintenant évaluer l'atteinte de vos objectifs.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <h3 className="text-sm font-medium text-blue-800">En attente de la fin du projet</h3>
-                    <p className="text-sm text-blue-700 mt-1">
-                      L'auto-évaluation sera disponible une fois le projet terminé.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Modal de définition des objectifs */}
       {showObjectivesForm && (
