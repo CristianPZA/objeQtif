@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, Edit, CheckCircle, Clock, AlertCircle, X, UserPlus } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, CheckCircle, Clock, AlertCircle, X, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -180,7 +180,9 @@ const Projets = () => {
     }
   };
 
-  const openEditForm = (projet: Projet) => {
+  const openEditForm = (projet: Projet, e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêcher la propagation du clic
+    
     if (!canEditProject(projet)) {
       setError('Vous n\'avez pas les droits pour modifier ce projet');
       return;
@@ -188,6 +190,14 @@ const Projets = () => {
 
     setEditingProjet(projet);
     setShowEditForm(true);
+  };
+
+  const handleProjectClick = (projet: Projet) => {
+    // Pour l'instant, on ouvre le formulaire d'édition si l'utilisateur peut modifier
+    if (canEditProject(projet)) {
+      setEditingProjet(projet);
+      setShowEditForm(true);
+    }
   };
 
   const handleProjectSuccess = () => {
@@ -260,7 +270,7 @@ const Projets = () => {
           <div>
             <h3 className="text-sm font-medium text-blue-800">Création de projets</h3>
             <p className="text-sm text-blue-700 mt-1">
-              Tous les utilisateurs peuvent créer des projets. Vous devenez automatiquement le référent du projet que vous créez.
+              Tous les utilisateurs peuvent créer des projets. Vous devenez automatiquement le référent du projet que vous créez. Cliquez sur un projet pour le modifier.
             </p>
           </div>
         </div>
@@ -280,17 +290,23 @@ const Projets = () => {
         </div>
       </div>
 
-      {/* Projects List */}
-      <div className="grid gap-6">
+      {/* Projects Grid - Optimisé en 2 colonnes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredProjets.map((projet) => (
-          <div key={projet.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+          <div 
+            key={projet.id} 
+            onClick={() => handleProjectClick(projet)}
+            className={`bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-200 ${
+              canEditProject(projet) ? 'cursor-pointer hover:border-indigo-300' : 'cursor-default'
+            }`}
+          >
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <Building className="w-5 h-5 text-indigo-600" />
-                    <h3 className="text-xl font-semibold text-gray-900">{projet.titre}</h3>
-                    <span className={`px-2 py-1 text-xs rounded-full ${getPrioriteColor(projet.priorite)}`}>
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">{projet.titre}</h3>
+                    <span className={`px-2 py-1 text-xs rounded-full ${getPrioriteColor(projet.priorite)} flex-shrink-0`}>
                       {prioriteOptions.find(p => p.value === projet.priorite)?.label}
                     </span>
                   </div>
@@ -298,16 +314,20 @@ const Projets = () => {
                     <strong>Client:</strong> {projet.nom_client}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                
+                {/* Actions en overlay */}
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* Bouton Terminer le projet */}
                   {canTerminateProject(projet) && (
                     <button
-                      onClick={() => handleTerminateProject(projet)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTerminateProject(projet);
+                      }}
                       className="text-green-600 hover:text-green-900 p-2 rounded hover:bg-green-50 flex items-center gap-1"
                       title="Marquer le projet comme terminé"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      <span className="text-xs hidden sm:inline">Terminer</span>
                     </button>
                   )}
                   
@@ -315,44 +335,37 @@ const Projets = () => {
                   {projet.statut === 'termine' && (
                     <div className="flex items-center gap-1 text-green-600 p-2">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="text-xs hidden sm:inline">Terminé</span>
                     </div>
-                  )}
-
-                  {canEditProject(projet) && (
-                    <button
-                      onClick={() => openEditForm(projet)}
-                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50"
-                      title="Modifier le projet"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              {/* Informations principales */}
+              <div className="space-y-3 mb-4">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar className="w-4 h-4" />
+                  <Calendar className="w-4 h-4 flex-shrink-0" />
                   <span>Début: {format(new Date(projet.date_debut), 'dd/MM/yyyy', { locale: fr })}</span>
                 </div>
+                
                 {projet.date_fin_prevue && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-4 h-4 flex-shrink-0" />
                     <span>Fin prévue: {format(new Date(projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}</span>
                   </div>
                 )}
+                
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <User className="w-4 h-4" />
+                  <User className="w-4 h-4 flex-shrink-0" />
                   <span>Référent: {projet.referent_nom}</span>
                 </div>
               </div>
 
+              {/* Collaborateurs */}
               {projet.collaborateurs.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Collaborateurs:</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {projet.collaborateurs.map((collab) => (
+                  <div className="flex flex-wrap gap-1">
+                    {projet.collaborateurs.slice(0, 3).map((collab) => (
                       <span
                         key={collab.id}
                         className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700"
@@ -360,6 +373,11 @@ const Projets = () => {
                         {collab.employe_nom}
                       </span>
                     ))}
+                    {projet.collaborateurs.length > 3 && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-200 text-gray-600">
+                        +{projet.collaborateurs.length - 3} autres
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -372,10 +390,17 @@ const Projets = () => {
                     <div className="text-sm">
                       <p className="text-amber-800 font-medium">Projet terminé</p>
                       <p className="text-amber-700 mt-1">
-                        Les collaborateurs ont été notifiés pour compléter leur auto-évaluation des objectifs.
+                        Les collaborateurs ont été notifiés pour compléter leur auto-évaluation.
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Indicateur de modification possible */}
+              {canEditProject(projet) && (
+                <div className="text-xs text-indigo-600 font-medium">
+                  Cliquez pour modifier
                 </div>
               )}
             </div>
@@ -383,7 +408,7 @@ const Projets = () => {
         ))}
 
         {filteredProjets.length === 0 && (
-          <div className="text-center py-12">
+          <div className="col-span-full text-center py-12">
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun projet</h3>
             <p className="text-gray-600">
@@ -419,6 +444,8 @@ const Projets = () => {
           }}
           onSuccess={handleProjectSuccess}
           onError={handleProjectError}
+          onTerminateProject={handleTerminateProject}
+          canTerminate={canTerminateProject(editingProjet)}
         />
       )}
     </div>
