@@ -290,7 +290,7 @@ const DashboardContent = () => {
             <ul className="text-blue-800 space-y-2">
               <li className="flex items-center">
                 <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                Créer et gérer vos fiches projets
+                Créer et gérer vos objectifs projets
               </li>
               <li className="flex items-center">
                 <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
