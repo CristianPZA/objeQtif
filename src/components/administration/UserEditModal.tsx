@@ -289,7 +289,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
             {/* Coach */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Coach RH
+                Coach
               </label>
               <select
                 value={formData.coach_id}
