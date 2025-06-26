@@ -269,7 +269,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({
               </p>
             </div>
 
-            {/* Responsable direct */}
+            {/* Responsable */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Responsable

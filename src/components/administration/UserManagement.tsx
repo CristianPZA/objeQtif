@@ -25,8 +25,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
 
   const roles = [
     { value: 'employe', label: 'Employé' },
-    { value: 'coach', label: 'Coach' },
-    { value: 'direction', label: 'Direction' },
     { value: 'admin', label: 'Administrateur' }
   ];
 
@@ -139,8 +137,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
 
       setUsers(enrichedUsers);
       
+      // Seuls les admins peuvent être managers
       const managerUsers = enrichedUsers.filter(user => 
-        ['direction', 'coach'].includes(user.role)
+        user.role === 'admin'
       );
       
       const coachUsers = enrichedUsers.filter(user => 
@@ -252,8 +251,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
 
   const roleColors = {
     employe: 'bg-gray-100 text-gray-800',
-    coach: 'bg-green-100 text-green-800',
-    direction: 'bg-purple-100 text-purple-800',
     admin: 'bg-red-100 text-red-800'
   };
 
@@ -428,7 +425,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                     )}
                   </td>
 
-                  {/* Responsable Direct */}
+                  {/* Responsable */}
                   <td className="px-3 py-3">
                     <div className="flex items-center">
                       <User className="h-3 w-3 text-gray-400 mr-1 flex-shrink-0" />

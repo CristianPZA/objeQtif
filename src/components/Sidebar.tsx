@@ -71,8 +71,8 @@ const Sidebar = () => {
     },
   ];
 
-  // Add administration menu item for direction and admin roles
-  if (userRole === 'direction' || userRole === 'admin') {
+  // Add administration menu item for admin role only
+  if (userRole === 'admin') {
     menuItems.push({
       to: '/administration',
       icon: <Settings className="w-5 h-5" />,
@@ -84,7 +84,7 @@ const Sidebar = () => {
     <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
       <div className="flex flex-col items-center mb-8">
         <h1 className="text-2xl font-bold mb-2">objeQtifs</h1>
-        <p className="text-sm text-gray-400">{userRole || 'Chargement...'}</p>
+        <p className="text-sm text-gray-400">{userRole === 'admin' ? 'Administrateur' : 'Employé'}</p>
       </div>
       
       <nav className="space-y-2">
