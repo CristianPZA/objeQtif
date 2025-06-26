@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, CheckCircle, Clock, AlertCircle, X, UserPlus } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users, CheckCircle, Clock, AlertCircle, X, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -12,10 +12,8 @@ const Projets = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showCollaborateursModal, setShowCollaborateursModal] = useState(false);
-  const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [editingProjet, setEditingProjet] = useState<Projet | null>(null);
   const [selectedProjet, setSelectedProjet] = useState<Projet | null>(null);
-  const [terminatingProjet, setTerminatingProjet] = useState<Projet | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -135,14 +133,15 @@ const Projets = () => {
     return false;
   };
 
-  const openTerminateModal = (projet: Projet) => {
-    setTerminatingProjet(projet);
-    setShowTerminateModal(true);
-  };
-
-  const handleTerminateProject = async () => {
-    if (!terminatingProjet || !canTerminateProject(terminatingProjet)) {
+  const handleTerminateProject = async (projet: Projet) => {
+    if (!canTerminateProject(projet)) {
       setError('Vous n\'avez pas les droits pour terminer ce projet');
+      return;
+    }
+
+    const confirmMessage = `Êtes-vous sûr de vouloir marquer le projet "${projet.titre}" comme terminé ?\n\nCela déclenchera automatiquement les auto-évaluations pour tous les collaborateurs du projet.`;
+    
+    if (!confirm(confirmMessage)) {
       return;
     }
 
@@ -159,25 +158,25 @@ const Projets = () => {
           taux_avancement: 100,
           updated_at: new Date().toISOString()
         })
-        .eq('id', terminatingProjet.id);
+        .eq('id', projet.id);
 
       if (updateError) throw updateError;
 
       // Créer les notifications pour les collaborateurs
-      const collaborateurIds = terminatingProjet.collaborateurs.map(c => c.employe_id);
+      const collaborateurIds = projet.collaborateurs.map(c => c.employe_id);
       
       if (collaborateurIds.length > 0) {
         const notifications = collaborateurIds.map(employeId => ({
           destinataire_id: employeId,
           expediteur_id: currentUserId,
           titre: 'Projet terminé - Auto-évaluation requise',
-          message: `Le projet "${terminatingProjet.titre}" est maintenant terminé. Veuillez compléter votre auto-évaluation des objectifs dans la section "Fiches Projets".`,
+          message: `Le projet "${projet.titre}" est maintenant terminé. Veuillez compléter votre auto-évaluation des objectifs dans la section "Fiches Projets".`,
           type: 'reminder',
           priority: 2,
           action_url: '/fiches-projets',
           metadata: {
-            projet_id: terminatingProjet.id,
-            projet_titre: terminatingProjet.titre,
+            projet_id: projet.id,
+            projet_titre: projet.titre,
             action_type: 'auto_evaluation_required'
           }
         }));
@@ -192,9 +191,7 @@ const Projets = () => {
         }
       }
 
-      setSuccess(`Projet "${terminatingProjet.titre}" marqué comme terminé. Les collaborateurs ont été notifiés pour compléter leur auto-évaluation.`);
-      setShowTerminateModal(false);
-      setTerminatingProjet(null);
+      setSuccess(`Projet "${projet.titre}" marqué comme terminé. Les collaborateurs ont été notifiés pour compléter leur auto-évaluation.`);
       fetchProjets(); // Recharger les projets
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la finalisation du projet');
@@ -438,7 +435,7 @@ const Projets = () => {
                   {/* Bouton Terminer le projet */}
                   {canTerminateProject(projet) && (
                     <button
-                      onClick={() => openTerminateModal(projet)}
+                      onClick={() => handleTerminateProject(projet)}
                       className="text-green-600 hover:text-green-900 p-2 rounded hover:bg-green-50 flex items-center gap-1"
                       title="Marquer le projet comme terminé"
                     >
@@ -455,25 +452,30 @@ const Projets = () => {
                     </div>
                   )}
 
-                  {/* Bouton unique pour modifier infos et collaborateurs */}
+                  <button
+                    onClick={() => openCollaborateursModal(projet)}
+                    className="text-blue-600 hover:text-blue-900 p-2 rounded hover:bg-blue-50"
+                    title="Gérer les collaborateurs"
+                  >
+                    <Users className="h-4 w-4" />
+                  </button>
                   {canEditProject(projet) && (
-                    <button
-                      onClick={() => openCollaborateursModal(projet)}
-                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50"
-                      title="Modifier le projet et gérer les collaborateurs"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                  )}
-
-                  {canEditProject(projet) && (
-                    <button
-                      onClick={() => handleDelete(projet.id, projet.titre)}
-                      className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
-                      title="Supprimer le projet"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => openEditForm(projet)}
+                        className="text-indigo-600 hover:text-indigo-900 p-2 rounded hover:bg-indigo-50"
+                        title="Modifier le projet"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(projet.id, projet.titre)}
+                        className="text-red-600 hover:text-red-900 p-2 rounded hover:bg-red-50"
+                        title="Supprimer le projet"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -536,7 +538,17 @@ const Projets = () => {
                 <div className="text-sm text-gray-500">
                   Créé par: {projet.auteur_nom}
                 </div>
-                {/* Suppression de la barre de progression */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Avancement: {projet.taux_avancement}%</span>
+                  <div className="w-24 bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        projet.statut === 'termine' ? 'bg-green-600' : 'bg-indigo-600'
+                      }`}
+                      style={{ width: `${projet.taux_avancement}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -582,64 +594,13 @@ const Projets = () => {
         />
       )}
 
-      {/* Modal de confirmation pour terminer le projet */}
-      {showTerminateModal && terminatingProjet && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-green-100 rounded-full">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Terminer le projet</h3>
-              </div>
-              
-              <p className="text-gray-600 mb-4">
-                Êtes-vous sûr de vouloir marquer le projet <strong>"{terminatingProjet.titre}"</strong> comme terminé ?
-              </p>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-                <p className="text-sm text-blue-800">
-                  <strong>Cette action va :</strong>
-                </p>
-                <ul className="text-sm text-blue-700 mt-1 list-disc list-inside">
-                  <li>Marquer le projet comme terminé</li>
-                  <li>Notifier tous les collaborateurs</li>
-                  <li>Déclencher les auto-évaluations</li>
-                </ul>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => {
-                    setShowTerminateModal(false);
-                    setTerminatingProjet(null);
-                  }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleTerminateProject}
-                  disabled={loading}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  {loading ? 'Finalisation...' : 'Terminer le projet'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Collaborateurs Modal */}
       {showCollaborateursModal && selectedProjet && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">
-                Modifier le projet - {selectedProjet.titre}
+                Collaborateurs - {selectedProjet.titre}
               </h2>
               <button
                 onClick={() => {
@@ -654,28 +615,6 @@ const Projets = () => {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Bouton pour modifier les informations du projet */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-blue-900">Informations du projet</h3>
-                    <p className="text-sm text-blue-700 mt-1">
-                      Modifiez les détails du projet (nom, dates, budget, etc.)
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowCollaborateursModal(false);
-                      openEditForm(selectedProjet);
-                    }}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Modifier les infos
-                  </button>
-                </div>
-              </div>
-
               {/* Liste des collaborateurs existants */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Collaborateurs actuels</h3>
