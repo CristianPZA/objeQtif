@@ -493,7 +493,7 @@ const CareerPathways = () => {
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 text-sm font-bold mt-0.5">4</div>
-                    <p><strong>Planifiez votre développement</strong> avec votre manager ou coach RH</p>
+                    <p><strong>Planifiez votre développement</strong> avec votre manager ou coach</p>
                   </div>
                 </div>
               </div>
