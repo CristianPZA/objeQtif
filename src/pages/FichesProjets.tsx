@@ -638,11 +638,11 @@ const FichesProjets = () => {
                             Résumé de votre auto-évaluation ({collaboration.evaluation.auto_evaluation.evaluations.length} objectifs)
                           </h4>
                           <div className="flex flex-wrap gap-2">
-                            {collaboration.evaluation.auto_evaluation.evaluations.map(eval: any, index: number) => (
+                            {collaboration.evaluation.auto_evaluation.evaluations.map((evalItem: any, index: number) => (
                               <div key={index} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
                                 <span className="text-xs text-gray-600">Obj. {index + 1}:</span>
                                 <div className="flex">
-                                  {getScoreStars(eval.auto_evaluation_score)}
+                                  {getScoreStars(evalItem.auto_evaluation_score)}
                                 </div>
                               </div>
                             ))}
@@ -653,7 +653,7 @@ const FichesProjets = () => {
                       {/* Détails de l'évaluation */}
                       {isExpanded && collaboration.evaluation?.auto_evaluation?.evaluations && (
                         <div className="border-t pt-4 space-y-4">
-                          {collaboration.evaluation.auto_evaluation.evaluations.map((eval: any, index: number) => {
+                          {collaboration.evaluation.auto_evaluation.evaluations.map((evalItem: any, index: number) => {
                             const objective = collaboration.objectifs?.objectifs[index];
                             
                             return (
@@ -665,40 +665,40 @@ const FichesProjets = () => {
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm text-gray-600">Score:</span>
                                     <div className="flex">
-                                      {getScoreStars(eval.auto_evaluation_score)}
+                                      {getScoreStars(evalItem.auto_evaluation_score)}
                                     </div>
                                   </div>
                                 </div>
                                 
                                 <div className="space-y-2 text-sm">
-                                  {eval.auto_evaluation_comment && (
+                                  {evalItem.auto_evaluation_comment && (
                                     <div>
                                       <strong className="text-gray-700">Commentaire:</strong>
-                                      <p className="text-gray-600 mt-1">{eval.auto_evaluation_comment}</p>
+                                      <p className="text-gray-600 mt-1">{evalItem.auto_evaluation_comment}</p>
                                     </div>
                                   )}
-                                  {eval.achievements && (
+                                  {evalItem.achievements && (
                                     <div>
                                       <strong className="text-gray-700">Réalisations:</strong>
-                                      <p className="text-gray-600 mt-1">{eval.achievements}</p>
+                                      <p className="text-gray-600 mt-1">{evalItem.achievements}</p>
                                     </div>
                                   )}
-                                  {eval.learnings && (
+                                  {evalItem.learnings && (
                                     <div>
                                       <strong className="text-gray-700">Apprentissages:</strong>
-                                      <p className="text-gray-600 mt-1">{eval.learnings}</p>
+                                      <p className="text-gray-600 mt-1">{evalItem.learnings}</p>
                                     </div>
                                   )}
-                                  {eval.difficulties && (
+                                  {evalItem.difficulties && (
                                     <div>
                                       <strong className="text-gray-700">Difficultés:</strong>
-                                      <p className="text-gray-600 mt-1">{eval.difficulties}</p>
+                                      <p className="text-gray-600 mt-1">{evalItem.difficulties}</p>
                                     </div>
                                   )}
-                                  {eval.next_steps && (
+                                  {evalItem.next_steps && (
                                     <div>
                                       <strong className="text-gray-700">Prochaines étapes:</strong>
-                                      <p className="text-gray-600 mt-1">{eval.next_steps}</p>
+                                      <p className="text-gray-600 mt-1">{evalItem.next_steps}</p>
                                     </div>
                                   )}
                                 </div>
