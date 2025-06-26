@@ -13,7 +13,9 @@ import {
   Save,
   Plus,
   Edit,
-  Star
+  Star,
+  Award,
+  UserCheck
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -333,6 +335,22 @@ const FicheProjetDetail = () => {
     }
   };
 
+  const getScoreStars = (score: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star 
+        key={i} 
+        className={`w-4 h-4 ${i < score ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
+      />
+    ));
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 4.5) return 'text-green-600';
+    if (score >= 3.5) return 'text-blue-600';
+    if (score >= 2.5) return 'text-orange-600';
+    return 'text-red-600';
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -529,8 +547,8 @@ const FicheProjetDetail = () => {
               }`}
             >
               <div className="flex items-center gap-2">
-                <Star className="w-5 h-5" />
-                Auto-évaluation
+                <Award className="w-5 h-5" />
+                Evaluation
                 <span className={`text-xs px-2 py-1 rounded-full ${evaluationBadge.color}`}>
                   {evaluationBadge.text}
                 </span>
@@ -637,123 +655,295 @@ const FicheProjetDetail = () => {
           )}
 
           {activeTab === 'evaluation' && (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Auto-évaluation</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Évaluez l'atteinte de vos objectifs une fois le projet terminé
-                  </p>
-                </div>
-                {canAutoEvaluate() && (
-                  <button
-                    onClick={handleStartAutoEvaluation}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-                  >
-                    <Star className="w-4 h-4" />
-                    Commencer l'auto-évaluation
-                  </button>
-                )}
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Evaluation</h2>
+                <p className="text-sm text-gray-600">
+                  Suivez le processus d'évaluation de vos objectifs
+                </p>
               </div>
 
-              {!collaboration.objectifs ? (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              {/* Section Auto-évaluation */}
+              <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Star className="w-5 h-5 text-blue-600" />
+                    </div>
                     <div>
-                      <h3 className="text-sm font-medium text-yellow-800">Objectifs requis</h3>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Vous devez d'abord définir vos objectifs de développement avant de pouvoir faire une auto-évaluation.
-                      </p>
+                      <h3 className="text-lg font-semibold text-blue-900">1. Auto-évaluation</h3>
+                      <p className="text-sm text-blue-700">Évaluez l'atteinte de vos objectifs</p>
                     </div>
                   </div>
+                  {canAutoEvaluate() && (
+                    <button
+                      onClick={handleStartAutoEvaluation}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                      <Star className="w-4 h-4" />
+                      Commencer l'auto-évaluation
+                    </button>
+                  )}
                 </div>
-              ) : collaboration.evaluation ? (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+
+                {!collaboration.objectifs ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
                       <div>
-                        <h3 className="text-sm font-medium text-green-800">Auto-évaluation complétée</h3>
-                        <p className="text-sm text-green-700 mt-1">
-                          Soumise le {format(new Date(collaboration.evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
-                        </p>
-                        <p className="text-sm text-green-700">
-                          Statut: {collaboration.evaluation.statut}
+                        <h4 className="text-sm font-medium text-yellow-800">Objectifs requis</h4>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          Vous devez d'abord définir vos objectifs de développement avant de pouvoir faire une auto-évaluation.
                         </p>
                       </div>
                     </div>
                   </div>
-
-                  {/* Affichage des résultats de l'auto-évaluation */}
-                  {collaboration.evaluation.auto_evaluation && collaboration.evaluation.auto_evaluation.evaluations && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Résultats de votre auto-évaluation</h3>
-                      {collaboration.evaluation.auto_evaluation.evaluations.map((evalItem: any, index: number) => {
-                        const objective = collaboration.objectifs?.objectifs[index];
-                        return (
-                          <div key={index} className="bg-gray-50 rounded-lg p-4 border">
-                            <div className="mb-3">
-                              <h4 className="font-medium text-gray-900">
-                                {index + 1}. {objective?.skill_description}
-                              </h4>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-sm text-gray-600">Score:</span>
-                                <div className="flex">
-                                  {Array.from({ length: 5 }, (_, i) => (
-                                    <Star 
-                                      key={i} 
-                                      className={`w-4 h-4 ${i < evalItem.auto_evaluation_score ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
-                                    />
-                                  ))}
-                                </div>
-                                <span className="text-sm text-gray-600">({evalItem.auto_evaluation_score}/5)</span>
-                              </div>
-                            </div>
-                            <div className="space-y-2 text-sm">
-                              <div>
-                                <strong className="text-gray-600">Commentaire:</strong>
-                                <p className="text-gray-700 mt-1">{evalItem.auto_evaluation_comment}</p>
-                              </div>
-                              <div>
-                                <strong className="text-gray-600">Réalisations:</strong>
-                                <p className="text-gray-700 mt-1">{evalItem.achievements}</p>
-                              </div>
-                              {evalItem.learnings && (
-                                <div>
-                                  <strong className="text-gray-600">Apprentissages:</strong>
-                                  <p className="text-gray-700 mt-1">{evalItem.learnings}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                ) : collaboration.evaluation && collaboration.evaluation.auto_evaluation ? (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <div>
+                          <h4 className="text-sm font-medium text-green-800">Auto-évaluation complétée</h4>
+                          <p className="text-sm text-green-700 mt-1">
+                            Soumise le {format(new Date(collaboration.evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  )}
+
+                    {/* Affichage des résultats de l'auto-évaluation */}
+                    {collaboration.evaluation.auto_evaluation.evaluations && (
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-blue-900">Résultats de votre auto-évaluation</h4>
+                        {collaboration.evaluation.auto_evaluation.evaluations.map((evalItem: any, index: number) => {
+                          const objective = collaboration.objectifs?.objectifs[index];
+                          return (
+                            <div key={index} className="bg-white rounded-lg p-4 border border-blue-200">
+                              <div className="mb-3">
+                                <h5 className="font-medium text-gray-900">
+                                  {index + 1}. {objective?.skill_description}
+                                </h5>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-sm text-gray-600">Score:</span>
+                                  <div className="flex">
+                                    {getScoreStars(evalItem.auto_evaluation_score)}
+                                  </div>
+                                  <span className="text-sm text-gray-600">({evalItem.auto_evaluation_score}/5)</span>
+                                </div>
+                              </div>
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <strong className="text-gray-600">Commentaire:</strong>
+                                  <p className="text-gray-700 mt-1">{evalItem.auto_evaluation_comment}</p>
+                                </div>
+                                <div>
+                                  <strong className="text-gray-600">Réalisations:</strong>
+                                  <p className="text-gray-700 mt-1">{evalItem.achievements}</p>
+                                </div>
+                                {evalItem.learnings && (
+                                  <div>
+                                    <strong className="text-gray-600">Apprentissages:</strong>
+                                    <p className="text-gray-700 mt-1">{evalItem.learnings}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : collaboration.projet.statut === 'termine' ? (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="w-5 h-5 text-orange-600" />
+                      <div>
+                        <h4 className="text-sm font-medium text-orange-800">Auto-évaluation requise</h4>
+                        <p className="text-sm text-orange-700 mt-1">
+                          Le projet est terminé. Vous pouvez maintenant évaluer l'atteinte de vos objectifs.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-600" />
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-800">En attente de la fin du projet</h4>
+                        <p className="text-sm text-gray-700 mt-1">
+                          L'auto-évaluation sera disponible une fois le projet terminé.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section Évaluation du référent */}
+              <div className="bg-purple-50 rounded-lg border border-purple-200 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <UserCheck className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-purple-900">2. Évaluation du référent</h3>
+                    <p className="text-sm text-purple-700">
+                      Évaluation par {collaboration.projet.referent_nom}
+                    </p>
+                  </div>
                 </div>
-              ) : collaboration.projet.statut === 'termine' ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
+
+                {!collaboration.evaluation || !collaboration.evaluation.auto_evaluation ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-600" />
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-800">En attente de votre auto-évaluation</h4>
+                        <p className="text-sm text-gray-700 mt-1">
+                          Le référent pourra vous évaluer une fois que vous aurez soumis votre auto-évaluation.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : collaboration.evaluation.evaluation_referent ? (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <div>
+                          <h4 className="text-sm font-medium text-green-800">Évaluation du référent complétée</h4>
+                          <p className="text-sm text-green-700 mt-1">
+                            Évaluée par {collaboration.projet.referent_nom}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Affichage des résultats de l'évaluation référent */}
+                    {collaboration.evaluation.evaluation_referent.evaluations && (
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-purple-900">Évaluation du référent</h4>
+                        {collaboration.evaluation.evaluation_referent.evaluations.map((evalItem: any, index: number) => {
+                          const objective = collaboration.objectifs?.objectifs[index];
+                          const autoEval = collaboration.evaluation?.auto_evaluation?.evaluations?.[index];
+                          
+                          return (
+                            <div key={index} className="bg-white rounded-lg p-4 border border-purple-200">
+                              <div className="mb-3">
+                                <h5 className="font-medium text-gray-900">
+                                  {index + 1}. {objective?.skill_description}
+                                </h5>
+                                
+                                {/* Comparaison des scores */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                  <div className="bg-blue-50 rounded p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-sm font-medium text-blue-800">Votre auto-évaluation</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex">
+                                        {getScoreStars(autoEval?.auto_evaluation_score || 0)}
+                                      </div>
+                                      <span className="text-sm text-blue-700">({autoEval?.auto_evaluation_score || 0}/5)</span>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="bg-purple-50 rounded p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-sm font-medium text-purple-800">Évaluation référent</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex">
+                                        {getScoreStars(evalItem.referent_score)}
+                                      </div>
+                                      <span className="text-sm text-purple-700">({evalItem.referent_score}/5)</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <strong className="text-gray-600">Commentaire du référent:</strong>
+                                  <p className="text-gray-700 mt-1">{evalItem.referent_comment}</p>
+                                </div>
+                                {evalItem.observed_achievements && (
+                                  <div>
+                                    <strong className="text-gray-600">Réalisations observées:</strong>
+                                    <p className="text-gray-700 mt-1">{evalItem.observed_achievements}</p>
+                                  </div>
+                                )}
+                                {evalItem.development_recommendations && (
+                                  <div>
+                                    <strong className="text-gray-600">Recommandations:</strong>
+                                    <p className="text-gray-700 mt-1">{evalItem.development_recommendations}</p>
+                                  </div>
+                                )}
+                                {evalItem.overall_performance && (
+                                  <div>
+                                    <strong className="text-gray-600">Performance globale:</strong>
+                                    <p className="text-gray-700 mt-1">{evalItem.overall_performance}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : collaboration.evaluation.statut === 'soumise' || collaboration.evaluation.statut === 'en_attente_referent' ? (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-yellow-600" />
+                      <div>
+                        <h4 className="text-sm font-medium text-yellow-800">En attente de l'évaluation du référent</h4>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          Votre auto-évaluation a été soumise. Le référent va maintenant procéder à son évaluation.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-gray-600" />
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-800">En attente</h4>
+                        <p className="text-sm text-gray-700 mt-1">
+                          L'évaluation du référent sera disponible après votre auto-évaluation.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Synthèse finale */}
+              {collaboration.evaluation && 
+               collaboration.evaluation.evaluation_referent && 
+               collaboration.evaluation.statut === 'finalisee' && (
+                <div className="bg-green-50 rounded-lg border border-green-200 p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Award className="w-5 h-5 text-green-600" />
+                    </div>
                     <div>
-                      <h3 className="text-sm font-medium text-orange-800">Auto-évaluation requise</h3>
-                      <p className="text-sm text-orange-700 mt-1">
-                        Le projet est terminé. Vous pouvez maintenant évaluer l'atteinte de vos objectifs.
+                      <h3 className="text-lg font-semibold text-green-900">Évaluation finalisée</h3>
+                      <p className="text-sm text-green-700">
+                        Votre évaluation est maintenant complète et disponible pour votre coach
                       </p>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <h3 className="text-sm font-medium text-blue-800">En attente de la fin du projet</h3>
-                      <p className="text-sm text-blue-700 mt-1">
-                        L'auto-évaluation sera disponible une fois le projet terminé.
-                      </p>
-                    </div>
+                  
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <h4 className="font-medium text-green-900 mb-2">Résumé de l'évaluation</h4>
+                    <p className="text-sm text-green-800">
+                      Cette évaluation complète (auto-évaluation + évaluation référent) est maintenant transmise à votre coach 
+                      pour le suivi de votre développement professionnel.
+                    </p>
                   </div>
                 </div>
               )}
