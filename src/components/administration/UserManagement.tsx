@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, User, Building, Shield, UserCheck, BookOpen } from 'lucide-react';
+import { Edit, User, Building, UserCheck, BookOpen } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -249,11 +249,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
     return formatEmployeeName(fullName);
   };
 
-  const roleColors = {
-    employe: 'bg-gray-100 text-gray-800',
-    admin: 'bg-red-100 text-red-800'
-  };
-
   const getCareerLevelColor = (color: string) => {
     const colorMap: Record<string, string> = {
       green: 'bg-green-100 text-green-800',
@@ -324,31 +319,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
         </div>
       )}
 
-      {/* Users Table - Optimisé sans emails et avec noms raccourcis */}
+      {/* Users Table - Optimisé sans la colonne rôle */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
                   Employé
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Département
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
-                  Rôle
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Niveau
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                   Career Pathway
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Responsable
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Coach
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
@@ -388,16 +380,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                         {truncateText(user.department || 'Non défini', 12)}
                       </span>
                     </div>
-                  </td>
-
-                  {/* Rôle */}
-                  <td className="px-3 py-3">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${roleColors[user.role as keyof typeof roleColors]}`}>
-                      <Shield className="w-2 h-2 mr-1" />
-                      <span className="truncate">
-                        {roles.find(r => r.value === user.role)?.label.substring(0, 8)}
-                      </span>
-                    </span>
                   </td>
 
                   {/* Niveau */}
