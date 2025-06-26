@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, CheckCircle, Clock, AlertCircle, X, UserPlus, Save } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -49,18 +50,16 @@ interface UserProfile {
 }
 
 const Projets = () => {
+  const navigate = useNavigate();
   const [projets, setProjets] = useState<Projet[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [editingProjet, setEditingProjet] = useState<Projet | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [showTerminateConfirm, setShowTerminateConfirm] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -152,94 +151,6 @@ const Projets = () => {
     }
   };
 
-  const canEditProject = (projet: Projet) => {
-    if (!currentUserRole || !currentUserId) return false;
-    
-    // Admin peut tout modifier
-    if (currentUserRole === 'admin') return true;
-    
-    // L'auteur ou le référent peuvent modifier
-    if (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId) return true;
-    
-    return false;
-  };
-
-  const canTerminateProject = (projet: Projet) => {
-    if (!currentUserRole || !currentUserId) return false;
-    
-    // Le projet doit être en cours pour pouvoir être terminé
-    if (projet.statut !== 'en_cours') return false;
-    
-    // Admin peut terminer tous les projets
-    if (currentUserRole === 'admin') return true;
-    
-    // L'auteur ou le référent peuvent terminer
-    if (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId) return true;
-    
-    return false;
-  };
-
-  const handleTerminateProject = async () => {
-    if (!editingProjet) return;
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      // Marquer le projet comme terminé
-      const { error: updateError } = await supabase
-        .from('projets')
-        .update({
-          statut: 'termine',
-          taux_avancement: 100,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingProjet.id);
-
-      if (updateError) throw updateError;
-
-      // Créer les notifications pour les collaborateurs
-      const collaborateurIds = editingProjet.collaborateurs.map(c => c.employe_id);
-      
-      if (collaborateurIds.length > 0) {
-        const notifications = collaborateurIds.map(employeId => ({
-          destinataire_id: employeId,
-          expediteur_id: currentUserId,
-          titre: 'Projet terminé - Auto-évaluation requise',
-          message: `Le projet "${editingProjet.titre}" est maintenant terminé. Veuillez compléter votre auto-évaluation des objectifs dans la section "Fiches Projets".`,
-          type: 'reminder',
-          priority: 2,
-          action_url: '/fiches-projets',
-          metadata: {
-            projet_id: editingProjet.id,
-            projet_titre: editingProjet.titre,
-            action_type: 'auto_evaluation_required'
-          }
-        }));
-
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .insert(notifications);
-
-        if (notificationError) {
-          console.error('Erreur lors de la création des notifications:', notificationError);
-          // Ne pas faire échouer l'opération pour les notifications
-        }
-      }
-
-      setSuccess(`Projet "${editingProjet.titre}" marqué comme terminé. Les collaborateurs ont été notifiés pour compléter leur auto-évaluation.`);
-      setShowTerminateConfirm(false);
-      setShowEditForm(false);
-      setEditingProjet(null);
-      fetchProjets(); // Recharger les projets
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la finalisation du projet');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -303,71 +214,9 @@ const Projets = () => {
     }
   };
 
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProjet || !canEditProject(editingProjet)) {
-      setError('Vous n\'avez pas les droits pour modifier ce projet');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { error: projetError } = await supabase
-        .from('projets')
-        .update({
-          nom_client: formData.nom_client,
-          titre: formData.titre,
-          description: formData.description || 'Description à compléter',
-          date_debut: formData.date_debut,
-          date_fin_prevue: formData.date_fin_prevue || null,
-          budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
-          priorite: formData.priorite,
-          notes: formData.notes || null
-        })
-        .eq('id', editingProjet.id);
-
-      if (projetError) throw projetError;
-
-      setSuccess('Projet modifié avec succès');
-      setShowEditForm(false);
-      setEditingProjet(null);
-      fetchProjets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la modification du projet');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const openEditForm = (projet: Projet) => {
-    if (!canEditProject(projet)) {
-      setError('Vous n\'avez pas les droits pour modifier ce projet');
-      return;
-    }
-
-    setEditingProjet(projet);
-    setFormData({
-      nom_client: projet.nom_client,
-      titre: projet.titre,
-      description: projet.description,
-      date_debut: projet.date_debut,
-      date_fin_prevue: projet.date_fin_prevue || '',
-      budget_estime: projet.budget_estime?.toString() || '',
-      priorite: projet.priorite,
-      notes: projet.notes || '',
-      collaborateurs: []
-    });
-    setShowEditForm(true);
-  };
-
   const handleProjectClick = (projet: Projet) => {
-    // Pour l'instant, on ouvre le formulaire d'édition si l'utilisateur peut modifier
-    if (canEditProject(projet)) {
-      openEditForm(projet);
-    }
+    // Naviguer vers la page de détail du projet
+    navigate(`/projet/${projet.id}`);
   };
 
   const resetForm = () => {
@@ -432,7 +281,7 @@ const Projets = () => {
     !formData.collaborateurs.some(collab => collab.employe_id === user.id)
   );
 
-  if (loading && !showCreateForm && !showEditForm) {
+  if (loading && !showCreateForm) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -477,7 +326,7 @@ const Projets = () => {
           <div>
             <h3 className="text-sm font-medium text-blue-800">Création de projets</h3>
             <p className="text-sm text-blue-700 mt-1">
-              Tous les utilisateurs peuvent créer des projets. Vous devenez automatiquement le référent du projet que vous créez. Cliquez sur un projet pour le modifier.
+              Tous les utilisateurs peuvent créer des projets. Vous devenez automatiquement le référent du projet que vous créez. Cliquez sur un projet pour voir ses détails.
             </p>
           </div>
         </div>
@@ -503,9 +352,7 @@ const Projets = () => {
           <div 
             key={projet.id} 
             onClick={() => handleProjectClick(projet)}
-            className={`bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-200 ${
-              canEditProject(projet) ? 'cursor-pointer hover:border-indigo-300' : 'cursor-default'
-            }`}
+            className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-200 cursor-pointer hover:border-indigo-300"
           >
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
@@ -522,15 +369,12 @@ const Projets = () => {
                   </p>
                 </div>
                 
-                {/* Actions en overlay */}
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Indicateur projet terminé */}
-                  {projet.statut === 'termine' && (
-                    <div className="flex items-center gap-1 text-green-600 p-2">
-                      <CheckCircle className="h-4 w-4" />
-                    </div>
-                  )}
-                </div>
+                {/* Indicateur projet terminé */}
+                {projet.statut === 'termine' && (
+                  <div className="flex items-center gap-1 text-green-600 p-2">
+                    <CheckCircle className="h-4 w-4" />
+                  </div>
+                )}
               </div>
 
               {/* Informations principales */}
@@ -590,12 +434,10 @@ const Projets = () => {
                 </div>
               )}
 
-              {/* Indicateur de modification possible */}
-              {canEditProject(projet) && (
-                <div className="text-xs text-indigo-600 font-medium">
-                  Cliquez pour modifier
-                </div>
-              )}
+              {/* Indicateur de clic */}
+              <div className="text-xs text-indigo-600 font-medium">
+                Cliquez pour voir les détails
+              </div>
             </div>
           </div>
         ))}
@@ -873,250 +715,6 @@ const Projets = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Form Modal */}
-      {showEditForm && editingProjet && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            {/* Header */}
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-xl">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold">Modifier le projet</h2>
-                  <p className="text-indigo-100 mt-1">Modifiez les informations de votre projet</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowEditForm(false);
-                    setEditingProjet(null);
-                    resetForm();
-                  }}
-                  className="text-white hover:text-gray-200 p-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleEdit} className="p-6 space-y-8">
-              {/* Informations de base */}
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Building className="w-5 h-5 mr-2 text-indigo-600" />
-                  Informations de base
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nom du client *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.nom_client}
-                      onChange={(e) => setFormData(prev => ({ ...prev, nom_client: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                      placeholder="Ex: Entreprise ABC"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Titre du projet *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.titre}
-                      onChange={(e) => setFormData(prev => ({ ...prev, titre: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                      placeholder="Ex: Refonte du site web"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description du projet
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Décrivez le contexte, les enjeux et les objectifs généraux du projet..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* Planification */}
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Calendar className="w-5 h-5 mr-2 text-indigo-600" />
-                  Planification
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date de début *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.date_debut}
-                      onChange={(e) => setFormData(prev => ({ ...prev, date_debut: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Date de fin prévue
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.date_fin_prevue}
-                      onChange={(e) => setFormData(prev => ({ ...prev, date_fin_prevue: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Budget estimé (€)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.budget_estime}
-                      onChange={(e) => setFormData(prev => ({ ...prev, budget_estime: e.target.value }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Priorité du projet
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {prioriteOptions.map(option => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, priorite: option.value }))}
-                        className={`p-4 rounded-lg border-2 transition-all text-center hover:shadow-md ${
-                          formData.priorite === option.value
-                            ? 'border-indigo-500 bg-indigo-50 shadow-md'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className={`text-sm font-medium ${
-                          formData.priorite === option.value ? 'text-indigo-700' : 'text-gray-700'
-                        }`}>
-                          {option.label}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                  Notes additionnelles
-                </h4>
-                <textarea
-                  rows={3}
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Informations complémentaires, contraintes particulières, remarques..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-              </div>
-
-              {/* Actions avec bouton Finir le projet */}
-              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                {/* Bouton Finir le projet - TOUJOURS VISIBLE EN MODE ÉDITION */}
-                {editingProjet && canTerminateProject(editingProjet) && (
-                  <button
-                    type="button"
-                    onClick={() => setShowTerminateConfirm(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all font-medium shadow-lg flex items-center gap-2"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Finir le projet
-                  </button>
-                )}
-
-                {/* Spacer si pas de bouton finir */}
-                {!(editingProjet && canTerminateProject(editingProjet)) && <div></div>}
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEditForm(false);
-                      setEditingProjet(null);
-                      resetForm();
-                    }}
-                    className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
-                  >
-                    Annuler
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
-                  >
-                    <Save className="w-4 h-4" />
-                    {loading ? 'Modification...' : 'Modifier le projet'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de confirmation pour finir le projet */}
-      {showTerminateConfirm && editingProjet && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-2xl">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Finir le projet
-              </h3>
-              <p className="text-sm text-gray-500 mb-6">
-                Êtes-vous sûr de vouloir marquer le projet "{editingProjet.titre}" comme terminé ? Cette action déclenchera automatiquement les auto-évaluations pour tous les collaborateurs du projet.
-              </p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => setShowTerminateConfirm(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleTerminateProject}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  Confirmer
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
