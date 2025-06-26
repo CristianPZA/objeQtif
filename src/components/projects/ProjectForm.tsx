@@ -91,7 +91,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       const projectData = {
         nom_client: formData.nom_client,
         titre: formData.titre,
-        description: formData.description,
+        description: formData.description || 'Description à compléter',
         date_debut: formData.date_debut,
         date_fin_prevue: formData.date_fin_prevue || null,
         budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
@@ -191,11 +191,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
   const canProceedToNextStep = () => {
     if (currentStep === 1) {
+      // Seuls les champs obligatoires : nom client, titre et date de début
       return formData.nom_client.trim() && 
              formData.titre.trim() && 
-             formData.description.trim() && 
-             formData.date_debut &&
-             formData.objectifs.some(obj => obj.trim() !== '');
+             formData.date_debut;
     }
     return true;
   };
@@ -294,10 +293,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
         <div className="mt-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description du projet *
+            Description du projet
           </label>
           <textarea
-            required
             rows={4}
             value={formData.description}
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
@@ -381,6 +379,82 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Objectifs */}
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <Target className="w-5 h-5 mr-2 text-green-600" />
+          Objectifs du projet
+        </h4>
+        <p className="text-sm text-gray-600 mb-4">Définissez les objectifs SMART de votre projet</p>
+        
+        {formData.objectifs.map((objectif, index) => (
+          <div key={index} className="flex gap-3 mb-3">
+            <input
+              type="text"
+              value={objectif}
+              onChange={(e) => updateArrayField('objectifs', index, e.target.value)}
+              placeholder={`Objectif ${index + 1}`}
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+            />
+            {formData.objectifs.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeArrayField('objectifs', index)}
+                className="px-3 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => addArrayField('objectifs')}
+          className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
+        >
+          <Plus className="w-4 h-4" />
+          Ajouter un objectif
+        </button>
+      </div>
+
+      {/* Risques */}
+      <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6 shadow-sm">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <AlertTriangle className="w-5 h-5 mr-2 text-orange-600" />
+          Risques identifiés
+        </h4>
+        <p className="text-sm text-gray-600 mb-4">Identifiez les risques potentiels et leurs mesures de mitigation</p>
+        
+        {formData.risques.map((risque, index) => (
+          <div key={index} className="flex gap-3 mb-3">
+            <input
+              type="text"
+              value={risque}
+              onChange={(e) => updateArrayField('risques', index, e.target.value)}
+              placeholder={`Risque ${index + 1}`}
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+            />
+            {formData.risques.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeArrayField('risques', index)}
+                className="px-3 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => addArrayField('risques')}
+          className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
+        >
+          <Plus className="w-4 h-4" />
+          Ajouter un risque
+        </button>
       </div>
 
       {/* Notes */}
@@ -493,7 +567,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               ) : (
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !canProceedToNextStep()}
                   className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
