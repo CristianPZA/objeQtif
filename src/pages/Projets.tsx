@@ -151,6 +151,100 @@ const Projets = () => {
     }
   };
 
+  const canEditProject = (projet: Projet) => {
+    if (!currentUserRole || !currentUserId) return false;
+    
+    // Admin peut tout modifier
+    if (currentUserRole === 'admin') return true;
+    
+    // L'auteur ou le référent peuvent modifier
+    if (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId) return true;
+    
+    return false;
+  };
+
+  const canTerminateProject = (projet: Projet) => {
+    if (!currentUserRole || !currentUserId) return false;
+    
+    // Le projet doit être en cours pour pouvoir être terminé
+    if (projet.statut !== 'en_cours') return false;
+    
+    // Admin peut terminer tous les projets
+    if (currentUserRole === 'admin') return true;
+    
+    // L'auteur ou le référent peuvent terminer
+    if (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId) return true;
+    
+    return false;
+  };
+
+  const handleTerminateProject = async (projet: Projet) => {
+    if (!canTerminateProject(projet)) {
+      setError('Vous n\'avez pas les droits pour terminer ce projet');
+      return;
+    }
+
+    const confirmMessage = `Êtes-vous sûr de vouloir marquer le projet "${projet.titre}" comme terminé ?\n\nCela déclenchera automatiquement les auto-évaluations pour tous les collaborateurs du projet.`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Marquer le projet comme terminé
+      const { error: updateError } = await supabase
+        .from('projets')
+        .update({
+          statut: 'termine',
+          taux_avancement: 100,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projet.id);
+
+      if (updateError) throw updateError;
+
+      // Créer les notifications pour les collaborateurs
+      const collaborateurIds = projet.collaborateurs.map(c => c.employe_id);
+      
+      if (collaborateurIds.length > 0) {
+        const notifications = collaborateurIds.map(employeId => ({
+          destinataire_id: employeId,
+          expediteur_id: currentUserId,
+          titre: 'Projet terminé - Auto-évaluation requise',
+          message: `Le projet "${projet.titre}" est maintenant terminé. Veuillez compléter votre auto-évaluation des objectifs dans la section "Fiches Projets".`,
+          type: 'reminder',
+          priority: 2,
+          action_url: '/fiches-projets',
+          metadata: {
+            projet_id: projet.id,
+            projet_titre: projet.titre,
+            action_type: 'auto_evaluation_required'
+          }
+        }));
+
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert(notifications);
+
+        if (notificationError) {
+          console.error('Erreur lors de la création des notifications:', notificationError);
+          // Ne pas faire échouer l'opération pour les notifications
+        }
+      }
+
+      setSuccess(`Projet "${projet.titre}" marqué comme terminé. Les collaborateurs ont été notifiés pour compléter leur auto-évaluation.`);
+      fetchProjets(); // Recharger les projets
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la finalisation du projet');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -177,7 +271,8 @@ const Projets = () => {
           priorite: formData.priorite,
           objectifs: [],
           risques: [],
-          notes: formData.notes || null
+          notes: formData.notes || null,
+          statut: 'en_cours' // Directement en cours, plus de brouillon
         }])
         .select()
         .single();
@@ -351,12 +446,14 @@ const Projets = () => {
         {filteredProjets.map((projet) => (
           <div 
             key={projet.id} 
-            onClick={() => handleProjectClick(projet)}
-            className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-200 cursor-pointer hover:border-indigo-300"
+            className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-200"
           >
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
+                <div 
+                  className="flex-1 cursor-pointer"
+                  onClick={() => handleProjectClick(projet)}
+                >
                   <div className="flex items-center gap-3 mb-2">
                     <Building className="w-5 h-5 text-indigo-600" />
                     <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">{projet.titre}</h3>
@@ -369,16 +466,52 @@ const Projets = () => {
                   </p>
                 </div>
                 
-                {/* Indicateur projet terminé */}
-                {projet.statut === 'termine' && (
-                  <div className="flex items-center gap-1 text-green-600 p-2">
-                    <CheckCircle className="h-4 w-4" />
-                  </div>
-                )}
+                <div className="flex items-center gap-2 ml-4">
+                  {/* Bouton Finir le projet - À GAUCHE du bouton modifier */}
+                  {canTerminateProject(projet) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTerminateProject(projet);
+                      }}
+                      className="text-green-600 hover:text-green-900 p-2 rounded-lg hover:bg-green-50 flex items-center gap-1 transition-colors"
+                      title="Finir le projet"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs hidden sm:inline">Finir</span>
+                    </button>
+                  )}
+
+                  {/* Bouton Modifier */}
+                  {canEditProject(projet) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleProjectClick(projet);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 flex items-center gap-1 transition-colors"
+                      title="Voir les détails et modifier"
+                    >
+                      <Target className="h-4 w-4" />
+                      <span className="text-xs hidden sm:inline">Détails</span>
+                    </button>
+                  )}
+                  
+                  {/* Indicateur projet terminé */}
+                  {projet.statut === 'termine' && (
+                    <div className="flex items-center gap-1 text-green-600 p-2">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs hidden sm:inline">Terminé</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Informations principales */}
-              <div className="space-y-3 mb-4">
+              <div 
+                className="space-y-3 mb-4 cursor-pointer"
+                onClick={() => handleProjectClick(projet)}
+              >
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="w-4 h-4 flex-shrink-0" />
                   <span>Début: {format(new Date(projet.date_debut), 'dd/MM/yyyy', { locale: fr })}</span>
@@ -399,7 +532,10 @@ const Projets = () => {
 
               {/* Collaborateurs */}
               {projet.collaborateurs.length > 0 && (
-                <div className="mb-4">
+                <div 
+                  className="mb-4 cursor-pointer"
+                  onClick={() => handleProjectClick(projet)}
+                >
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Collaborateurs:</h4>
                   <div className="flex flex-wrap gap-1">
                     {projet.collaborateurs.slice(0, 3).map((collab) => (
@@ -435,7 +571,10 @@ const Projets = () => {
               )}
 
               {/* Indicateur de clic */}
-              <div className="text-xs text-indigo-600 font-medium">
+              <div 
+                className="text-xs text-indigo-600 font-medium cursor-pointer"
+                onClick={() => handleProjectClick(projet)}
+              >
                 Cliquez pour voir les détails
               </div>
             </div>
