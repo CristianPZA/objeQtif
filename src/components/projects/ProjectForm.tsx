@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building, Calendar, Euro, Target, Users, AlertTriangle, Plus, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { X, Save, Building, Calendar, Euro, Users, ArrowRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import CollaboratorSection from './CollaboratorSection';
 import { ProjectFormData, UserProfile, Collaborator } from './types';
@@ -31,8 +31,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     date_fin_prevue: '',
     budget_estime: '',
     priorite: 'normale',
-    objectifs: [''],
-    risques: [''],
+    objectifs: [],
+    risques: [],
     notes: '',
     collaborateurs: []
   });
@@ -71,8 +71,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         date_fin_prevue: initialData.date_fin_prevue || '',
         budget_estime: initialData.budget_estime?.toString() || '',
         priorite: initialData.priorite || 'normale',
-        objectifs: initialData.objectifs && initialData.objectifs.length > 0 ? initialData.objectifs : [''],
-        risques: initialData.risques && initialData.risques.length > 0 ? initialData.risques : [''],
+        objectifs: initialData.objectifs || [],
+        risques: initialData.risques || [],
         notes: initialData.notes || '',
         collaborateurs: initialData.collaborateurs || []
       });
@@ -98,8 +98,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         referent_projet_id: user.id,
         auteur_id: user.id,
         priorite: formData.priorite,
-        objectifs: formData.objectifs.filter(obj => obj.trim() !== ''),
-        risques: formData.risques.filter(risk => risk.trim() !== ''),
+        objectifs: [], // Toujours vide maintenant
+        risques: [], // Toujours vide maintenant
         notes: formData.notes || null
       };
 
@@ -153,28 +153,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
     }
   };
 
-  const addArrayField = (field: 'objectifs' | 'risques') => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: [...prev[field], '']
-    }));
-  };
-
-  const updateArrayField = (field: 'objectifs' | 'risques', index: number, value: string) => {
-    setFormData(prev => {
-      const newArray = [...prev[field]];
-      newArray[index] = value;
-      return { ...prev, [field]: newArray };
-    });
-  };
-
-  const removeArrayField = (field: 'objectifs' | 'risques', index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
-    }));
-  };
-
   const addCollaborator = (collaborator: Collaborator) => {
     setFormData(prev => ({
       ...prev,
@@ -197,6 +175,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
              formData.date_debut;
     }
     return true;
+  };
+
+  const handleNextStep = (e: React.MouseEvent) => {
+    e.preventDefault(); // Empêcher la soumission du formulaire
+    if (canProceedToNextStep()) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrevStep = (e: React.MouseEvent) => {
+    e.preventDefault(); // Empêcher la soumission du formulaire
+    setCurrentStep(prev => prev - 1);
   };
 
   const renderStepIndicator = () => {
@@ -381,82 +371,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
         </div>
       </div>
 
-      {/* Objectifs */}
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <Target className="w-5 h-5 mr-2 text-green-600" />
-          Objectifs du projet
-        </h4>
-        <p className="text-sm text-gray-600 mb-4">Définissez les objectifs SMART de votre projet</p>
-        
-        {formData.objectifs.map((objectif, index) => (
-          <div key={index} className="flex gap-3 mb-3">
-            <input
-              type="text"
-              value={objectif}
-              onChange={(e) => updateArrayField('objectifs', index, e.target.value)}
-              placeholder={`Objectif ${index + 1}`}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
-            />
-            {formData.objectifs.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeArrayField('objectifs', index)}
-                className="px-3 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => addArrayField('objectifs')}
-          className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1"
-        >
-          <Plus className="w-4 h-4" />
-          Ajouter un objectif
-        </button>
-      </div>
-
-      {/* Risques */}
-      <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-xl p-6 shadow-sm">
-        <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-          <AlertTriangle className="w-5 h-5 mr-2 text-orange-600" />
-          Risques identifiés
-        </h4>
-        <p className="text-sm text-gray-600 mb-4">Identifiez les risques potentiels et leurs mesures de mitigation</p>
-        
-        {formData.risques.map((risque, index) => (
-          <div key={index} className="flex gap-3 mb-3">
-            <input
-              type="text"
-              value={risque}
-              onChange={(e) => updateArrayField('risques', index, e.target.value)}
-              placeholder={`Risque ${index + 1}`}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
-            />
-            {formData.risques.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeArrayField('risques', index)}
-                className="px-3 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => addArrayField('risques')}
-          className="text-orange-600 hover:text-orange-700 text-sm font-medium flex items-center gap-1"
-        >
-          <Plus className="w-4 h-4" />
-          Ajouter un risque
-        </button>
-      </div>
-
       {/* Notes */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <h4 className="text-lg font-semibold text-gray-900 mb-4">
@@ -536,7 +450,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               {!isEdit && currentStep > 1 && (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(prev => prev - 1)}
+                  onClick={handlePrevStep}
                   className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium flex items-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -557,7 +471,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
               {!isEdit && currentStep < 2 ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(prev => prev + 1)}
+                  onClick={handleNextStep}
                   disabled={!canProceedToNextStep()}
                   className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
                 >
