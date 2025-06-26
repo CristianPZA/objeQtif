@@ -52,7 +52,7 @@ const Sidebar = () => {
     {
       to: '/fiches-projets',
       icon: <FolderKanban className="w-5 h-5" />,
-      label: 'Mes fiches projets',
+      label: 'Mes objectifs projets',
     },
     {
       to: '/projets',
