@@ -638,7 +638,7 @@ const FichesProjets = () => {
                             Résumé de votre auto-évaluation ({collaboration.evaluation.auto_evaluation.evaluations.length} objectifs)
                           </h4>
                           <div className="flex flex-wrap gap-2">
-                            {collaboration.evaluation.auto_evaluation.evaluations.map((eval: any, index: number) => (
+                            {collaboration.evaluation.auto_evaluation.evaluations.map(eval: any, index: number) => (
                               <div key={index} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
                                 <span className="text-xs text-gray-600">Obj. {index + 1}:</span>
                                 <div className="flex">
