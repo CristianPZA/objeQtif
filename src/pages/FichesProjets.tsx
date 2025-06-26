@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Target, Calendar, User, BookOpen, CheckCircle, Clock, AlertCircle, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
+import { Plus, Target, Calendar, User, BookOpen, CheckCircle, Clock, AlertCircle, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight, Save, X, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
 
 interface Collaboration {
   id: string;
@@ -27,6 +28,7 @@ interface Collaboration {
   objectifs?: {
     id: string;
     objectifs: ObjectiveDetail[];
+    created_at: string;
   };
   evaluation?: {
     id: string;
@@ -35,6 +37,8 @@ interface Collaboration {
     evaluation_coach: any;
     statut: string;
     date_soumission: string | null;
+    created_at: string;
+    updated_at: string;
   };
 }
 
@@ -64,16 +68,18 @@ interface PathwaySkill {
 const FichesProjets = () => {
   const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'mes_objectifs' | 'mes_projets'>('mes_objectifs');
+  const [activeTab, setActiveTab] = useState<'mes_objectifs' | 'mes_projets' | 'mes_evaluations'>('mes_objectifs');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showCreateObjectiveModal, setShowCreateObjectiveModal] = useState(false);
+  const [showAutoEvaluationModal, setShowAutoEvaluationModal] = useState(false);
   const [selectedCollaboration, setSelectedCollaboration] = useState<Collaboration | null>(null);
   const [availableSkills, setAvailableSkills] = useState<PathwaySkill[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [objectives, setObjectives] = useState<ObjectiveDetail[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedEvaluations, setExpandedEvaluations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     checkUserAndFetchData();
@@ -236,6 +242,11 @@ const FichesProjets = () => {
     setShowCreateObjectiveModal(true);
   };
 
+  const handleAutoEvaluation = (collaboration: Collaboration) => {
+    setSelectedCollaboration(collaboration);
+    setShowAutoEvaluationModal(true);
+  };
+
   const handleSkillToggle = (skillId: string) => {
     setSelectedSkills(prev => {
       if (prev.includes(skillId)) {
@@ -372,7 +383,34 @@ const FichesProjets = () => {
     return currentUser && currentUser.career_pathway_id && currentUser.career_level_id;
   };
 
-  if (loading && !showCreateObjectiveModal) {
+  const canDoAutoEvaluation = (collaboration: Collaboration) => {
+    return collaboration.objectifs && 
+           collaboration.projet.statut === 'termine' && 
+           (!collaboration.evaluation || collaboration.evaluation.statut === 'brouillon');
+  };
+
+  const toggleEvaluationExpansion = (evaluationId: string) => {
+    setExpandedEvaluations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(evaluationId)) {
+        newSet.delete(evaluationId);
+      } else {
+        newSet.add(evaluationId);
+      }
+      return newSet;
+    });
+  };
+
+  const getScoreStars = (score: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star 
+        key={i} 
+        className={`w-4 h-4 ${i < score ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
+      />
+    ));
+  };
+
+  if (loading && !showCreateObjectiveModal && !showAutoEvaluationModal) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -440,6 +478,19 @@ const FichesProjets = () => {
             </div>
           </button>
           <button
+            onClick={() => setActiveTab('mes_evaluations')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'mes_evaluations'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Star className="w-5 h-5" />
+              Mes auto-évaluations
+            </div>
+          </button>
+          <button
             onClick={() => setActiveTab('mes_projets')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'mes_projets'
@@ -485,6 +536,17 @@ const FichesProjets = () => {
                           <strong>Rôle:</strong> {collaboration.role_projet}
                         </p>
                       </div>
+                      <div className="flex gap-2">
+                        {canDoAutoEvaluation(collaboration) && (
+                          <button
+                            onClick={() => handleAutoEvaluation(collaboration)}
+                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm flex items-center gap-1 transition-colors"
+                          >
+                            <Star className="w-3 h-3" />
+                            Auto-évaluation
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Objectifs */}
@@ -527,6 +589,146 @@ const FichesProjets = () => {
         </div>
       )}
 
+      {activeTab === 'mes_evaluations' && (
+        <div className="space-y-4">
+          {collaborations.filter(c => c.evaluation).length > 0 ? (
+            collaborations
+              .filter(c => c.evaluation)
+              .map((collaboration) => {
+                const isExpanded = expandedEvaluations.has(collaboration.evaluation!.id);
+                
+                return (
+                  <div key={collaboration.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Star className="w-5 h-5 text-indigo-600" />
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {collaboration.projet.titre}
+                            </h3>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(collaboration.evaluation!.statut)}`}>
+                              {getStatusIcon(collaboration.evaluation!.statut)}
+                              <span className="ml-1">{getStatusLabel(collaboration.evaluation!.statut)}</span>
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">
+                            <strong>Client:</strong> {collaboration.projet.nom_client}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <strong>Rôle:</strong> {collaboration.role_projet}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => toggleEvaluationExpansion(collaboration.evaluation!.id)}
+                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-gray-400" />
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Résumé de l'évaluation */}
+                      {collaboration.evaluation?.auto_evaluation?.evaluations && (
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-900 mb-2">
+                            Résumé de votre auto-évaluation ({collaboration.evaluation.auto_evaluation.evaluations.length} objectifs)
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {collaboration.evaluation.auto_evaluation.evaluations.map((eval: any, index: number) => (
+                              <div key={index} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
+                                <span className="text-xs text-gray-600">Obj. {index + 1}:</span>
+                                <div className="flex">
+                                  {getScoreStars(eval.auto_evaluation_score)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Détails de l'évaluation */}
+                      {isExpanded && collaboration.evaluation?.auto_evaluation?.evaluations && (
+                        <div className="border-t pt-4 space-y-4">
+                          {collaboration.evaluation.auto_evaluation.evaluations.map((eval: any, index: number) => {
+                            const objective = collaboration.objectifs?.objectifs[index];
+                            
+                            return (
+                              <div key={index} className="bg-gray-50 rounded-lg p-4">
+                                <div className="mb-3">
+                                  <h5 className="font-medium text-gray-900 mb-1">
+                                    {index + 1}. {objective?.skill_description || 'Objectif non trouvé'}
+                                  </h5>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-600">Score:</span>
+                                    <div className="flex">
+                                      {getScoreStars(eval.auto_evaluation_score)}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-2 text-sm">
+                                  {eval.auto_evaluation_comment && (
+                                    <div>
+                                      <strong className="text-gray-700">Commentaire:</strong>
+                                      <p className="text-gray-600 mt-1">{eval.auto_evaluation_comment}</p>
+                                    </div>
+                                  )}
+                                  {eval.achievements && (
+                                    <div>
+                                      <strong className="text-gray-700">Réalisations:</strong>
+                                      <p className="text-gray-600 mt-1">{eval.achievements}</p>
+                                    </div>
+                                  )}
+                                  {eval.learnings && (
+                                    <div>
+                                      <strong className="text-gray-700">Apprentissages:</strong>
+                                      <p className="text-gray-600 mt-1">{eval.learnings}</p>
+                                    </div>
+                                  )}
+                                  {eval.difficulties && (
+                                    <div>
+                                      <strong className="text-gray-700">Difficultés:</strong>
+                                      <p className="text-gray-600 mt-1">{eval.difficulties}</p>
+                                    </div>
+                                  )}
+                                  {eval.next_steps && (
+                                    <div>
+                                      <strong className="text-gray-700">Prochaines étapes:</strong>
+                                      <p className="text-gray-600 mt-1">{eval.next_steps}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-xs text-gray-500 mt-4 pt-4 border-t">
+                        <span>
+                          Évaluation soumise le {collaboration.evaluation?.date_soumission && format(new Date(collaboration.evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+          ) : (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
+              <Star className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune auto-évaluation</h3>
+              <p className="text-gray-600">
+                Vous n'avez pas encore réalisé d'auto-évaluation. Les auto-évaluations sont disponibles lorsque vos projets sont terminés.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'mes_projets' && (
         <div className="space-y-4">
           {collaborations.length > 0 ? (
@@ -561,7 +763,7 @@ const FichesProjets = () => {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      {!collaboration.objectifs && canCreateObjectives() && (
+                      {!collaboration.objectifs && canCreateObjectives() && collaboration.projet.statut === 'en_cours' && (
                         <button
                           onClick={() => handleCreateObjectives(collaboration)}
                           className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm flex items-center gap-1 transition-colors"
@@ -570,10 +772,31 @@ const FichesProjets = () => {
                           Créer objectifs
                         </button>
                       )}
-                      {collaboration.objectifs && (
-                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm">
+                      {collaboration.objectifs && !collaboration.evaluation && collaboration.projet.statut === 'en_cours' && (
+                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm">
                           ✓ Objectifs définis
                         </span>
+                      )}
+                      {collaboration.objectifs && collaboration.projet.statut === 'termine' && (
+                        <div className="flex gap-2">
+                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm">
+                            ✓ Objectifs définis
+                          </span>
+                          {canDoAutoEvaluation(collaboration) && (
+                            <button
+                              onClick={() => handleAutoEvaluation(collaboration)}
+                              className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm flex items-center gap-1 transition-colors"
+                            >
+                              <Star className="w-3 h-3" />
+                              Auto-évaluation requise
+                            </button>
+                          )}
+                          {collaboration.evaluation && (
+                            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-lg text-sm">
+                              ✓ Auto-évaluation terminée
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -838,6 +1061,28 @@ const FichesProjets = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal d'auto-évaluation */}
+      {showAutoEvaluationModal && selectedCollaboration && selectedCollaboration.objectifs && (
+        <AutoEvaluationModal
+          collaboration={selectedCollaboration}
+          objectives={selectedCollaboration.objectifs.objectifs}
+          onClose={() => {
+            setShowAutoEvaluationModal(false);
+            setSelectedCollaboration(null);
+          }}
+          onSuccess={() => {
+            setSuccess('Auto-évaluation soumise avec succès');
+            setShowAutoEvaluationModal(false);
+            setSelectedCollaboration(null);
+            fetchCollaborations();
+          }}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
+        />
       )}
     </div>
   );
