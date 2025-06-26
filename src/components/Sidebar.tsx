@@ -57,7 +57,7 @@ const Sidebar = () => {
     {
       to: '/projets',
       icon: <Briefcase className="w-5 h-5" />,
-      label: 'Projets en cours',
+      label: 'Projets',
     },
     {
       to: '/archives',
