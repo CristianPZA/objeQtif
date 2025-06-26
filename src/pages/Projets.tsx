@@ -71,7 +71,6 @@ const Projets = () => {
     date_debut: '',
     date_fin_prevue: '',
     budget_estime: '',
-    referent_projet_id: '',
     priorite: 'normale',
     objectifs: [''],
     risques: [''],
@@ -163,19 +162,14 @@ const Projets = () => {
     }
   };
 
-  const canCreateOrEdit = () => {
-    return currentUserRole && ['direction', 'coach', 'admin'].includes(currentUserRole);
-  };
-
   const canEditProject = (projet: Projet) => {
     if (!currentUserRole || !currentUserId) return false;
     
-    // Admin et direction peuvent tout modifier
-    if (['admin', 'direction'].includes(currentUserRole)) return true;
+    // Admin peut tout modifier
+    if (currentUserRole === 'admin') return true;
     
-    // Coach peut modifier ses projets ou ceux dont il est référent
-    if (currentUserRole === 'coach' && 
-        (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId)) return true;
+    // L'auteur ou le référent peuvent modifier
+    if (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId) return true;
     
     return false;
   };
@@ -184,14 +178,13 @@ const Projets = () => {
     if (!currentUserRole || !currentUserId) return false;
     
     // Le projet doit être en cours pour pouvoir être terminé
-    if (projet.stat !== 'en_cours') return false;
+    if (projet.statut !== 'en_cours') return false;
     
-    // Admin et direction peuvent terminer tous les projets
-    if (['admin', 'direction'].includes(currentUserRole)) return true;
+    // Admin peut terminer tous les projets
+    if (currentUserRole === 'admin') return true;
     
-    // Coach peut terminer ses projets ou ceux dont il est référent
-    if (currentUserRole === 'coach' && 
-        (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId)) return true;
+    // L'auteur ou le référent peuvent terminer
+    if (projet.auteur_id === currentUserId || projet.referent_projet_id === currentUserId) return true;
     
     return false;
   };
@@ -266,11 +259,6 @@ const Projets = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!canCreateOrEdit()) {
-      setError('Vous n\'avez pas les droits pour créer un projet');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -279,7 +267,7 @@ const Projets = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Utilisateur non connecté');
 
-      // Créer le projet
+      // Créer le projet avec l'utilisateur actuel comme auteur ET référent
       const { data: projetData, error: projetError } = await supabase
         .from('projets')
         .insert([{
@@ -289,7 +277,7 @@ const Projets = () => {
           date_debut: formData.date_debut,
           date_fin_prevue: formData.date_fin_prevue || null,
           budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
-          referent_projet_id: formData.referent_projet_id,
+          referent_projet_id: user.id, // L'auteur devient automatiquement le référent
           auteur_id: user.id,
           priorite: formData.priorite,
           objectifs: formData.objectifs.filter(obj => obj.trim() !== ''),
@@ -301,7 +289,7 @@ const Projets = () => {
 
       if (projetError) throw projetError;
 
-      setSuccess('Projet créé avec succès');
+      setSuccess('Projet créé avec succès. Vous êtes automatiquement désigné comme référent du projet.');
       resetForm();
       setShowCreateForm(false);
       fetchProjets();
@@ -333,7 +321,7 @@ const Projets = () => {
           date_debut: formData.date_debut,
           date_fin_prevue: formData.date_fin_prevue || null,
           budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
-          referent_projet_id: formData.referent_projet_id,
+          // Note: on ne modifie pas le referent_projet_id ici car il reste l'auteur
           priorite: formData.priorite,
           objectifs: formData.objectifs.filter(obj => obj.trim() !== ''),
           risques: formData.risques.filter(risk => risk.trim() !== ''),
@@ -457,7 +445,6 @@ const Projets = () => {
       date_debut: projet.date_debut,
       date_fin_prevue: projet.date_fin_prevue || '',
       budget_estime: projet.budget_estime?.toString() || '',
-      referent_projet_id: projet.referent_projet_id,
       priorite: projet.priorite,
       objectifs: projet.objectifs.length > 0 ? projet.objectifs : [''],
       risques: projet.risques.length > 0 ? projet.risques : [''],
@@ -479,7 +466,6 @@ const Projets = () => {
       date_debut: '',
       date_fin_prevue: '',
       budget_estime: '',
-      referent_projet_id: '',
       priorite: 'normale',
       objectifs: [''],
       risques: [''],
@@ -527,10 +513,6 @@ const Projets = () => {
     projet.referent_nom.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const referents = users.filter(user => 
-    ['coach', 'direction', 'admin'].includes(user.role)
-  );
-
   const getStatutColor = (statut: string) => {
     return statutOptions.find(s => s.value === statut)?.color || 'bg-gray-100 text-gray-800';
   };
@@ -553,17 +535,15 @@ const Projets = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Projets</h1>
-          <p className="text-gray-600 mt-1">Consultez et gérez les projets clients</p>
+          <p className="text-gray-600 mt-1">Créez et gérez vos projets clients</p>
         </div>
-        {canCreateOrEdit() && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Nouveau projet
-          </button>
-        )}
+        <button
+          onClick={() => setShowCreateForm(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          Nouveau projet
+        </button>
       </div>
 
       {/* Messages */}
@@ -579,20 +559,18 @@ const Projets = () => {
         </div>
       )}
 
-      {/* Access Info for non-privileged users */}
-      {!canCreateOrEdit() && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <Lock className="w-5 h-5 text-blue-600" />
-            <div>
-              <h3 className="text-sm font-medium text-blue-800">Mode consultation</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                Vous pouvez consulter les projets mais seuls les coaches, la direction et les administrateurs peuvent créer ou modifier des projets.
-              </p>
-            </div>
+      {/* Info message */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center gap-3">
+          <Target className="w-5 h-5 text-blue-600" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">Création de projets</h3>
+            <p className="text-sm text-blue-700 mt-1">
+              Tous les utilisateurs peuvent créer des projets. Vous devenez automatiquement le référent du projet que vous créez.
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Search */}
       <div className="bg-white p-4 rounded-lg shadow-sm border">
@@ -768,13 +746,18 @@ const Projets = () => {
       </div>
 
       {/* Create/Edit Form Modal */}
-      {(showCreateForm || showEditForm) && canCreateOrEdit() && (
+      {(showCreateForm || showEditForm) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold text-gray-900">
                 {showEditForm ? 'Modifier le projet' : 'Nouveau projet'}
               </h2>
+              {showCreateForm && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Vous deviendrez automatiquement le référent de ce projet.
+                </p>
+              )}
             </div>
 
             <form onSubmit={showEditForm ? handleEdit : handleSubmit} className="p-6 space-y-6">
@@ -852,38 +835,17 @@ const Projets = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Référent projet *
-                    </label>
-                    <select
-                      required
-                      value={formData.referent_projet_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, referent_projet_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="">Sélectionner un référent</option>
-                      {referents.map(user => (
-                        <option key={user.id} value={user.id}>
-                          {user.full_name} ({user.role})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Budget estimé (€)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.budget_estime}
-                      onChange={(e) => setFormData(prev => ({ ...prev, budget_estime: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Budget estimé (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.budget_estime}
+                    onChange={(e) => setFormData(prev => ({ ...prev, budget_estime: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
                 </div>
 
                 <div>
