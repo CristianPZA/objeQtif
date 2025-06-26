@@ -1,56 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users, Lock, UserPlus, X, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, Edit, Trash2, Users, CheckCircle, Clock, AlertCircle, X, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-interface Projet {
-  id: string;
-  nom_client: string;
-  titre: string;
-  description: string;
-  date_debut: string;
-  date_fin_prevue: string | null;
-  budget_estime: number | null;
-  statut: string;
-  priorite: string;
-  taux_avancement: number;
-  referent_projet_id: string;
-  auteur_id: string;
-  objectifs: string[];
-  risques: string[];
-  notes: string | null;
-  created_at: string;
-  auteur_nom: string;
-  referent_nom: string;
-  referent_role: string;
-  collaborateurs: Collaborateur[];
-}
-
-interface Collaborateur {
-  id: string;
-  employe_id: string;
-  employe_nom: string;
-  employe_role: string;
-  employe_department: string | null;
-  role_projet: string;
-  taux_allocation: number;
-  responsabilites: string | null;
-  date_debut: string | null;
-  date_fin: string | null;
-  is_active: boolean;
-}
-
-interface UserProfile {
-  id: string;
-  full_name: string;
-  role: string;
-  department: string | null;
-}
+import ProjectForm from '../components/projects/ProjectForm';
+import { Projet, UserProfile } from '../components/projects/types';
 
 const Projets = () => {
   const [projets, setProjets] = useState<Projet[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -62,20 +19,7 @@ const Projets = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    nom_client: '',
-    titre: '',
-    description: '',
-    date_debut: '',
-    date_fin_prevue: '',
-    budget_estime: '',
-    priorite: 'normale',
-    objectifs: [''],
-    risques: [''],
-    notes: ''
-  });
+  const [users, setUsers] = useState<UserProfile[]>([]);
 
   // Collaborateur form state
   const [collaborateurForm, setCollaborateurForm] = useState({
@@ -256,92 +200,6 @@ const Projets = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Utilisateur non connecté');
-
-      // Créer le projet avec l'utilisateur actuel comme auteur ET référent
-      const { data: projetData, error: projetError } = await supabase
-        .from('projets')
-        .insert([{
-          nom_client: formData.nom_client,
-          titre: formData.titre,
-          description: formData.description,
-          date_debut: formData.date_debut,
-          date_fin_prevue: formData.date_fin_prevue || null,
-          budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
-          referent_projet_id: user.id, // L'auteur devient automatiquement le référent
-          auteur_id: user.id,
-          priorite: formData.priorite,
-          objectifs: formData.objectifs.filter(obj => obj.trim() !== ''),
-          risques: formData.risques.filter(risk => risk.trim() !== ''),
-          notes: formData.notes || null
-        }])
-        .select()
-        .single();
-
-      if (projetError) throw projetError;
-
-      setSuccess('Projet créé avec succès. Vous êtes automatiquement désigné comme référent du projet.');
-      resetForm();
-      setShowCreateForm(false);
-      fetchProjets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création du projet');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProjet || !canEditProject(editingProjet)) {
-      setError('Vous n\'avez pas les droits pour modifier ce projet');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const { error: projetError } = await supabase
-        .from('projets')
-        .update({
-          nom_client: formData.nom_client,
-          titre: formData.titre,
-          description: formData.description,
-          date_debut: formData.date_debut,
-          date_fin_prevue: formData.date_fin_prevue || null,
-          budget_estime: formData.budget_estime ? parseFloat(formData.budget_estime) : null,
-          // Note: on ne modifie pas le referent_projet_id ici car il reste l'auteur
-          priorite: formData.priorite,
-          objectifs: formData.objectifs.filter(obj => obj.trim() !== ''),
-          risques: formData.risques.filter(risk => risk.trim() !== ''),
-          notes: formData.notes || null
-        })
-        .eq('id', editingProjet.id);
-
-      if (projetError) throw projetError;
-
-      setSuccess('Projet modifié avec succès');
-      setShowEditForm(false);
-      setEditingProjet(null);
-      fetchProjets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la modification du projet');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleDelete = async (projetId: string, titre: string) => {
     const projet = projets.find(p => p.id === projetId);
     if (!projet || !canEditProject(projet)) {
@@ -438,39 +296,12 @@ const Projets = () => {
     }
 
     setEditingProjet(projet);
-    setFormData({
-      nom_client: projet.nom_client,
-      titre: projet.titre,
-      description: projet.description,
-      date_debut: projet.date_debut,
-      date_fin_prevue: projet.date_fin_prevue || '',
-      budget_estime: projet.budget_estime?.toString() || '',
-      priorite: projet.priorite,
-      objectifs: projet.objectifs.length > 0 ? projet.objectifs : [''],
-      risques: projet.risques.length > 0 ? projet.risques : [''],
-      notes: projet.notes || ''
-    });
     setShowEditForm(true);
   };
 
   const openCollaborateursModal = (projet: Projet) => {
     setSelectedProjet(projet);
     setShowCollaborateursModal(true);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      nom_client: '',
-      titre: '',
-      description: '',
-      date_debut: '',
-      date_fin_prevue: '',
-      budget_estime: '',
-      priorite: 'normale',
-      objectifs: [''],
-      risques: [''],
-      notes: ''
-    });
   };
 
   const resetCollaborateurForm = () => {
@@ -484,26 +315,18 @@ const Projets = () => {
     });
   };
 
-  const addArrayField = (field: 'objectifs' | 'risques') => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: [...prev[field], '']
-    }));
+  const handleProjectSuccess = () => {
+    setShowCreateForm(false);
+    setShowEditForm(false);
+    setEditingProjet(null);
+    fetchProjets();
+    setSuccess(showEditForm ? 'Projet modifié avec succès' : 'Projet créé avec succès. Vous êtes automatiquement désigné comme référent du projet.');
+    setTimeout(() => setSuccess(null), 5000);
   };
 
-  const updateArrayField = (field: 'objectifs' | 'risques', index: number, value: string) => {
-    setFormData(prev => {
-      const newArray = [...prev[field]];
-      newArray[index] = value;
-      return { ...prev, [field]: newArray };
-    });
-  };
-
-  const removeArrayField = (field: 'objectifs' | 'risques', index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
-    }));
+  const handleProjectError = (errorMessage: string) => {
+    setError(errorMessage);
+    setTimeout(() => setError(null), 5000);
   };
 
   const filteredProjets = projets.filter(projet =>
@@ -539,7 +362,7 @@ const Projets = () => {
         </div>
         <button
           onClick={() => setShowCreateForm(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg font-medium"
         >
           <Plus className="w-5 h-5" />
           Nouveau projet
@@ -548,13 +371,13 @@ const Projets = () => {
 
       {/* Messages */}
       {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg">
+        <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 text-green-700 p-4 rounded-lg">
+        <div className="bg-green-50 text-green-700 p-4 rounded-lg border border-green-200">
           {success}
         </div>
       )}
@@ -745,230 +568,30 @@ const Projets = () => {
         )}
       </div>
 
-      {/* Create/Edit Form Modal */}
-      {(showCreateForm || showEditForm) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {showEditForm ? 'Modifier le projet' : 'Nouveau projet'}
-              </h2>
-              {showCreateForm && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Vous deviendrez automatiquement le référent de ce projet.
-                </p>
-              )}
-            </div>
+      {/* Create Form Modal */}
+      {showCreateForm && (
+        <ProjectForm
+          isEdit={false}
+          users={users}
+          onClose={() => setShowCreateForm(false)}
+          onSuccess={handleProjectSuccess}
+          onError={handleProjectError}
+        />
+      )}
 
-            <form onSubmit={showEditForm ? handleEdit : handleSubmit} className="p-6 space-y-6">
-              {/* Informations générales */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Informations générales</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nom du client *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.nom_client}
-                      onChange={(e) => setFormData(prev => ({ ...prev, nom_client: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Titre du projet *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.titre}
-                      onChange={(e) => setFormData(prev => ({ ...prev, titre: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date de début *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.date_debut}
-                      onChange={(e) => setFormData(prev => ({ ...prev, date_debut: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date de fin prévue
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.date_fin_prevue}
-                      onChange={(e) => setFormData(prev => ({ ...prev, date_fin_prevue: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Priorité
-                    </label>
-                    <select
-                      value={formData.priorite}
-                      onChange={(e) => setFormData(prev => ({ ...prev, priorite: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      {prioriteOptions.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Budget estimé (€)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.budget_estime}
-                    onChange={(e) => setFormData(prev => ({ ...prev, budget_estime: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description du projet *
-                  </label>
-                  <textarea
-                    required
-                    rows={4}
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Description détaillée du projet, contexte, enjeux..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              {/* Objectifs */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Objectifs</h3>
-                {formData.objectifs.map((objectif, index) => (
-                  <div key={index} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={objectif}
-                      onChange={(e) => updateArrayField('objectifs', index, e.target.value)}
-                      placeholder={`Objectif ${index + 1}`}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                    {formData.objectifs.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeArrayField('objectifs', index)}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addArrayField('objectifs')}
-                  className="text-indigo-600 hover:text-indigo-700 text-sm"
-                >
-                  + Ajouter un objectif
-                </button>
-              </div>
-
-              {/* Risques */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Risques identifiés</h3>
-                {formData.risques.map((risque, index) => (
-                  <div key={index} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={risque}
-                      onChange={(e) => updateArrayField('risques', index, e.target.value)}
-                      placeholder={`Risque ${index + 1}`}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                    {formData.risques.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeArrayField('risques', index)}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addArrayField('risques')}
-                  className="text-indigo-600 hover:text-indigo-700 text-sm"
-                >
-                  + Ajouter un risque
-                </button>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes additionnelles
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Notes, commentaires, informations complémentaires..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-6 border-t">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (showEditForm) {
-                      setShowEditForm(false);
-                      setEditingProjet(null);
-                    } else {
-                      setShowCreateForm(false);
-                    }
-                    resetForm();
-                  }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {loading ? (showEditForm ? 'Modification...' : 'Création...') : (showEditForm ? 'Modifier le projet' : 'Créer le projet')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Edit Form Modal */}
+      {showEditForm && editingProjet && (
+        <ProjectForm
+          isEdit={true}
+          initialData={editingProjet}
+          users={users}
+          onClose={() => {
+            setShowEditForm(false);
+            setEditingProjet(null);
+          }}
+          onSuccess={handleProjectSuccess}
+          onError={handleProjectError}
+        />
       )}
 
       {/* Collaborateurs Modal */}
