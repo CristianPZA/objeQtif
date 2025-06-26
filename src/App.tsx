@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import FichesProjets from './pages/FichesProjets';
+import FicheProjetDetail from './pages/FicheProjetDetail';
 import Projets from './pages/Projets';
 import ProjetDetail from './pages/ProjetDetail';
 import ObjectifsAnnuels from './pages/ObjectifsAnnuels';
