@@ -26,8 +26,8 @@ const loadTranslations = async () => {
   return resources;
 };
 
-// Initialize i18next without blocking
-const initI18n = async () => {
+// Initialize i18next - export this function to be called before React renders
+export const initI18n = async () => {
   const resources = await loadTranslations();
   
   await i18n
@@ -51,8 +51,5 @@ const initI18n = async () => {
       load: 'languageOnly' // load only language code (e.g. 'en') and not region (e.g. 'en-US')
     });
 };
-
-// Initialize i18n
-initI18n();
 
 export default i18n;

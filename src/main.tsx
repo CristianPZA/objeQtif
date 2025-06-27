@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import './i18n';
+import { initI18n } from './i18n';
 
 // Preload critical resources
 const preloadResources = () => {
@@ -16,8 +16,11 @@ const preloadResources = () => {
   });
 };
 
-// Initialize the app
-const initApp = () => {
+// Initialize the app - now async to wait for i18n
+const initApp = async () => {
+  // Initialize i18n before rendering React components
+  await initI18n();
+  
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />
