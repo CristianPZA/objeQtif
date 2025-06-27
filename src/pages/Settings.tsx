@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Lock, User, Bell, Shield } from 'lucide-react';
+import { Lock, User, Bell, Shield, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Settings = () => {
+  const { t } = useTranslation();
+  const { language, changeLanguage } = useLanguage();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,11 +21,11 @@ const Settings = () => {
 
     try {
       if (newPassword !== confirmPassword) {
-        throw new Error('Les mots de passe ne correspondent pas');
+        throw new Error(t('auth.passwordMismatch'));
       }
 
       if (newPassword.length < 6) {
-        throw new Error('Le nouveau mot de passe doit contenir au moins 6 caractères');
+        throw new Error(t('auth.passwordRequirements'));
       }
 
       const { error } = await supabase.auth.updateUser({
@@ -32,23 +36,69 @@ const Settings = () => {
 
       setNewPassword('');
       setConfirmPassword('');
-      setSuccess('Mot de passe modifié avec succès');
+      setSuccess(t('settings.passwordChanged'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setError(err instanceof Error ? err.message : t('common.error'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLang = e.target.value;
+    changeLanguage(newLang);
+    setSuccess(t('settings.languageChanged'));
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setSuccess(null);
+    }, 3000);
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Paramètres</h1>
-        <p className="text-gray-600 mt-1">Gérez vos préférences et paramètres de compte</p>
+        <h1 className="text-3xl font-bold text-gray-900">{t('settings.title')}</h1>
+        <p className="text-gray-600 mt-1">{t('settings.subtitle')}</p>
       </div>
 
       <div className="grid gap-6 max-w-4xl">
+        {/* Language Section */}
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Globe className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">{t('settings.language')}</h2>
+                <p className="text-sm text-gray-600">{t('settings.selectLanguage')}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="max-w-md">
+              {success && (
+                <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-4">
+                  {success}
+                </div>
+              )}
+
+              <select
+                value={language}
+                onChange={handleLanguageChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="fr">{t('settings.french')}</option>
+                <option value="en">{t('settings.english')}</option>
+                <option value="es">{t('settings.spanish')}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Security Section */}
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-6 border-b border-gray-200">
@@ -57,8 +107,8 @@ const Settings = () => {
                 <Lock className="w-5 h-5 text-indigo-600" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Sécurité</h2>
-                <p className="text-sm text-gray-600">Modifiez votre mot de passe</p>
+                <h2 className="text-xl font-semibold text-gray-900">{t('settings.security')}</h2>
+                <p className="text-sm text-gray-600">{t('settings.changePassword')}</p>
               </div>
             </div>
           </div>
@@ -70,15 +120,10 @@ const Settings = () => {
                   {error}
                 </div>
               )}
-              {success && (
-                <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm">
-                  {success}
-                </div>
-              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nouveau mot de passe
+                  {t('settings.newPassword')}
                 </label>
                 <input
                   type="password"
@@ -87,13 +132,13 @@ const Settings = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   required
                   minLength={6}
-                  placeholder="Entrez votre nouveau mot de passe"
+                  placeholder={t('settings.newPassword')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirmer le mot de passe
+                  {t('settings.confirmPassword')}
                 </label>
                 <input
                   type="password"
@@ -102,7 +147,7 @@ const Settings = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   required
                   minLength={6}
-                  placeholder="Confirmez votre nouveau mot de passe"
+                  placeholder={t('settings.confirmPassword')}
                 />
               </div>
 
@@ -111,7 +156,7 @@ const Settings = () => {
                 disabled={loading}
                 className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 font-medium"
               >
-                {loading ? 'Modification...' : 'Modifier le mot de passe'}
+                {loading ? t('common.loading') : t('settings.changePasswordButton')}
               </button>
             </form>
           </div>
@@ -125,16 +170,15 @@ const Settings = () => {
                 <User className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Profil</h2>
-                <p className="text-sm text-gray-600">Informations personnelles</p>
+                <h2 className="text-xl font-semibold text-gray-900">{t('settings.profile')}</h2>
+                <p className="text-sm text-gray-600">{t('settings.personalInfo')}</p>
               </div>
             </div>
           </div>
 
           <div className="p-6">
             <p className="text-sm text-gray-600">
-              Pour modifier vos informations personnelles (nom, email, département, etc.), 
-              veuillez contacter votre administrateur ou votre service RH.
+              {t('settings.contactAdminForChanges')}
             </p>
           </div>
         </div>

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const Login = () => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -52,18 +54,18 @@ const Login = () => {
       if (error) {
         // Messages d'erreur plus conviviaux
         if (error.message.includes('Invalid login credentials')) {
-          throw new Error('Email ou mot de passe incorrect');
+          throw new Error(t('auth.loginError'));
         } else if (error.message.includes('Email not confirmed')) {
-          throw new Error('Veuillez confirmer votre email avant de vous connecter');
+          throw new Error(t('auth.emailNotConfirmed'));
         } else if (error.message.includes('Too many requests')) {
-          throw new Error('Trop de tentatives de connexion. Veuillez réessayer dans quelques minutes');
+          throw new Error(t('auth.tooManyRequests'));
         } else {
           throw error;
         }
       }
 
       if (!data.user) {
-        throw new Error('Erreur de connexion inattendue');
+        throw new Error(t('auth.unexpectedError'));
       }
 
       // Vérifier le profil utilisateur
@@ -86,7 +88,7 @@ const Login = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue lors de la connexion');
+      setError(err instanceof Error ? err.message : t('auth.loginError'));
     } finally {
       setLoading(false);
     }
@@ -98,10 +100,10 @@ const Login = () => {
         <div className="text-center">
           <LogIn className="mx-auto h-12 w-12 text-indigo-600" />
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Connexion objeQtifs
+            {t('auth.login')} objeQtifs
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Connectez-vous à votre espace de travail
+            {t('auth.loginToWorkspace')}
           </p>
         </div>
         
@@ -115,7 +117,7 @@ const Login = () => {
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Adresse email
+                {t('auth.email')}
               </label>
               <input
                 id="email"
@@ -131,7 +133,7 @@ const Login = () => {
             
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Mot de passe
+                {t('auth.password')}
               </label>
               <div className="mt-1 relative">
                 <input
@@ -142,7 +144,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Votre mot de passe"
+                  placeholder={t('auth.password')}
                 />
                 <button
                   type="button"
@@ -163,17 +165,17 @@ const Login = () => {
             {loading ? (
               <div className="flex items-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Connexion en cours...
+                {t('common.loading')}
               </div>
             ) : (
-              'Se connecter'
+              t('auth.loginButton')
             )}
           </button>
         </form>
 
         <div className="text-center">
           <p className="text-xs text-gray-500">
-            Première connexion ? Votre mot de passe temporaire vous a été communiqué par votre administrateur.
+            {t('auth.firstLoginNote')}
           </p>
         </div>
       </div>

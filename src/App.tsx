@@ -15,41 +15,44 @@ import CareerPathwayDetail from './pages/CareerPathwayDetail';
 import CompleteProfile from './pages/CompleteProfile';
 import MonCoaching from './pages/MonCoaching';
 import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import PrivateRoute from './components/PrivateRoute';
 import MainLayout from './layouts/MainLayout';
 
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/complete-profile" element={
-            <PrivateRoute>
-              <CompleteProfile />
-            </PrivateRoute>
-          } />
-          <Route path="/" element={
-            <PrivateRoute>
-              <MainLayout />
-            </PrivateRoute>
-          }>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="objectifs-annuels" element={<ObjectifsAnnuels />} />
-            <Route path="fiches-projets" element={<FichesProjets />} />
-            <Route path="fiche-projet/:collaborationId" element={<FicheProjetDetail />} />
-            <Route path="projets" element={<Projets />} />
-            <Route path="projet/:id" element={<ProjetDetail />} />
-            <Route path="administration" element={<Administration />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="career-pathways" element={<CareerPathways />} />
-            <Route path="career-pathway/:areaId" element={<CareerPathwayDetail />} />
-            <Route path="mon-coaching" element={<MonCoaching />} />
-          </Route>
-        </Routes>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/complete-profile" element={
+              <PrivateRoute>
+                <CompleteProfile />
+              </PrivateRoute>
+            } />
+            <Route path="/" element={
+              <PrivateRoute>
+                <MainLayout />
+              </PrivateRoute>
+            }>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="objectifs-annuels" element={<ObjectifsAnnuels />} />
+              <Route path="fiches-projets" element={<FichesProjets />} />
+              <Route path="fiche-projet/:collaborationId" element={<FicheProjetDetail />} />
+              <Route path="projets" element={<Projets />} />
+              <Route path="projet/:id" element={<ProjetDetail />} />
+              <Route path="administration" element={<Administration />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="career-pathways" element={<CareerPathways />} />
+              <Route path="career-pathway/:areaId" element={<CareerPathwayDetail />} />
+              <Route path="mon-coaching" element={<MonCoaching />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

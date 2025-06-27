@@ -14,10 +14,12 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const { userCountry } = useAuth();
+  const { t } = useTranslation();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
 
@@ -58,32 +60,32 @@ const Sidebar = () => {
     {
       to: '/dashboard',
       icon: <LayoutDashboard className="w-5 h-5" />,
-      label: 'Tableau de bord',
+      label: t('common.dashboard'),
     },
     {
       to: '/objectifs-annuels',
       icon: <Target className="w-5 h-5" />,
-      label: 'Mes objectifs annuels',
+      label: t('common.annualObjectives'),
     },    
     {
       to: '/fiches-projets',
       icon: <FolderKanban className="w-5 h-5" />,
-      label: 'Fiche projet',
+      label: t('common.projectSheets'),
     },
     {
       to: '/projets',
       icon: <Briefcase className="w-5 h-5" />,
-      label: 'Projets',
+      label: t('common.projects'),
     },
     {
       to: '/archives',
       icon: <Archive className="w-5 h-5" />,
-      label: 'Archives',
+      label: t('common.archives'),
     },
     {
       to: '/career-pathways',
       icon: <BookOpen className="w-5 h-5" />,
-      label: 'Career Pathways',
+      label: t('common.careerPathways'),
     },
   ];
 
@@ -92,7 +94,7 @@ const Sidebar = () => {
     menuItems.push({
       to: '/mon-coaching',
       icon: <Users className="w-5 h-5" />,
-      label: 'Mon Coaching',
+      label: t('common.myCoaching'),
     });
   }
 
@@ -101,7 +103,7 @@ const Sidebar = () => {
     menuItems.push({
       to: '/administration',
       icon: <Settings className="w-5 h-5" />,
-      label: 'Administration',
+      label: t('common.administration'),
     });
   }
 
@@ -111,7 +113,7 @@ const Sidebar = () => {
         <h1 className="text-2xl font-bold mb-2">objeQtifs</h1>
         <div className="flex items-center gap-2">
           <p className="text-sm text-gray-400">
-            {userRole === 'admin' ? 'Administrateur' : isCoach ? 'Coach' : 'Employé'}
+            {userRole === 'admin' ? t('administration.currentRole.admin') : t('administration.currentRole.employee')}
           </p>
           {userCountry && (
             <span className="text-sm bg-gray-800 px-2 py-1 rounded">
@@ -149,7 +151,7 @@ const Sidebar = () => {
             }
           >
             <Settings className="w-5 h-5" />
-            Paramètres
+            {t('common.settings')}
           </NavLink>
         </div>
 
@@ -158,7 +160,7 @@ const Sidebar = () => {
           className="flex items-center gap-2 w-full p-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
         >
           <LogOut className="w-5 h-5" />
-          Déconnexion
+          {t('common.logout')}
         </button>
       </div>
     </div>

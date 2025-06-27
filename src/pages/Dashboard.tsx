@@ -5,6 +5,7 @@ import { fr } from 'date-fns/locale';
 import { Bell, CheckCircle, AlertTriangle, Users, Star, Calendar, Target, Briefcase, Flag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface UserProfile {
   full_name: string | null;
@@ -19,6 +20,7 @@ interface ManagerProfile {
 }
 
 const DashboardContent = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [manager, setManager] = useState<ManagerProfile | null>(null);
@@ -95,8 +97,8 @@ const DashboardContent = () => {
 
   const getRoleDisplayName = (role: string) => {
     const roleMap = {
-      'employe': 'Employé',
-      'admin': 'Administrateur'
+      'employe': t('administration.currentRole.employee'),
+      'admin': t('administration.currentRole.admin')
     };
     return roleMap[role as keyof typeof roleMap] || role;
   };
@@ -106,32 +108,32 @@ const DashboardContent = () => {
     let timeGreeting = '';
     
     if (hour < 12) {
-      timeGreeting = 'Bonjour';
+      timeGreeting = t('dashboard.goodMorning');
     } else if (hour < 18) {
-      timeGreeting = 'Bon après-midi';
+      timeGreeting = t('dashboard.goodAfternoon');
     } else {
-      timeGreeting = 'Bonsoir';
+      timeGreeting = t('dashboard.goodEvening');
     }
 
     const roleMessages = {
-      'employe': 'Prêt à atteindre vos objectifs aujourd\'hui ?',
-      'admin': 'Gérez et supervisez la plateforme !'
+      'employe': t('dashboard.employeeMessage'),
+      'admin': t('dashboard.adminMessage')
     };
 
     return {
       greeting: timeGreeting,
-      message: roleMessages[role as keyof typeof roleMessages] || 'Bienvenue sur votre espace de travail !'
+      message: roleMessages[role as keyof typeof roleMessages] || t('dashboard.welcome')
     };
   };
 
   const getCountryFlag = (country: string | null) => {
     switch (country) {
       case 'france':
-        return '🇫🇷 France';
+        return '🇫🇷 ' + t('common.france');
       case 'espagne':
-        return '🇪🇸 Espagne';
+        return '🇪🇸 ' + t('common.spain');
       default:
-        return '🇫🇷 France';
+        return '🇫🇷 ' + t('common.france');
     }
   };
 
@@ -148,13 +150,13 @@ const DashboardContent = () => {
       <div className="p-8 text-center">
         <div className="bg-red-50 text-red-700 p-4 rounded-lg">
           <AlertTriangle className="mx-auto h-8 w-8 mb-2" />
-          <p className="font-medium">Erreur de chargement</p>
+          <p className="font-medium">{t('common.error')}</p>
           <p className="text-sm mt-1">{error}</p>
           <button 
             onClick={() => window.location.reload()} 
             className="mt-4 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-md transition-colors text-sm"
           >
-            Réessayer
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -175,7 +177,7 @@ const DashboardContent = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2">
-                {welcomeMsg.greeting}, {profile.full_name?.split(' ')[0] || 'Utilisateur'} !
+                {welcomeMsg.greeting}, {profile.full_name?.split(' ')[0] || t('common.user')} !
               </h1>
               <p className="text-indigo-100 text-lg mb-4">
                 {welcomeMsg.message}
@@ -194,7 +196,7 @@ const DashboardContent = () => {
                 {manager && (
                   <div className="flex items-center">
                     <Star className="w-4 h-4 mr-2" />
-                    <span>Manager: {manager.full_name}</span>
+                    <span>{t('administration.manager')}: {manager.full_name}</span>
                   </div>
                 )}
                 <div className="flex items-center">
@@ -223,8 +225,8 @@ const DashboardContent = () => {
               <Target className="w-6 h-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900">Fiche Projet</h3>
-              <p className="text-sm text-gray-600">Gérer vos objectifs</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t('common.projectSheets')}</h3>
+              <p className="text-sm text-gray-600">{t('dashboard.manageObjectives')}</p>
             </div>
           </div>
         </div>
@@ -238,8 +240,8 @@ const DashboardContent = () => {
               <Briefcase className="w-6 h-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900">Projets</h3>
-              <p className="text-sm text-gray-600">Consulter les projets</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t('common.projects')}</h3>
+              <p className="text-sm text-gray-600">{t('dashboard.viewProjects')}</p>
             </div>
           </div>
         </div>
@@ -250,8 +252,8 @@ const DashboardContent = () => {
               <Calendar className="w-6 h-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900">Objectifs</h3>
-              <p className="text-sm text-gray-600">Suivre vos objectifs</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t('common.objectives')}</h3>
+              <p className="text-sm text-gray-600">{t('dashboard.trackObjectives')}</p>
             </div>
           </div>
         </div>
@@ -265,8 +267,8 @@ const DashboardContent = () => {
               <Users className="w-6 h-6 text-gray-600" />
             </div>
             <div className="ml-4">
-              <h3 className="text-lg font-semibold text-gray-900">Paramètres</h3>
-              <p className="text-sm text-gray-600">Gérer votre compte</p>
+              <h3 className="text-lg font-semibold text-gray-900">{t('common.settings')}</h3>
+              <p className="text-sm text-gray-600">{t('dashboard.manageAccount')}</p>
             </div>
           </div>
         </div>
@@ -275,14 +277,14 @@ const DashboardContent = () => {
       {/* Recent Activity */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Activité récente</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.recentActivity')}</h2>
         </div>
         <div className="p-6">
           <div className="text-center py-8">
             <Bell className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune activité récente</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('dashboard.noRecentActivity')}</h3>
             <p className="text-gray-600">
-              Vos dernières actions et notifications apparaîtront ici.
+              {t('dashboard.activityWillAppear')}
             </p>
           </div>
         </div>
@@ -294,27 +296,27 @@ const DashboardContent = () => {
           <CheckCircle className="h-6 w-6 text-blue-600 mt-1 mr-3 flex-shrink-0" />
           <div>
             <h3 className="text-lg font-medium text-blue-900 mb-2">
-              Bienvenue sur objeQtifs !
+              {t('dashboard.welcomeMessage')}
             </h3>
             <p className="text-blue-800 mb-4">
-              Votre profil a été configuré avec succès. Vous pouvez maintenant :
+              {t('dashboard.profileConfigured')}
             </p>
             <ul className="text-blue-800 space-y-2">
               <li className="flex items-center">
                 <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                Créer et gérer vos objectifs projets
+                {t('dashboard.createManageObjectives')}
               </li>
               <li className="flex items-center">
                 <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                Consulter les projets de l'entreprise
+                {t('dashboard.consultProjects')}
               </li>
               <li className="flex items-center">
                 <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                Suivre vos objectifs annuels
+                {t('dashboard.trackAnnualObjectives')}
               </li>
               <li className="flex items-center">
                 <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                Modifier vos paramètres de compte
+                {t('dashboard.modifyAccountSettings')}
               </li>
             </ul>
           </div>
