@@ -4,7 +4,6 @@ import App from './App.tsx';
 import './index.css';
 import './i18n';
 
-// Create root and render app
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   FolderKanban,
@@ -18,167 +18,93 @@ import { useTranslation } from 'react-i18next';
 
 const Sidebar = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { userCountry } = useAuth();
   const { t } = useTranslation();
-  
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserRole = async () => {
-      setIsLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          setIsLoading(false);
-          return;
-        }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-        const { data } = await supabase
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('role, id')
+        .eq('id', session.user.id)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        setUserRole(data[0].role);
+        
+        // Vérifier si l'utilisateur est coach (a des coachés)
+        const { data: coachees } = await supabase
           .from('user_profiles')
-          .select('role, id')
-          .eq('id', session.user.id)
+          .select('id')
+          .eq('coach_id', session.user.id)
           .limit(1);
-
-        if (data && data.length > 0) {
-          setUserRole(data[0].role);
-          
-          // Vérifier si l'utilisateur est coach (a des coachés)
-          const { data: coachees } = await supabase
-            .from('user_profiles')
-            .select('id')
-            .eq('coach_id', session.user.id)
-            .limit(1);
-          
-          setIsCoach(coachees && coachees.length > 0);
-        }
-      } catch (error) {
-        console.error('Error fetching user role:', error);
-      } finally {
-        setIsLoading(false);
+        
+        setIsCoach(coachees && coachees.length > 0);
       }
     };
 
     fetchUserRole();
   }, []);
 
-  // Memoize menu items to prevent unnecessary re-renders
-  const menuItems = useMemo(() => {
-    const items = [
-      {
-        to: '/dashboard',
-        icon: <LayoutDashboard className="w-5 h-5" />,
-        label: t('common.dashboard'),
-      },
-      {
-        to: '/objectifs-annuels',
-        icon: <Target className="w-5 h-5" />,
-        label: t('common.annualObjectives'),
-      },    
-      {
-        to: '/fiches-projets',
-        icon: <FolderKanban className="w-5 h-5" />,
-        label: t('common.projectSheets'),
-      },
-      {
-        to: '/projets',
-        icon: <Briefcase className="w-5 h-5" />,
-        label: t('common.projects'),
-      },
-      {
-        to: '/archives',
-        icon: <Archive className="w-5 h-5" />,
-        label: t('common.archives'),
-      },
-      {
-        to: '/career-pathways',
-        icon: <BookOpen className="w-5 h-5" />,
-        label: t('common.careerPathways'),
-      },
-    ];
-
-    // Add coaching menu item if user is a coach
-    if (isCoach) {
-      items.push({
-        to: '/mon-coaching',
-        icon: <Users className="w-5 h-5" />,
-        label: t('common.myCoaching'),
-      });
-    }
-
-    // Add administration menu item for admin role only
-    if (userRole === 'admin') {
-      items.push({
-        to: '/administration',
-        icon: <Settings className="w-5 h-5" />,
-        label: t('common.administration'),
-      });
-    }
-
-    return items;
-  }, [userRole, isCoach, t]);
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
 
-  // Preload the next page data when hovering over a link
-  const handleLinkHover = async (path: string) => {
-    // Skip if already on this page
-    if (location.pathname === path) return;
+  const menuItems = [
+    {
+      to: '/dashboard',
+      icon: <LayoutDashboard className="w-5 h-5" />,
+      label: t('common.dashboard'),
+    },
+    {
+      to: '/objectifs-annuels',
+      icon: <Target className="w-5 h-5" />,
+      label: t('common.annualObjectives'),
+    },    
+    {
+      to: '/fiches-projets',
+      icon: <FolderKanban className="w-5 h-5" />,
+      label: t('common.projectSheets'),
+    },
+    {
+      to: '/projets',
+      icon: <Briefcase className="w-5 h-5" />,
+      label: t('common.projects'),
+    },
+    {
+      to: '/archives',
+      icon: <Archive className="w-5 h-5" />,
+      label: t('common.archives'),
+    },
+    {
+      to: '/career-pathways',
+      icon: <BookOpen className="w-5 h-5" />,
+      label: t('common.careerPathways'),
+    },
+  ];
 
-    // Preload data based on the path
-    try {
-      switch (path) {
-        case '/dashboard':
-          // Preload dashboard data
-          await supabase.from('notifications').select('count', { count: 'exact', head: true }).limit(1);
-          break;
-        case '/projets':
-          // Preload projects data
-          await supabase.from('projets').select('count', { count: 'exact', head: true }).limit(1);
-          break;
-        case '/fiches-projets':
-          // Preload project sheets data
-          await supabase.from('projet_collaborateurs').select('count', { count: 'exact', head: true }).limit(1);
-          break;
-        case '/objectifs-annuels':
-          // Preload annual objectives data
-          await supabase.from('annual_objectives').select('count', { count: 'exact', head: true }).limit(1);
-          break;
-        case '/career-pathways':
-          // Preload career pathways data
-          await supabase.from('career_areas').select('count', { count: 'exact', head: true }).limit(1);
-          break;
-        case '/mon-coaching':
-          // Preload coaching data
-          await supabase.from('v_coaching_evaluations').select('count', { count: 'exact', head: true }).limit(1);
-          break;
-        case '/administration':
-          // Preload admin data
-          await supabase.from('user_profiles').select('count', { count: 'exact', head: true }).limit(1);
-          break;
-        default:
-          break;
-      }
-    } catch (error) {
-      // Silently fail on preload errors
-      console.debug('Preload error:', error);
-    }
-  };
+  // Add coaching menu item if user is a coach
+  if (isCoach) {
+    menuItems.push({
+      to: '/mon-coaching',
+      icon: <Users className="w-5 h-5" />,
+      label: t('common.myCoaching'),
+    });
+  }
 
-  if (isLoading) {
-    return (
-      <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
-        <div className="flex flex-col items-center mb-8">
-          <h1 className="text-2xl font-bold mb-2">objeQtifs</h1>
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
-        </div>
-      </div>
-    );
+  // Add administration menu item for admin role only
+  if (userRole === 'admin') {
+    menuItems.push({
+      to: '/administration',
+      icon: <Settings className="w-5 h-5" />,
+      label: t('common.administration'),
+    });
   }
 
   return (
@@ -207,7 +133,6 @@ const Sidebar = () => {
                 isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
               }`
             }
-            onMouseEnter={() => handleLinkHover(item.to)}
           >
             {item.icon}
             {item.label}
@@ -224,7 +149,6 @@ const Sidebar = () => {
                 isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
               }`
             }
-            onMouseEnter={() => handleLinkHover('/settings')}
           >
             <Settings className="w-5 h-5" />
             {t('common.settings')}
