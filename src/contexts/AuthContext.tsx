@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -7,13 +7,15 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   userCountry: string | null;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   loading: true,
   signOut: async () => {},
-  userCountry: null
+  userCountry: null,
+  refreshUserData: async () => {}
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -51,6 +53,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error in fetchUserProfile:', error);
     }
   };
+
+  const refreshUserData = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUser(user);
+        await fetchUserProfile(user.id);
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  }, []);
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -151,7 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, userCountry }}>
+    <AuthContext.Provider value={{ user, loading, signOut, userCountry, refreshUserData }}>
       {children}
     </AuthContext.Provider>
   );

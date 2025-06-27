@@ -14,10 +14,7 @@ try {
   throw new Error(`Invalid Supabase URL format: ${supabaseUrl}`);
 }
 
-// Log configuration for debugging (remove in production)
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Key exists:', !!supabaseAnonKey);
-
+// Create a single instance of the Supabase client to be reused
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
@@ -27,12 +24,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'x-application-name': 'your-app'
+      'x-application-name': 'objeQtifs'
+    }
+  },
+  // Add caching options
+  db: {
+    schema: 'public'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
     }
   }
 });
 
-// Test connection
+// Test connection but don't block rendering
 supabase.from('user_profiles').select('count', { count: 'exact', head: true })
   .then(({ error }) => {
     if (error) {
