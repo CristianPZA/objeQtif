@@ -14,6 +14,25 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
   onCreateObjectives,
   onEditObjectives
 }) => {
+  // Déterminer si des objectifs personnalisés sont présents
+  const hasCustomObjectives = collaboration.objectifs?.objectifs?.some((obj: any) => obj.is_custom === true);
+  
+  // Compter les objectifs par type
+  const countObjectivesByType = () => {
+    if (!collaboration.objectifs?.objectifs) return { custom: 0, career: 0 };
+    
+    return collaboration.objectifs.objectifs.reduce((acc: {custom: number, career: number}, obj: any) => {
+      if (obj.is_custom) {
+        acc.custom += 1;
+      } else {
+        acc.career += 1;
+      }
+      return acc;
+    }, { custom: 0, career: 0 });
+  };
+  
+  const objectiveCounts = countObjectivesByType();
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -48,13 +67,40 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
 
       {collaboration.objectifs ? (
         <div className="space-y-4">
+          {/* Résumé des objectifs */}
+          {(objectiveCounts.custom > 0 || objectiveCounts.career > 0) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <h3 className="text-sm font-medium text-blue-800 mb-2">Résumé de vos objectifs</h3>
+              <div className="flex flex-wrap gap-3">
+                {objectiveCounts.career > 0 && (
+                  <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                    {objectiveCounts.career} objectif{objectiveCounts.career > 1 ? 's' : ''} de carrière
+                  </div>
+                )}
+                {objectiveCounts.custom > 0 && (
+                  <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                    {objectiveCounts.custom} objectif{objectiveCounts.custom > 1 ? 's' : ''} personnalisé{objectiveCounts.custom > 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {collaboration.objectifs.objectifs.map((objective: any, index: number) => (
-            <div key={index} className="bg-gray-50 rounded-lg p-4 border">
+            <div 
+              key={index} 
+              className={`bg-gray-50 rounded-lg p-4 border ${objective.is_custom ? 'border-purple-200' : 'border-blue-200'}`}
+            >
               <div className="mb-2">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
+                  <span className={`text-xs px-2 py-1 rounded ${objective.is_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-700'}`}>
                     {objective.theme_name || `Objectif ${index + 1}`}
                   </span>
+                  {objective.is_custom && (
+                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      Personnalisé
+                    </span>
+                  )}
                 </div>
                 <h4 className="font-medium text-gray-900">
                   {index + 1}. {objective.skill_description}

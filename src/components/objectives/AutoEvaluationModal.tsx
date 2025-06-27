@@ -12,6 +12,7 @@ interface ObjectiveDetail {
   achievable: string;
   relevant: string;
   time_bound: string;
+  is_custom?: boolean;
 }
 
 interface AutoEvaluationData {
@@ -182,12 +183,17 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
               const evaluation = evaluations[index];
               
               return (
-                <div key={objective.skill_id} className="border border-gray-200 rounded-lg p-6">
+                <div key={objective.skill_id} className={`border rounded-lg p-6 ${objective.is_custom ? 'border-purple-200' : 'border-gray-200'}`}>
                   <div className="mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      <span className={`text-xs px-2 py-1 rounded ${objective.is_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
                         {objective.theme_name}
                       </span>
+                      {objective.is_custom && (
+                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                          Personnalisé
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       {index + 1}. {objective.skill_description}

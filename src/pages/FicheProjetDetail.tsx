@@ -17,7 +17,7 @@ import { fr } from 'date-fns/locale';
 import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
 import ObjectivesTab from '../components/evaluation/ObjectivesTab';
 import EvaluationTab from '../components/evaluation/EvaluationTab';
-import ObjectivesFormModal from '../components/evaluation/ObjectivesFormModal';
+import CustomObjectiveForm from '../components/objectives/CustomObjectiveForm';
 
 interface ProjectCollaboration {
   id: string;
@@ -66,6 +66,7 @@ interface ObjectiveDetail {
   achievable: string;
   relevant: string;
   time_bound: string;
+  is_custom?: boolean;
 }
 
 const FicheProjetDetail = () => {
@@ -79,11 +80,7 @@ const FicheProjetDetail = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showObjectivesForm, setShowObjectivesForm] = useState(false);
   const [showAutoEvaluationModal, setShowAutoEvaluationModal] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'objectives' | 'evaluation'>('objectives');
-
-  // Form state pour les objectifs
-  const [objectivesForm, setObjectivesForm] = useState<ObjectiveDetail[]>([]);
 
   useEffect(() => {
     if (collaborationId) {
@@ -155,11 +152,6 @@ const FicheProjetDetail = () => {
       };
 
       setCollaboration(enrichedCollaboration);
-
-      // Initialiser le formulaire d'objectifs si ils existent
-      if (objectifsData && objectifsData.objectifs) {
-        setObjectivesForm(objectifsData.objectifs);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
     } finally {
@@ -168,83 +160,17 @@ const FicheProjetDetail = () => {
   };
 
   const handleCreateObjectives = () => {
-    // Initialiser avec 4 objectifs vides
-    const emptyObjectives: ObjectiveDetail[] = Array.from({ length: 4 }, (_, index) => ({
-      skill_id: `temp_${index}`,
-      skill_description: '',
-      theme_name: '',
-      smart_objective: '',
-      specific: '',
-      measurable: '',
-      achievable: '',
-      relevant: '',
-      time_bound: ''
-    }));
-    
-    setObjectivesForm(emptyObjectives);
     setShowObjectivesForm(true);
   };
 
   const handleEditObjectives = () => {
-    if (collaboration?.objectifs) {
-      setObjectivesForm(collaboration.objectifs.objectifs);
-      setShowObjectivesForm(true);
-    }
+    setShowObjectivesForm(true);
   };
 
-  const handleSaveObjectives = async () => {
-    if (!collaboration || !collaborationId) return;
-
-    // Validation
-    const isValid = objectivesForm.every(obj => 
-      obj.skill_description.trim() !== '' &&
-      obj.smart_objective.trim() !== '' &&
-      obj.specific.trim() !== '' &&
-      obj.measurable.trim() !== '' &&
-      obj.achievable.trim() !== '' &&
-      obj.relevant.trim() !== '' &&
-      obj.time_bound.trim() !== ''
-    );
-
-    if (!isValid) {
-      setError('Veuillez remplir tous les champs pour chaque objectif');
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      if (collaboration.objectifs) {
-        // Mettre à jour les objectifs existants
-        const { error } = await supabase
-          .from('objectifs_collaborateurs')
-          .update({
-            objectifs: objectivesForm
-          })
-          .eq('id', collaboration.objectifs.id);
-
-        if (error) throw error;
-      } else {
-        // Créer de nouveaux objectifs
-        const { error } = await supabase
-          .from('objectifs_collaborateurs')
-          .insert([{
-            collaboration_id: collaborationId,
-            objectifs: objectivesForm
-          }]);
-
-        if (error) throw error;
-      }
-
-      setSuccess('Objectifs sauvegardés avec succès');
-      setShowObjectivesForm(false);
-      fetchCollaborationDetail();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleObjectivesSaved = () => {
+    setShowObjectivesForm(false);
+    setSuccess('Objectifs sauvegardés avec succès');
+    fetchCollaborationDetail();
   };
 
   const handleStartAutoEvaluation = () => {
@@ -255,14 +181,6 @@ const FicheProjetDetail = () => {
     setShowAutoEvaluationModal(false);
     setSuccess('Auto-évaluation soumise avec succès');
     fetchCollaborationDetail();
-  };
-
-  const updateObjective = (index: number, field: keyof ObjectiveDetail, value: string) => {
-    setObjectivesForm(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
   };
 
   const getStatutColor = (statut: string) => {
@@ -561,13 +479,15 @@ const FicheProjetDetail = () => {
 
       {/* Modal de définition des objectifs */}
       {showObjectivesForm && (
-        <ObjectivesFormModal
+        <CustomObjectiveForm
           collaboration={collaboration}
-          objectivesForm={objectivesForm}
-          submitting={submitting}
-          onUpdateObjective={updateObjective}
-          onSave={handleSaveObjectives}
+          existingObjectives={collaboration.objectifs?.objectifs || null}
           onClose={() => setShowObjectivesForm(false)}
+          onSuccess={handleObjectivesSaved}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
         />
       )}
 
