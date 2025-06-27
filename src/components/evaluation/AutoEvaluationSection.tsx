@@ -2,6 +2,7 @@ import React from 'react';
 import { Star, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface AutoEvaluationSectionProps {
   collaboration: any;
@@ -14,6 +15,8 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
   onStartAutoEvaluation,
   canAutoEvaluate
 }) => {
+  const { t } = useTranslation();
+  
   const getScoreStars = (score: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star 
@@ -31,8 +34,8 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
             <Star className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-blue-900">Auto-évaluation</h3>
-            <p className="text-sm text-blue-700">Évaluez l'atteinte de vos objectifs</p>
+            <h3 className="text-lg font-semibold text-blue-900">{t('evaluation.selfEvaluation')}</h3>
+            <p className="text-sm text-blue-700">{t('evaluation.evaluateObjectivesAchievement')}</p>
           </div>
         </div>
         {canAutoEvaluate && (
@@ -41,7 +44,7 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
           >
             <Star className="w-4 h-4" />
-            Commencer
+            {t('evaluation.start')}
           </button>
         )}
       </div>
@@ -51,9 +54,9 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600" />
             <div>
-              <h4 className="text-sm font-medium text-yellow-800">Objectifs requis</h4>
+              <h4 className="text-sm font-medium text-yellow-800">{t('evaluation.objectivesRequired')}</h4>
               <p className="text-sm text-yellow-700 mt-1">
-                Vous devez d'abord définir vos objectifs de développement.
+                {t('evaluation.defineObjectivesFirst')}
               </p>
             </div>
           </div>
@@ -64,9 +67,9 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
             <div className="flex items-center gap-3">
               <CheckCircle className="w-5 h-5 text-green-600" />
               <div>
-                <h4 className="text-sm font-medium text-green-800">Auto-évaluation complétée</h4>
+                <h4 className="text-sm font-medium text-green-800">{t('evaluation.selfEvaluationCompleted')}</h4>
                 <p className="text-sm text-green-700 mt-1">
-                  Soumise le {format(new Date(collaboration.evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+                  {t('evaluation.submittedOn')} {format(new Date(collaboration.evaluation.date_soumission), 'dd/MM/yyyy à HH:mm', { locale: fr })}
                 </p>
               </div>
             </div>
@@ -75,7 +78,7 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
           {/* Résultats de l'auto-évaluation */}
           {collaboration.evaluation.auto_evaluation.evaluations && (
             <div className="space-y-3">
-              <h4 className="font-medium text-blue-900">Vos résultats</h4>
+              <h4 className="font-medium text-blue-900">{t('evaluation.yourResults')}</h4>
               {collaboration.evaluation.auto_evaluation.evaluations.map((evalItem: any, index: number) => {
                 const objective = collaboration.objectifs?.objectifs[index];
                 return (
@@ -93,11 +96,11 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
                     </div>
                     <div className="space-y-2 text-sm">
                       <div>
-                        <strong className="text-gray-600">Commentaire:</strong>
+                        <strong className="text-gray-600">{t('evaluation.comment')}:</strong>
                         <p className="text-gray-700 mt-1">{evalItem.auto_evaluation_comment}</p>
                       </div>
                       <div>
-                        <strong className="text-gray-600">Réalisations:</strong>
+                        <strong className="text-gray-600">{t('evaluation.achievements')}:</strong>
                         <p className="text-gray-700 mt-1">{evalItem.achievements}</p>
                       </div>
                     </div>
@@ -112,9 +115,9 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-orange-600" />
             <div>
-              <h4 className="text-sm font-medium text-orange-800">Auto-évaluation requise</h4>
+              <h4 className="text-sm font-medium text-orange-800">{t('evaluation.selfEvaluationRequired')}</h4>
               <p className="text-sm text-orange-700 mt-1">
-                Le projet est terminé. Vous pouvez maintenant évaluer vos objectifs.
+                {t('evaluation.projectCompletedEvaluate')}
               </p>
             </div>
           </div>
@@ -124,9 +127,9 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
           <div className="flex items-center gap-3">
             <Clock className="w-5 h-5 text-gray-600" />
             <div>
-              <h4 className="text-sm font-medium text-gray-800">En attente de la fin du projet</h4>
+              <h4 className="text-sm font-medium text-gray-800">{t('evaluation.waitingForProjectEnd')}</h4>
               <p className="text-sm text-gray-700 mt-1">
-                L'auto-évaluation sera disponible une fois le projet terminé.
+                {t('evaluation.evaluationAvailableWhenCompleted')}
               </p>
             </div>
           </div>

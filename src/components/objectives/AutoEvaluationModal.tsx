@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Save, Target, Star, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Save, Target, Star, CheckCircle, AlertCircle, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 interface ObjectiveDetail {
   skill_id: string;
@@ -40,6 +41,7 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
   onSuccess,
   onError
 }) => {
+  const { t } = useTranslation();
   const [evaluations, setEvaluations] = useState<AutoEvaluationData[]>(
     objectives.map(obj => ({
       skill_id: obj.skill_id,
@@ -71,7 +73,7 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
 
   const handleSubmit = async () => {
     if (!validateEvaluations()) {
-      onError('Veuillez remplir tous les champs obligatoires pour chaque objectif');
+      onError(t('evaluation.fillRequiredFields'));
       return;
     }
 
@@ -117,7 +119,7 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
 
       onSuccess();
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Erreur lors de la soumission de l\'auto-évaluation');
+      onError(err instanceof Error ? err.message : t('evaluation.errorSubmitting'));
     } finally {
       setSubmitting(false);
     }
@@ -125,12 +127,12 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
 
   const getScoreLabel = (score: number) => {
     switch (score) {
-      case 1: return 'Non atteint';
-      case 2: return 'Partiellement atteint';
-      case 3: return 'Atteint';
-      case 4: return 'Largement atteint';
-      case 5: return 'Dépassé';
-      default: return 'Atteint';
+      case 1: return t('evaluation.scores.notAchieved');
+      case 2: return t('evaluation.scores.partiallyAchieved');
+      case 3: return t('evaluation.scores.achieved');
+      case 4: return t('evaluation.scores.largelyAchieved');
+      case 5: return t('evaluation.scores.exceeded');
+      default: return t('evaluation.scores.achieved');
     }
   };
 
@@ -150,9 +152,9 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
       <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Auto-évaluation des objectifs</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t('evaluation.selfEvaluation')}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Projet: {collaboration.projet.titre} - {collaboration.projet.nom_client}
+              {t('projects.project')}: {collaboration.projet.titre} - {collaboration.projet.nom_client}
             </p>
           </div>
           <button
@@ -168,11 +170,9 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
             <div className="flex items-start gap-3">
               <Target className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="text-sm font-medium text-blue-800">Instructions</h3>
+                <h3 className="text-sm font-medium text-blue-800">{t('evaluation.selfEvaluationInstructions')}</h3>
                 <p className="text-sm text-blue-700 mt-1">
-                  Évaluez chacun de vos objectifs en indiquant votre niveau d'atteinte, vos réalisations, 
-                  les difficultés rencontrées et vos apprentissages. Cette auto-évaluation sera ensuite 
-                  revue par votre référent projet et votre coach.
+                  {t('evaluation.evaluateEachObjective')}
                 </p>
               </div>
             </div>
@@ -185,22 +185,17 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
               return (
                 <div key={objective.skill_id} className={`border rounded-lg p-6 ${objective.is_custom ? 'border-purple-200' : 'border-gray-200'}`}>
                   <div className="mb-6">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-1">
                       <span className={`text-xs px-2 py-1 rounded ${objective.is_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'}`}>
                         {objective.theme_name}
                       </span>
-                      {objective.is_custom && (
-                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                          Personnalisé
-                        </span>
-                      )}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       {index + 1}. {objective.skill_description}
                     </h3>
                     <div className="bg-gray-50 rounded-lg p-4">
                       <p className="text-sm text-gray-700">
-                        <strong>Objectif SMART défini:</strong> {objective.smart_objective}
+                        <strong>{t('objectives.smartObjective')}:</strong> {objective.smart_objective}
                       </p>
                     </div>
                   </div>
@@ -209,7 +204,7 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
                     {/* Score d'auto-évaluation */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Niveau d'atteinte de l'objectif *
+                        {t('evaluation.achievementLevel')} *
                       </label>
                       <div className="grid grid-cols-5 gap-2">
                         {[1, 2, 3, 4, 5].map((score) => (
@@ -241,13 +236,13 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
                     {/* Commentaire sur l'évaluation */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Commentaire sur votre évaluation *
+                        {t('evaluation.evaluationComment')} *
                       </label>
                       <textarea
                         rows={3}
                         value={evaluation.auto_evaluation_comment}
                         onChange={(e) => handleEvaluationChange(index, 'auto_evaluation_comment', e.target.value)}
-                        placeholder="Expliquez pourquoi vous vous attribuez cette note..."
+                        placeholder={t('evaluation.evaluationComment')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -255,13 +250,13 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
                     {/* Réalisations */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Principales réalisations *
+                        {t('evaluation.mainAchievements')} *
                       </label>
                       <textarea
                         rows={3}
                         value={evaluation.achievements}
                         onChange={(e) => handleEvaluationChange(index, 'achievements', e.target.value)}
-                        placeholder="Décrivez vos principales réalisations pour cet objectif..."
+                        placeholder={t('evaluation.mainAchievements')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -269,13 +264,13 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
                     {/* Difficultés rencontrées */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Difficultés rencontrées
+                        {t('evaluation.difficultiesEncountered')}
                       </label>
                       <textarea
                         rows={2}
                         value={evaluation.difficulties}
                         onChange={(e) => handleEvaluationChange(index, 'difficulties', e.target.value)}
-                        placeholder="Quelles difficultés avez-vous rencontrées ?"
+                        placeholder={t('evaluation.difficultiesEncountered')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -283,13 +278,13 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
                     {/* Apprentissages */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Principaux apprentissages *
+                        {t('evaluation.mainLearnings')} *
                       </label>
                       <textarea
                         rows={3}
                         value={evaluation.learnings}
                         onChange={(e) => handleEvaluationChange(index, 'learnings', e.target.value)}
-                        placeholder="Qu'avez-vous appris en travaillant sur cet objectif ?"
+                        placeholder={t('evaluation.mainLearnings')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -297,13 +292,13 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
                     {/* Prochaines étapes */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Prochaines étapes pour continuer à développer cette compétence
+                        {t('evaluation.nextSteps')}
                       </label>
                       <textarea
                         rows={2}
                         value={evaluation.next_steps}
                         onChange={(e) => handleEvaluationChange(index, 'next_steps', e.target.value)}
-                        placeholder="Comment comptez-vous continuer à développer cette compétence ?"
+                        placeholder={t('evaluation.nextSteps')}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
@@ -319,7 +314,7 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
             >
-              Annuler
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSubmit}
@@ -327,7 +322,7 @@ const AutoEvaluationModal: React.FC<AutoEvaluationModalProps> = ({
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
-              {submitting ? 'Soumission...' : 'Soumettre l\'auto-évaluation'}
+              {submitting ? t('common.loading') : t('evaluation.submitEvaluation')}
             </button>
           </div>
         </div>

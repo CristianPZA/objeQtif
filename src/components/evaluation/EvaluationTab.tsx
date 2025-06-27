@@ -3,6 +3,7 @@ import { Award } from 'lucide-react';
 import AutoEvaluationSection from './AutoEvaluationSection';
 import ReferentEvaluationSection from './ReferentEvaluationSection';
 import EvaluationSummary from './EvaluationSummary';
+import { useTranslation } from 'react-i18next';
 
 interface EvaluationTabProps {
   collaboration: any;
@@ -15,12 +16,14 @@ const EvaluationTab: React.FC<EvaluationTabProps> = ({
   canAutoEvaluate,
   onStartAutoEvaluation
 }) => {
+  const { t } = useTranslation();
+  
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Evaluation</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('evaluation.evaluation')}</h2>
         <p className="text-sm text-gray-600">
-          Suivez le processus d'évaluation de vos objectifs
+          {t('evaluation.followEvaluationProcess')}
         </p>
       </div>
 

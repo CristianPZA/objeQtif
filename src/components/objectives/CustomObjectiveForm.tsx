@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Save, Target, Trash2, BookOpen, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 interface ObjectiveDetail {
   skill_id: string;
@@ -41,6 +42,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
   onSuccess,
   onError
 }) => {
+  const { t } = useTranslation();
   const [objectives, setObjectives] = useState<ObjectiveDetail[]>(existingObjectives || []);
   const [availableSkills, setAvailableSkills] = useState<PathwaySkill[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,7 +63,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non connecté');
+      if (!user) throw new Error(t('common.error'));
 
       const { data, error } = await supabase
         .from('user_profiles')
@@ -79,7 +81,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
       if (error) throw error;
       setUserProfile(data);
     } catch (err) {
-      onError('Erreur lors du chargement du profil utilisateur');
+      onError(t('objectives.errorLoadingProfile'));
     } finally {
       setLoading(false);
     }
@@ -103,7 +105,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
 
       if (themeIds.length === 0) {
         setAvailableSkills([]);
-        onError('Aucun thème de développement trouvé pour ce parcours de carrière');
+        onError(t('objectives.noThemesFound'));
         return;
       }
 
@@ -130,11 +132,11 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
       setAvailableSkills(validSkills);
       
       if (validSkills.length === 0) {
-        onError('Aucune compétence trouvée pour ce niveau et ce parcours de carrière');
+        onError(t('objectives.noSkillsFound'));
       }
     } catch (err) {
       console.error('Error fetching skills:', err);
-      onError('Erreur lors du chargement des compétences');
+      onError(t('objectives.errorLoadingSkills'));
     } finally {
       setLoading(false);
     }
@@ -144,14 +146,14 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     // Vérifier si cette compétence est déjà dans les objectifs
     const exists = objectives.some(obj => obj.skill_id === skill.id);
     if (exists) {
-      onError('Cette compétence est déjà dans vos objectifs');
+      onError(t('objectives.skillAlreadyAdded'));
       return;
     }
 
     const newObjective: ObjectiveDetail = {
       skill_id: skill.id,
       skill_description: skill.skill_description,
-      theme_name: skill.development_theme?.name || 'Thème non défini',
+      theme_name: skill.development_theme?.name || t('objectives.undefinedTheme'),
       smart_objective: '',
       specific: '',
       measurable: '',
@@ -168,7 +170,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     const newObjective: ObjectiveDetail = {
       skill_id: `custom_${Date.now()}`,
       skill_description: '',
-      theme_name: 'Objectif personnalisé',
+      theme_name: t('objectives.customObjective'),
       smart_objective: '',
       specific: '',
       measurable: '',
@@ -207,12 +209,12 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
 
   const handleSubmit = async () => {
     if (!validateObjectives()) {
-      onError('Veuillez remplir tous les champs pour chaque objectif');
+      onError(t('objectives.fillAllFields'));
       return;
     }
 
     if (objectives.length === 0) {
-      onError('Veuillez ajouter au moins un objectif');
+      onError(t('objectives.addAtLeastOne'));
       return;
     }
 
@@ -244,7 +246,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
 
       onSuccess();
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde des objectifs');
+      onError(err instanceof Error ? err.message : t('objectives.errorSavingObjectives'));
     } finally {
       setSubmitting(false);
       setLoading(false);
@@ -257,10 +259,10 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
         <div className="p-6 border-b flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              {existingObjectives ? 'Modifier mes objectifs' : 'Définir mes objectifs'}
+              {existingObjectives ? t('objectives.editObjectives') : t('objectives.defineObjectives')}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Définissez vos objectifs SMART pour ce projet
+              {t('objectives.defineSMARTObjectives')}
             </p>
           </div>
           <button
@@ -284,14 +286,14 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                   <div className="flex items-center gap-3 mb-2">
                     <BookOpen className="w-5 h-5 text-blue-600" />
                     <div>
-                      <h3 className="text-sm font-medium text-blue-800">Votre parcours de carrière</h3>
+                      <h3 className="text-sm font-medium text-blue-800">{t('objectives.yourCareerPathway')}</h3>
                       <p className="text-sm text-blue-700">
-                        {userProfile.career_pathway.name} - Niveau: {userProfile.career_level.name}
+                        {userProfile.career_pathway.name} - {t('annualObjectives.careerLevel')}: {userProfile.career_level.name}
                       </p>
                     </div>
                   </div>
                   <p className="text-sm text-blue-700">
-                    Vous pouvez sélectionner des compétences de votre parcours de carrière ou créer des objectifs personnalisés.
+                    {t('objectives.careerPathwayInfo')}
                   </p>
                 </div>
               )}
@@ -300,7 +302,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Vos objectifs ({objectives.length})
+                    {t('objectives.myDevelopmentObjectives')} ({objectives.length})
                   </h3>
                   <div className="flex gap-2">
                     <button
@@ -308,7 +310,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                       className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm flex items-center gap-1"
                     >
                       <Plus className="w-4 h-4" />
-                      Ajouter un objectif personnalisé
+                      {t('objectives.addCustomObjective')}
                     </button>
                   </div>
                 </div>
@@ -316,9 +318,9 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                 {objectives.length === 0 ? (
                   <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                     <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-gray-600">Aucun objectif défini</p>
+                    <p className="text-gray-600">{t('objectives.noObjectivesDefined')}</p>
                     <p className="text-sm text-gray-500 mt-2">
-                      Ajoutez des objectifs depuis votre parcours de carrière ou créez des objectifs personnalisés
+                      {t('objectives.addObjectivesInfo')}
                     </p>
                   </div>
                 ) : (
@@ -333,7 +335,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                               </span>
                               {objective.is_custom && (
                                 <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                  Personnalisé
+                                  {t('objectives.customized')}
                                 </span>
                               )}
                             </div>
@@ -341,7 +343,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                             {objective.is_custom ? (
                               <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Compétence à développer *
+                                  {t('objectives.skillToImprove')} *
                                 </label>
                                 <input
                                   type="text"
@@ -368,13 +370,13 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                         <div className="space-y-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Objectif SMART *
+                              {t('objectives.smartObjective')} *
                             </label>
                             <textarea
                               rows={3}
                               value={objective.smart_objective}
                               onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
-                              placeholder="Décrivez votre objectif de développement..."
+                              placeholder={t('objectives.smartObjective')}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
                           </div>
@@ -382,49 +384,49 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Spécifique (S) *
+                                {t('objectives.specific')} *
                               </label>
                               <textarea
                                 rows={2}
                                 value={objective.specific}
                                 onChange={(e) => updateObjective(index, 'specific', e.target.value)}
-                                placeholder="Que voulez-vous accomplir exactement ?"
+                                placeholder={t('objectives.specific')}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                               />
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Mesurable (M) *
+                                {t('objectives.measurable')} *
                               </label>
                               <textarea
                                 rows={2}
                                 value={objective.measurable}
                                 onChange={(e) => updateObjective(index, 'measurable', e.target.value)}
-                                placeholder="Comment allez-vous mesurer votre progression ?"
+                                placeholder={t('objectives.measurable')}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                               />
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Atteignable (A) *
+                                {t('objectives.achievable')} *
                               </label>
                               <textarea
                                 rows={2}
                                 value={objective.achievable}
                                 onChange={(e) => updateObjective(index, 'achievable', e.target.value)}
-                                placeholder="Pourquoi cet objectif est-il réalisable ?"
+                                placeholder={t('objectives.achievable')}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                               />
                             </div>
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Pertinent (R) *
+                                {t('objectives.relevant')} *
                               </label>
                               <textarea
                                 rows={2}
                                 value={objective.relevant}
                                 onChange={(e) => updateObjective(index, 'relevant', e.target.value)}
-                                placeholder="En quoi cet objectif est-il important ?"
+                                placeholder={t('objectives.relevant')}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                               />
                             </div>
@@ -432,13 +434,13 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Temporellement défini (T) *
+                              {t('objectives.timeBound')} *
                             </label>
                             <textarea
                               rows={2}
                               value={objective.time_bound}
                               onChange={(e) => updateObjective(index, 'time_bound', e.target.value)}
-                              placeholder="Quelle est l'échéance pour atteindre cet objectif ?"
+                              placeholder={t('objectives.timeBound')}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
                           </div>
@@ -453,7 +455,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
               {userProfile?.career_pathway && availableSkills.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Compétences disponibles de votre parcours de carrière
+                    {t('objectives.availableSkills')}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {availableSkills.map((skill) => {
@@ -478,7 +480,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                               <h4 className="font-medium text-gray-900 mb-2">{skill.skill_description}</h4>
                               {skill.examples && (
                                 <p className="text-sm text-gray-600 mb-1">
-                                  <strong>Exemples:</strong> {skill.examples}
+                                  <strong>{t('common.examples')}:</strong> {skill.examples}
                                 </p>
                               )}
                             </div>
@@ -491,7 +493,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                                   : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
                               }`}
                             >
-                              {isAlreadySelected ? 'Ajouté' : 'Ajouter'}
+                              {isAlreadySelected ? t('objectives.alreadySelected') : t('objectives.add')}
                             </button>
                           </div>
                         </div>
@@ -507,7 +509,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                   onClick={onClose}
                   className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  Annuler
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleSubmit}
@@ -515,7 +517,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  {submitting ? 'Sauvegarde...' : 'Sauvegarder les objectifs'}
+                  {submitting ? t('common.loading') : t('objectives.saveObjectives')}
                 </button>
               </div>
             </div>

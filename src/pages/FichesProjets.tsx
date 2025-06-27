@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface ProjectCollaboration {
   id: string;
@@ -58,6 +59,7 @@ interface ProjectCollaboration {
 const FichesProjets = () => {
   const navigate = useNavigate();
   const { userCountry } = useAuth();
+  const { t } = useTranslation();
   const [collaborations, setCollaborations] = useState<ProjectCollaboration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +74,7 @@ const FichesProjets = () => {
       setLoading(true);
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non connecté');
+      if (!user) throw new Error(t('common.notLoggedIn'));
 
       setCurrentUserId(user.id);
 
@@ -126,8 +128,8 @@ const FichesProjets = () => {
             ...collaboration,
             projet: {
               ...collaboration.projet,
-              referent_nom: collaboration.projet.referent_nom?.full_name || 'Non défini',
-              auteur_nom: collaboration.projet.auteur_nom?.full_name || 'Non défini'
+              referent_nom: collaboration.projet.referent_nom?.full_name || t('common.undefined'),
+              auteur_nom: collaboration.projet.auteur_nom?.full_name || t('common.undefined')
             },
             objectifs: objectifsData,
             evaluation: evaluationData
@@ -137,7 +139,7 @@ const FichesProjets = () => {
 
       setCollaborations(enrichedCollaborations);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
       setLoading(false);
     }
@@ -166,13 +168,13 @@ const FichesProjets = () => {
   const getStatutLabel = (statut: string) => {
     switch (statut) {
       case 'en_cours':
-        return 'En cours';
+        return t('projects.statuses.inProgress');
       case 'termine':
-        return 'Terminé';
+        return t('projects.statuses.completed');
       case 'suspendu':
-        return 'Suspendu';
+        return t('projects.statuses.suspended');
       case 'annule':
-        return 'Annulé';
+        return t('projects.statuses.cancelled');
       default:
         return statut;
     }
@@ -196,13 +198,13 @@ const FichesProjets = () => {
   const getPrioriteLabel = (priorite: string) => {
     switch (priorite) {
       case 'basse':
-        return 'Basse';
+        return t('projects.priorities.low');
       case 'normale':
-        return 'Normale';
+        return t('projects.priorities.normal');
       case 'haute':
-        return 'Haute';
+        return t('projects.priorities.high');
       case 'urgente':
-        return 'Urgente';
+        return t('projects.priorities.urgent');
       default:
         return priorite;
     }
@@ -210,28 +212,28 @@ const FichesProjets = () => {
 
   const getObjectifsStatus = (collaboration: ProjectCollaboration) => {
     if (!collaboration.objectifs) {
-      return { status: 'not_defined', label: 'Objectifs à définir', color: 'bg-gray-100 text-gray-800', icon: Clock };
+      return { status: 'not_defined', label: t('projectSheets.objectivesStatus.notDefined'), color: 'bg-gray-100 text-gray-800', icon: Clock };
     }
     
     if (!collaboration.evaluation) {
-      return { status: 'to_evaluate', label: 'Auto-évaluation à faire', color: 'bg-orange-100 text-orange-800', icon: AlertTriangle };
+      return { status: 'to_evaluate', label: t('projectSheets.objectivesStatus.toEvaluate'), color: 'bg-orange-100 text-orange-800', icon: AlertTriangle };
     }
 
     switch (collaboration.evaluation.statut) {
       case 'brouillon':
-        return { status: 'draft', label: 'Brouillon', color: 'bg-gray-100 text-gray-800', icon: Clock };
+        return { status: 'draft', label: t('projectSheets.objectivesStatus.draft'), color: 'bg-gray-100 text-gray-800', icon: Clock };
       case 'soumise':
-        return { status: 'submitted', label: 'Soumise', color: 'bg-blue-100 text-blue-800', icon: Clock };
+        return { status: 'submitted', label: t('projectSheets.objectivesStatus.submitted'), color: 'bg-blue-100 text-blue-800', icon: Clock };
       case 'en_attente_referent':
-        return { status: 'waiting_referent', label: 'En attente référent', color: 'bg-yellow-100 text-yellow-800', icon: Clock };
+        return { status: 'waiting_referent', label: t('projectSheets.objectivesStatus.waitingReferent'), color: 'bg-yellow-100 text-yellow-800', icon: Clock };
       case 'evaluee_referent':
-        return { status: 'evaluated_referent', label: 'Évaluée par référent', color: 'bg-purple-100 text-purple-800', icon: CheckCircle };
+        return { status: 'evaluated_referent', label: t('projectSheets.objectivesStatus.evaluatedReferent'), color: 'bg-purple-100 text-purple-800', icon: CheckCircle };
       case 'finalisee':
-        return { status: 'finalized', label: 'Finalisée', color: 'bg-green-100 text-green-800', icon: CheckCircle };
+        return { status: 'finalized', label: t('projectSheets.objectivesStatus.finalized'), color: 'bg-green-100 text-green-800', icon: CheckCircle };
       case 'rejetee':
-        return { status: 'rejected', label: 'Rejetée', color: 'bg-red-100 text-red-800', icon: AlertTriangle };
+        return { status: 'rejected', label: t('projectSheets.objectivesStatus.rejected'), color: 'bg-red-100 text-red-800', icon: AlertTriangle };
       default:
-        return { status: 'unknown', label: 'Statut inconnu', color: 'bg-gray-100 text-gray-800', icon: Clock };
+        return { status: 'unknown', label: t('projectSheets.objectivesStatus.unknown'), color: 'bg-gray-100 text-gray-800', icon: Clock };
     }
   };
 
@@ -248,14 +250,14 @@ const FichesProjets = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Fiche Projet</h1>
-          <p className="text-gray-600 mt-1">Gérez vos objectifs et auto-évaluations pour chaque projet</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('projectSheets.title')}</h1>
+          <p className="text-gray-600 mt-1">{t('projectSheets.subtitle')}</p>
         </div>
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
           <div className="flex items-center gap-2">
             <Flag className="w-4 h-4 text-blue-600" />
             <span className="text-sm font-medium text-blue-800">
-              {userCountry === 'france' ? '🇫🇷 France' : '🇪🇸 Espagne'}
+              {userCountry === 'france' ? '🇫🇷 ' + t('common.france') : '🇪🇸 ' + t('common.spain')}
             </span>
           </div>
         </div>
@@ -276,7 +278,7 @@ const FichesProjets = () => {
               <Target className="w-5 h-5 text-indigo-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Projets assignés</p>
+              <p className="text-sm font-medium text-gray-600">{t('projectSheets.assignedProjects')}</p>
               <p className="text-2xl font-bold text-gray-900">{collaborations.length}</p>
             </div>
           </div>
@@ -288,7 +290,7 @@ const FichesProjets = () => {
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Projets terminés</p>
+              <p className="text-sm font-medium text-gray-600">{t('projectSheets.completedProjects')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {collaborations.filter(c => c.projet.statut === 'termine').length}
               </p>
@@ -302,7 +304,7 @@ const FichesProjets = () => {
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">En cours</p>
+              <p className="text-sm font-medium text-gray-600">{t('projectSheets.inProgress')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {collaborations.filter(c => c.projet.statut === 'en_cours').length}
               </p>
@@ -316,7 +318,7 @@ const FichesProjets = () => {
               <AlertTriangle className="w-5 h-5 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">À évaluer</p>
+              <p className="text-sm font-medium text-gray-600">{t('projectSheets.toEvaluate')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {collaborations.filter(c => {
                   const status = getObjectifsStatus(c);
@@ -350,7 +352,7 @@ const FichesProjets = () => {
                       </h3>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">
-                      <strong>Client:</strong> {collaboration.projet.nom_client}
+                      <strong>{t('projectSheets.client')}:</strong> {collaboration.projet.nom_client}
                     </p>
                     <div className="flex items-center gap-2 mb-3">
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatutColor(collaboration.projet.statut)}`}>
@@ -371,24 +373,24 @@ const FichesProjets = () => {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4 flex-shrink-0" />
-                    <span>Début: {format(new Date(collaboration.projet.date_debut), 'dd/MM/yyyy', { locale: fr })}</span>
+                    <span>{t('projects.startDate')}: {format(new Date(collaboration.projet.date_debut), 'dd/MM/yyyy', { locale: fr })}</span>
                   </div>
                   
                   {collaboration.projet.date_fin_prevue && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="w-4 h-4 flex-shrink-0" />
-                      <span>Fin prévue: {format(new Date(collaboration.projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}</span>
+                      <span>{t('projects.endDate')}: {format(new Date(collaboration.projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}</span>
                     </div>
                   )}
                   
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <User className="w-4 h-4 flex-shrink-0" />
-                    <span>Référent: {collaboration.projet.referent_nom}</span>
+                    <span>{t('projectSheets.referent')}: {collaboration.projet.referent_nom}</span>
                   </div>
 
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Users className="w-4 h-4 flex-shrink-0" />
-                    <span>Rôle: {collaboration.role_projet}</span>
+                    <span>{t('projectSheets.role')}: {collaboration.role_projet}</span>
                   </div>
                 </div>
 
@@ -397,7 +399,7 @@ const FichesProjets = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <StatusIcon className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm font-medium text-gray-700">Objectifs:</span>
+                      <span className="text-sm font-medium text-gray-700">{t('projectSheets.objectives')}:</span>
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full ${objectifsStatus.color}`}>
                       {objectifsStatus.label}
@@ -407,7 +409,7 @@ const FichesProjets = () => {
                   {collaboration.objectifs && (
                     <div className="mt-2">
                       <div className="text-xs text-gray-500">
-                        {collaboration.objectifs.objectifs.length} objectif{collaboration.objectifs.objectifs.length > 1 ? 's' : ''} défini{collaboration.objectifs.objectifs.length > 1 ? 's' : ''}
+                        {collaboration.objectifs.objectifs.length} {t('projectSheets.objectives').toLowerCase()}{collaboration.objectifs.objectifs.length > 1 ? 's' : ''} {t('common.defined')}
                       </div>
                     </div>
                   )}
@@ -416,7 +418,7 @@ const FichesProjets = () => {
                 {/* Avancement du projet */}
                 <div className="mt-4">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-medium text-gray-600">Avancement</span>
+                    <span className="text-xs font-medium text-gray-600">{t('projectSheets.progress')}</span>
                     <span className="text-xs text-gray-600">{collaboration.projet.taux_avancement}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -432,7 +434,7 @@ const FichesProjets = () => {
                 {/* Call to action */}
                 <div className="mt-4 text-center">
                   <span className="text-xs text-indigo-600 font-medium">
-                    Cliquez pour gérer vos objectifs
+                    {t('projectSheets.clickToManage')}
                   </span>
                 </div>
               </div>
@@ -443,9 +445,9 @@ const FichesProjets = () => {
         {collaborations.length === 0 && (
           <div className="col-span-full text-center py-12">
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun projet assigné</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('projectSheets.noProjectsAssigned')}</h3>
             <p className="text-gray-600">
-              Vous n'êtes actuellement assigné à aucun projet. Contactez votre manager pour être ajouté à des projets.
+              {t('projectSheets.contactManager')}
             </p>
           </div>
         )}

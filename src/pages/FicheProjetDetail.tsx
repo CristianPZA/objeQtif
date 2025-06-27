@@ -18,6 +18,7 @@ import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
 import ObjectivesTab from '../components/evaluation/ObjectivesTab';
 import EvaluationTab from '../components/evaluation/EvaluationTab';
 import CustomObjectiveForm from '../components/objectives/CustomObjectiveForm';
+import { useTranslation } from 'react-i18next';
 
 interface ProjectCollaboration {
   id: string;
@@ -72,6 +73,7 @@ interface ObjectiveDetail {
 const FicheProjetDetail = () => {
   const { collaborationId } = useParams<{ collaborationId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   const [collaboration, setCollaboration] = useState<ProjectCollaboration | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,7 +95,7 @@ const FicheProjetDetail = () => {
       setLoading(true);
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non connecté');
+      if (!user) throw new Error(t('common.notLoggedIn'));
 
       setCurrentUserId(user.id);
 
@@ -144,8 +146,8 @@ const FicheProjetDetail = () => {
         ...collaborationData,
         projet: {
           ...collaborationData.projet,
-          referent_nom: collaborationData.projet.referent_nom?.full_name || 'Non défini',
-          auteur_nom: collaborationData.projet.auteur_nom?.full_name || 'Non défini'
+          referent_nom: collaborationData.projet.referent_nom?.full_name || t('common.undefined'),
+          auteur_nom: collaborationData.projet.auteur_nom?.full_name || t('common.undefined')
         },
         objectifs: objectifsData,
         evaluation: evaluationData
@@ -153,7 +155,7 @@ const FicheProjetDetail = () => {
 
       setCollaboration(enrichedCollaboration);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
       setLoading(false);
     }
@@ -169,7 +171,7 @@ const FicheProjetDetail = () => {
 
   const handleObjectivesSaved = () => {
     setShowObjectivesForm(false);
-    setSuccess('Objectifs sauvegardés avec succès');
+    setSuccess(t('objectives.objectivesSaved'));
     fetchCollaborationDetail();
   };
 
@@ -179,7 +181,7 @@ const FicheProjetDetail = () => {
 
   const handleAutoEvaluationSuccess = () => {
     setShowAutoEvaluationModal(false);
-    setSuccess('Auto-évaluation soumise avec succès');
+    setSuccess(t('evaluation.evaluationSubmitted'));
     fetchCollaborationDetail();
   };
 
@@ -201,13 +203,13 @@ const FicheProjetDetail = () => {
   const getStatutLabel = (statut: string) => {
     switch (statut) {
       case 'en_cours':
-        return 'En cours';
+        return t('projects.statuses.inProgress');
       case 'termine':
-        return 'Terminé';
+        return t('projects.statuses.completed');
       case 'suspendu':
-        return 'Suspendu';
+        return t('projects.statuses.suspended');
       case 'annule':
-        return 'Annulé';
+        return t('projects.statuses.cancelled');
       default:
         return statut;
     }
@@ -227,26 +229,26 @@ const FicheProjetDetail = () => {
   const getEvaluationStatusBadge = () => {
     if (!collaboration?.evaluation) {
       if (collaboration?.projet.statut === 'termine') {
-        return { text: 'À faire', color: 'bg-orange-100 text-orange-800' };
+        return { text: t('projectSheets.objectivesStatus.toEvaluate'), color: 'bg-orange-100 text-orange-800' };
       }
-      return { text: 'En attente', color: 'bg-gray-100 text-gray-800' };
+      return { text: t('common.waiting'), color: 'bg-gray-100 text-gray-800' };
     }
 
     switch (collaboration.evaluation.statut) {
       case 'brouillon':
-        return { text: 'Brouillon', color: 'bg-gray-100 text-gray-800' };
+        return { text: t('projectSheets.objectivesStatus.draft'), color: 'bg-gray-100 text-gray-800' };
       case 'soumise':
-        return { text: 'Soumise', color: 'bg-blue-100 text-blue-800' };
+        return { text: t('projectSheets.objectivesStatus.submitted'), color: 'bg-blue-100 text-blue-800' };
       case 'en_attente_referent':
-        return { text: 'En attente référent', color: 'bg-yellow-100 text-yellow-800' };
+        return { text: t('projectSheets.objectivesStatus.waitingReferent'), color: 'bg-yellow-100 text-yellow-800' };
       case 'evaluee_referent':
-        return { text: 'Évaluée par référent', color: 'bg-purple-100 text-purple-800' };
+        return { text: t('projectSheets.objectivesStatus.evaluatedReferent'), color: 'bg-purple-100 text-purple-800' };
       case 'finalisee':
-        return { text: 'Finalisée', color: 'bg-green-100 text-green-800' };
+        return { text: t('projectSheets.objectivesStatus.finalized'), color: 'bg-green-100 text-green-800' };
       case 'rejetee':
-        return { text: 'Rejetée', color: 'bg-red-100 text-red-800' };
+        return { text: t('projectSheets.objectivesStatus.rejected'), color: 'bg-red-100 text-red-800' };
       default:
-        return { text: 'Statut inconnu', color: 'bg-gray-100 text-gray-800' };
+        return { text: t('projectSheets.objectivesStatus.unknown'), color: 'bg-gray-100 text-gray-800' };
     }
   };
 
@@ -263,13 +265,13 @@ const FicheProjetDetail = () => {
       <div className="text-center py-12">
         <div className="bg-red-50 text-red-700 p-4 rounded-lg max-w-md mx-auto">
           <AlertTriangle className="mx-auto h-8 w-8 mb-2" />
-          <p className="font-medium">Erreur de chargement</p>
+          <p className="font-medium">{t('common.loadingError')}</p>
           <p className="text-sm mt-1">{error}</p>
           <button 
             onClick={() => navigate('/fiches-projets')}
             className="mt-4 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-md transition-colors text-sm"
           >
-            Retour aux fiches projets
+            {t('common.back')} {t('common.projectSheets').toLowerCase()}
           </button>
         </div>
       </div>
@@ -281,12 +283,12 @@ const FicheProjetDetail = () => {
       <div className="text-center py-12">
         <div className="bg-gray-50 text-gray-700 p-4 rounded-lg max-w-md mx-auto">
           <AlertTriangle className="mx-auto h-8 w-8 mb-2" />
-          <p className="font-medium">Fiche projet non trouvée</p>
+          <p className="font-medium">{t('projectSheets.projectSheetNotFound')}</p>
           <button 
             onClick={() => navigate('/fiches-projets')}
             className="mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors text-sm"
           >
-            Retour aux fiches projets
+            {t('common.back')} {t('common.projectSheets').toLowerCase()}
           </button>
         </div>
       </div>
@@ -305,7 +307,7 @@ const FicheProjetDetail = () => {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Retour aux fiches projets</span>
+            <span>{t('common.back')} {t('common.projectSheets').toLowerCase()}</span>
           </button>
         </div>
       </div>
@@ -331,7 +333,7 @@ const FicheProjetDetail = () => {
               <Building className="w-8 h-8 text-indigo-600" />
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">{collaboration.projet.titre}</h1>
-                <p className="text-lg text-gray-600 mt-1">Client: {collaboration.projet.nom_client}</p>
+                <p className="text-lg text-gray-600 mt-1">{t('projects.clientName')}: {collaboration.projet.nom_client}</p>
               </div>
             </div>
             
@@ -346,14 +348,14 @@ const FicheProjetDetail = () => {
           {collaboration.projet.statut === 'termine' && (
             <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 rounded-lg border border-green-200">
               <CheckCircle className="h-6 w-6" />
-              <span className="font-medium">Projet terminé</span>
+              <span className="font-medium">{t('projects.statuses.completed')}</span>
             </div>
           )}
         </div>
 
         {/* Description */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('common.description')}</h3>
           <p className="text-gray-700 leading-relaxed">{collaboration.projet.description}</p>
         </div>
 
@@ -362,7 +364,7 @@ const FicheProjetDetail = () => {
           <div className="flex items-center gap-3">
             <Calendar className="w-5 h-5 text-gray-400" />
             <div>
-              <p className="text-sm text-gray-600">Date de début</p>
+              <p className="text-sm text-gray-600">{t('projects.startDate')}</p>
               <p className="font-medium text-gray-900">
                 {format(new Date(collaboration.projet.date_debut), 'dd/MM/yyyy', { locale: fr })}
               </p>
@@ -373,7 +375,7 @@ const FicheProjetDetail = () => {
             <div className="flex items-center gap-3">
               <Calendar className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Date de fin prévue</p>
+                <p className="text-sm text-gray-600">{t('projects.endDate')}</p>
                 <p className="font-medium text-gray-900">
                   {format(new Date(collaboration.projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}
                 </p>
@@ -384,7 +386,7 @@ const FicheProjetDetail = () => {
           <div className="flex items-center gap-3">
             <User className="w-5 h-5 text-gray-400" />
             <div>
-              <p className="text-sm text-gray-600">Référent projet</p>
+              <p className="text-sm text-gray-600">{t('projectSheets.referent')}</p>
               <p className="font-medium text-gray-900">{collaboration.projet.referent_nom}</p>
             </div>
           </div>
@@ -392,7 +394,7 @@ const FicheProjetDetail = () => {
           <div className="flex items-center gap-3">
             <Users className="w-5 h-5 text-gray-400" />
             <div>
-              <p className="text-sm text-gray-600">Votre rôle</p>
+              <p className="text-sm text-gray-600">{t('projectSheets.role')}</p>
               <p className="font-medium text-gray-900">{collaboration.role_projet}</p>
             </div>
           </div>
@@ -401,7 +403,7 @@ const FicheProjetDetail = () => {
         {/* Avancement */}
         <div className="mt-6">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">Avancement du projet</span>
+            <span className="text-sm font-medium text-gray-700">{t('projectSheets.progress')}</span>
             <span className="text-sm text-gray-600">{collaboration.projet.taux_avancement}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
@@ -429,7 +431,7 @@ const FicheProjetDetail = () => {
             >
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5" />
-                Mes objectifs de développement
+                {t('objectives.myDevelopmentObjectives')}
                 {collaboration.objectifs && (
                   <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
                     {collaboration.objectifs.objectifs.length}
@@ -447,7 +449,7 @@ const FicheProjetDetail = () => {
             >
               <div className="flex items-center gap-2">
                 <Award className="w-5 h-5" />
-                Evaluation
+                {t('evaluation.evaluation')}
                 <span className={`text-xs px-2 py-1 rounded-full ${evaluationBadge.color}`}>
                   {evaluationBadge.text}
                 </span>
