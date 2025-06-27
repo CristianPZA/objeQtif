@@ -10,11 +10,14 @@ import {
   Settings,
   Briefcase,
   Users,
+  Flag
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const { userCountry } = useAuth();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
 
@@ -106,9 +109,16 @@ const Sidebar = () => {
     <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
       <div className="flex flex-col items-center mb-8">
         <h1 className="text-2xl font-bold mb-2">objeQtifs</h1>
-        <p className="text-sm text-gray-400">
-          {userRole === 'admin' ? 'Administrateur' : isCoach ? 'Coach' : 'Employé'}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-gray-400">
+            {userRole === 'admin' ? 'Administrateur' : isCoach ? 'Coach' : 'Employé'}
+          </p>
+          {userCountry && (
+            <span className="text-sm bg-gray-800 px-2 py-1 rounded">
+              {userCountry === 'france' ? '🇫🇷' : '🇪🇸'}
+            </span>
+          )}
+        </div>
       </div>
       
       <nav className="space-y-2">

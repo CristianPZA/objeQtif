@@ -10,11 +10,13 @@ import {
   AlertTriangle,
   ArrowRight,
   Users,
-  Star
+  Star,
+  Flag
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProjectCollaboration {
   id: string;
@@ -55,6 +57,7 @@ interface ProjectCollaboration {
 
 const FichesProjets = () => {
   const navigate = useNavigate();
+  const { userCountry } = useAuth();
   const [collaborations, setCollaborations] = useState<ProjectCollaboration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +65,7 @@ const FichesProjets = () => {
 
   useEffect(() => {
     fetchUserCollaborations();
-  }, []);
+  }, [userCountry]);
 
   const fetchUserCollaborations = async () => {
     try {
@@ -247,6 +250,14 @@ const FichesProjets = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Fiche Projet</h1>
           <p className="text-gray-600 mt-1">Gérez vos objectifs et auto-évaluations pour chaque projet</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+          <div className="flex items-center gap-2">
+            <Flag className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">
+              {userCountry === 'france' ? '🇫🇷 France' : '🇪🇸 Espagne'}
+            </span>
+          </div>
         </div>
       </div>
 

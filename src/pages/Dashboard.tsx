@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Bell, CheckCircle, AlertTriangle, Users, Star, Calendar, Target, Briefcase } from 'lucide-react';
+import { Bell, CheckCircle, AlertTriangle, Users, Star, Calendar, Target, Briefcase, Flag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface UserProfile {
   full_name: string | null;
   role: string | null;
   department: string | null;
   manager_id: string | null;
+  country: string | null;
 }
 
 interface ManagerProfile {
@@ -21,6 +23,7 @@ const DashboardContent = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [manager, setManager] = useState<ManagerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { userCountry } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,7 +43,7 @@ const DashboardContent = () => {
         // Query for the user's profile without the manager join to avoid recursion
         const { data: profileData, error: profileError } = await supabase
           .from('user_profiles')
-          .select('full_name, role, department, manager_id')
+          .select('full_name, role, department, manager_id, country')
           .eq('id', user.id)
           .limit(1);
 
@@ -93,9 +96,6 @@ const DashboardContent = () => {
   const getRoleDisplayName = (role: string) => {
     const roleMap = {
       'employe': 'Employé',
-      'referent_projet': 'Référent Projet',
-      'coach_rh': 'Coach RH',
-      'direction': 'Direction',
       'admin': 'Administrateur'
     };
     return roleMap[role as keyof typeof roleMap] || role;
@@ -115,9 +115,6 @@ const DashboardContent = () => {
 
     const roleMessages = {
       'employe': 'Prêt à atteindre vos objectifs aujourd\'hui ?',
-      'referent_projet': 'Vos projets vous attendent !',
-      'coach_rh': 'Accompagnez vos équipes vers le succès !',
-      'direction': 'Pilotez la stratégie de l\'entreprise !',
       'admin': 'Gérez et supervisez la plateforme !'
     };
 
@@ -125,6 +122,17 @@ const DashboardContent = () => {
       greeting: timeGreeting,
       message: roleMessages[role as keyof typeof roleMessages] || 'Bienvenue sur votre espace de travail !'
     };
+  };
+
+  const getCountryFlag = (country: string | null) => {
+    switch (country) {
+      case 'france':
+        return '🇫🇷 France';
+      case 'espagne':
+        return '🇪🇸 Espagne';
+      default:
+        return '🇫🇷 France';
+    }
   };
 
   if (loading) {
@@ -189,6 +197,10 @@ const DashboardContent = () => {
                     <span>Manager: {manager.full_name}</span>
                   </div>
                 )}
+                <div className="flex items-center">
+                  <Flag className="w-4 h-4 mr-2" />
+                  <span>{getCountryFlag(profile.country)}</span>
+                </div>
               </div>
             </div>
             <div className="hidden md:block">

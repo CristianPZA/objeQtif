@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { UserCircle, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { UserCircle, Lock, User, Eye, EyeOff, Flag } from 'lucide-react';
 
 const CompleteProfile = () => {
   const [fullName, setFullName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [country, setCountry] = useState('france');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -16,6 +17,11 @@ const CompleteProfile = () => {
   const [step, setStep] = useState<'profile' | 'password'>('profile');
   const [userEmail, setUserEmail] = useState('');
   const navigate = useNavigate();
+
+  const countries = [
+    { value: 'france', label: 'France 🇫🇷' },
+    { value: 'espagne', label: 'Espagne 🇪🇸' }
+  ];
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -30,7 +36,7 @@ const CompleteProfile = () => {
 
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('full_name, role')
+        .select('full_name, role, country')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -40,6 +46,9 @@ const CompleteProfile = () => {
       } else if (profile?.full_name && profile.full_name !== user.email) {
         // Si le nom est déjà renseigné mais différent de l'email, passer à l'étape mot de passe
         setFullName(profile.full_name);
+        if (profile?.country) {
+          setCountry(profile.country);
+        }
         setStep('password');
       }
     };
@@ -68,7 +77,8 @@ const CompleteProfile = () => {
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({
-          full_name: fullName.trim()
+          full_name: fullName.trim(),
+          country: country
         })
         .eq('id', user.id);
 
@@ -173,7 +183,7 @@ const CompleteProfile = () => {
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             {step === 'profile' 
-              ? 'Veuillez renseigner votre nom et prénom pour continuer'
+              ? 'Veuillez renseigner votre nom, prénom et pays pour continuer'
               : 'Pour votre sécurité, veuillez changer votre mot de passe temporaire'
             }
           </p>
@@ -233,6 +243,31 @@ const CompleteProfile = () => {
               </div>
               <p className="mt-1 text-xs text-gray-500">
                 Saisissez votre prénom suivi de votre nom de famille
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+                Pays *
+              </label>
+              <div className="mt-1 relative">
+                <Flag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <select
+                  id="country"
+                  required
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className="pl-10 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  {countries.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Sélectionnez votre pays de rattachement
               </p>
             </div>
 

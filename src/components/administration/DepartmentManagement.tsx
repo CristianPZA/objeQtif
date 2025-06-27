@@ -12,10 +12,32 @@ const DepartmentManagement: React.FC<DepartmentManagementProps> = ({ onError, on
   const [departments, setDepartments] = useState<Department[]>([]);
   const [newDepartment, setNewDepartment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [currentUserCountry, setCurrentUserCountry] = useState<string>('france');
 
   useEffect(() => {
+    fetchCurrentUserCountry();
     fetchDepartments();
   }, []);
+
+  const fetchCurrentUserCountry = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('country')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      if (data && data.country) {
+        setCurrentUserCountry(data.country);
+      }
+    } catch (err) {
+      console.error('Error fetching user country:', err);
+    }
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -98,6 +120,16 @@ const DepartmentManagement: React.FC<DepartmentManagementProps> = ({ onError, on
       </div>
 
       <div className="p-6 space-y-6">
+        {/* Pays actuel */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Pays actuel:</strong> {currentUserCountry === 'france' ? '🇫🇷 France' : '🇪🇸 Espagne'}
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Les départements sont partagés entre tous les pays.
+          </p>
+        </div>
+
         {/* Ajouter un département */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-3">Ajouter un département</h3>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, CheckCircle, Clock, AlertCircle, Flag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Projet {
   id: string;
@@ -47,10 +48,12 @@ interface UserProfile {
   full_name: string;
   role: string;
   department: string | null;
+  country: string | null;
 }
 
 const Projets = () => {
   const navigate = useNavigate();
+  const { userCountry } = useAuth();
   const [projets, setProjets] = useState<Projet[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +98,7 @@ const Projets = () => {
     checkUserAccess();
     fetchProjets();
     fetchUsers();
-  }, []);
+  }, [userCountry]);
 
   const checkUserAccess = async () => {
     try {
@@ -138,10 +141,12 @@ const Projets = () => {
 
   const fetchUsers = async () => {
     try {
+      // Filtrer les utilisateurs par pays
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('id, full_name, role, department')
+        .select('id, full_name, role, department, country')
         .eq('is_active', true)
+        .eq('country', userCountry)
         .order('full_name');
 
       if (error) throw error;
@@ -392,13 +397,23 @@ const Projets = () => {
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Projets</h1>
           <p className="text-gray-600 mt-1">Créez et gérez vos projets clients</p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          Nouveau projet
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+            <div className="flex items-center gap-2">
+              <Flag className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-800">
+                {userCountry === 'france' ? '🇫🇷 France' : '🇪🇸 Espagne'}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-all shadow-lg font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            Nouveau projet
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -422,6 +437,9 @@ const Projets = () => {
             <h3 className="text-sm font-medium text-blue-800">Création de projets</h3>
             <p className="text-sm text-blue-700 mt-1">
               Tous les utilisateurs peuvent créer des projets. Vous devenez automatiquement le référent du projet que vous créez. Cliquez sur un projet pour voir ses détails.
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              <strong>Note:</strong> Vous ne voyez que les utilisateurs de votre pays ({userCountry === 'france' ? 'France' : 'Espagne'}) pour les collaborateurs.
             </p>
           </div>
         </div>
@@ -619,6 +637,19 @@ const Projets = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-8">
+              {/* Pays actuel */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <Flag className="w-5 h-5 text-blue-600" />
+                  <div>
+                    <h3 className="text-sm font-medium text-blue-800">Pays: {userCountry === 'france' ? '🇫🇷 France' : '🇪🇸 Espagne'}</h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Vous ne pouvez ajouter que des collaborateurs de votre pays.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Informations de base */}
               <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

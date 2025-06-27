@@ -6,12 +6,14 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  userCountry: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   loading: true,
-  signOut: async () => {}
+  signOut: async () => {},
+  userCountry: null
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -19,13 +21,34 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userCountry, setUserCountry] = useState<string | null>(null);
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
       setUser(null);
+      setUserCountry(null);
     } catch (error) {
       console.error('Sign out error:', error);
+    }
+  };
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('country')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+      
+      setUserCountry(data?.country || 'france');
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
     }
   };
 
@@ -51,11 +74,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Clear the invalid session
           supabase.auth.signOut();
           setUser(null);
+          setUserCountry(null);
         } else {
           setUser(null);
+          setUserCountry(null);
         }
       } else {
         setUser(user);
+        if (user) {
+          fetchUserProfile(user.id);
+        }
       }
       setLoading(false);
     }).catch((error) => {
@@ -66,6 +94,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for changes on auth state (sign in, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      } else {
+        setUserCountry(null);
+      }
       setLoading(false);
     });
 
@@ -118,7 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, userCountry }}>
       {children}
     </AuthContext.Provider>
   );

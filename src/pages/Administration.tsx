@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Users, Settings, AlertTriangle, CheckCircle, XCircle, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, Flag } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import UserManagement from '../components/administration/UserManagement';
 import DepartmentManagement from '../components/administration/DepartmentManagement';
 
@@ -7,6 +8,31 @@ const Administration = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [currentUserCountry, setCurrentUserCountry] = useState<string>('france');
+
+  useEffect(() => {
+    fetchCurrentUserCountry();
+  }, []);
+
+  const fetchCurrentUserCountry = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('country')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      if (data && data.country) {
+        setCurrentUserCountry(data.country);
+      }
+    } catch (err) {
+      console.error('Error fetching user country:', err);
+    }
+  };
 
   const clearMessages = () => {
     setError(null);
@@ -34,6 +60,14 @@ const Administration = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Administration</h1>
           <p className="text-gray-600 mt-1">Gestion des profils employés et paramètres</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+          <div className="flex items-center gap-2">
+            <Flag className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">
+              {currentUserCountry === 'france' ? '🇫🇷 France' : '🇪🇸 Espagne'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -110,6 +144,20 @@ const Administration = () => {
             </div>
           </button>
         </nav>
+      </div>
+
+      {/* Country Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <Flag className="h-5 w-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-medium text-blue-800">Filtrage par pays</h3>
+            <div className="mt-1 text-sm text-blue-700">
+              <p>Les utilisateurs ne peuvent voir que les profils de leur propre pays ({currentUserCountry === 'france' ? 'France' : 'Espagne'}).</p>
+              <p>Les administrateurs peuvent voir tous les profils mais doivent assigner un pays à chaque utilisateur.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tab Content */}

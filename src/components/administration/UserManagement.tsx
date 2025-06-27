@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit, User, Building, UserCheck, BookOpen } from 'lucide-react';
+import { Edit, User, Building, UserCheck, BookOpen, Flag } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -22,10 +22,17 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [countryFilter, setCountryFilter] = useState<string>('all');
 
   const roles = [
     { value: 'employe', label: 'Employé' },
     { value: 'admin', label: 'Administrateur' }
+  ];
+
+  const countries = [
+    { value: 'all', label: 'Tous les pays' },
+    { value: 'france', label: 'France' },
+    { value: 'espagne', label: 'Espagne' }
   ];
 
   useEffect(() => {
@@ -161,6 +168,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
           acc[user.role] = (acc[user.role] || 0) + 1;
           return acc;
         }, {} as Record<string, number>),
+        countries: enrichedUsers.reduce((acc, user) => {
+          acc[user.country || 'non défini'] = (acc[user.country || 'non défini'] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
         timestamp: new Date().toISOString()
       });
 
@@ -275,12 +286,27 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
     return colorMap[color] || 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
+  const getCountryFlag = (country: string) => {
+    switch (country) {
+      case 'france':
+        return '🇫🇷';
+      case 'espagne':
+        return '🇪🇸';
+      default:
+        return '🌍';
+    }
+  };
+
   // Fonction pour tronquer le texte
   const truncateText = (text: string, maxLength: number) => {
     if (!text) return 'Non défini';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
+
+  const filteredUsers = countryFilter === 'all' 
+    ? users 
+    : users.filter(user => user.country === countryFilter);
 
   if (loading) {
     return (
@@ -308,6 +334,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                 <div>Niveaux dispo: {careerLevels.length}</div>
                 <div>Pathways dispo: {careerAreas.length}</div>
               </div>
+              {debugInfo.countries && (
+                <div className="mt-2 text-sm text-yellow-700">
+                  <div className="font-medium">Pays:</div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {Object.entries(debugInfo.countries).map(([country, count]) => (
+                      <div key={country}>{country}: {count}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <button
               onClick={fetchUsers}
@@ -318,6 +354,34 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
           </div>
         </div>
       )}
+
+      {/* Filtres */}
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Filtrer par pays
+            </label>
+            <select
+              value={countryFilter}
+              onChange={(e) => setCountryFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              {countries.map(country => (
+                <option key={country.value} value={country.value}>
+                  {country.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={fetchUsers}
+            className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 rounded-md transition-colors text-sm text-indigo-700 mt-auto"
+          >
+            Actualiser la liste
+          </button>
+        </div>
+      </div>
 
       {/* Users Table - Sans affichage de l'email */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -330,6 +394,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                   Département
+                </th>
+                <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                  Pays
                 </th>
                 <th className="px-4 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                   Niveau
@@ -349,7 +416,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                   {/* Employé - Sans email */}
                   <td className="px-6 py-4">
@@ -378,6 +445,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
                       <Building className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                       <span className="text-sm text-gray-900 truncate" title={user.department || 'Non défini'}>
                         {truncateText(user.department || 'Non défini', 15)}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Pays */}
+                  <td className="px-4 py-4">
+                    <div className="flex items-center">
+                      <Flag className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                      <span className="text-sm text-gray-900 truncate">
+                        {getCountryFlag(user.country || 'france')} {user.country || 'france'}
                       </span>
                     </div>
                   </td>
@@ -449,12 +526,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ onError, onSuccess }) =
           </table>
         </div>
 
-        {users.length === 0 && (
+        {filteredUsers.length === 0 && (
           <div className="text-center py-12">
             <User className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun employé trouvé</h3>
             <p className="text-gray-600 mb-4">
-              Les employés créés via Supabase Auth apparaîtront ici automatiquement.
+              {countryFilter !== 'all' 
+                ? `Aucun employé trouvé pour le pays sélectionné.` 
+                : `Les employés créés via Supabase Auth apparaîtront ici automatiquement.`}
             </p>
             <button
               onClick={fetchUsers}

@@ -15,6 +15,7 @@ export interface UserProfile {
   date_naissance: string | null;
   date_entree_entreprise: string | null;
   fiche_poste: string | null;
+  country: string | null;
   manager: {
     full_name: string;
   } | null;
