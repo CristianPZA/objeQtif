@@ -20,7 +20,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userCountry } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -169,7 +169,8 @@ const Sidebar = () => {
     }
   };
 
-  if (isLoading) {
+  // Wait for both user data and i18n to be ready
+  if (isLoading || !i18n.isInitialized) {
     return (
       <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
         <div className="flex flex-col items-center mb-8">
