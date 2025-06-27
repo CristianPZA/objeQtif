@@ -63,11 +63,6 @@ const Sidebar = () => {
     fetchUserRole();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
   // Memoize menu items to prevent unnecessary re-renders
   const menuItems = useMemo(() => {
     const items = [
@@ -123,6 +118,11 @@ const Sidebar = () => {
 
     return items;
   }, [userRole, isCoach, t]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   // Preload the next page data when hovering over a link
   const handleLinkHover = async (path: string) => {
