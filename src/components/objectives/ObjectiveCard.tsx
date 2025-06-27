@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, User, BookOpen, Target, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface ObjectiveCardProps {
   objective: any;
@@ -16,6 +17,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   currentUserId,
   userRole
 }) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -46,15 +48,15 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'draft':
-        return 'Brouillon';
+        return t('annualObjectives.objectiveStatuses.draft');
       case 'submitted':
-        return 'Soumis';
+        return t('annualObjectives.objectiveStatuses.submitted');
       case 'approved':
-        return 'Approuvé';
+        return t('annualObjectives.objectiveStatuses.approved');
       case 'rejected':
-        return 'Rejeté';
+        return t('annualObjectives.objectiveStatuses.rejected');
       default:
-        return 'Inconnu';
+        return t('common.unknown');
     }
   };
 
@@ -109,7 +111,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-indigo-600" />
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Objectifs {objective.year}
+                  {t('objectives.objectivesForYear', { year: objective.year })}
                 </h3>
               </div>
               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(objective.status)}`}>
@@ -141,7 +143,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             <button
               onClick={() => setShowDetails(!showDetails)}
               className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100"
-              title={showDetails ? "Masquer les détails" : "Voir les détails"}
+              title={showDetails ? t('common.hideDetails') : t('common.viewDetails')}
             >
               {showDetails ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -149,7 +151,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             {canEdit() && (
               <button
                 className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50"
-                title="Modifier"
+                title={t('common.edit')}
               >
                 <Edit className="w-4 h-4" />
               </button>
@@ -159,7 +161,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
               <button
                 onClick={() => onDelete(objective.id)}
                 className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50"
-                title="Supprimer"
+                title={t('common.delete')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -172,7 +174,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">
-              {objective.objectives.length} compétences à développer
+              {objective.objectives.length} {t('common.skill', { count: objective.objectives.length })}
             </span>
             <button
               onClick={() => setExpanded(!expanded)}
@@ -209,29 +211,29 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
                   {index + 1}. {obj.skill_description}
                 </h4>
                 <p className="text-sm text-gray-700 mb-3">
-                  <strong>Objectif:</strong> {obj.smart_objective}
+                  <strong>{t('objectives.smartObjective')}:</strong> {obj.smart_objective}
                 </p>
 
                 {showDetails && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <strong className="text-gray-600">Spécifique:</strong>
+                      <strong className="text-gray-600">{t('objectives.specific')}:</strong>
                       <p className="text-gray-700 mt-1">{obj.specific}</p>
                     </div>
                     <div>
-                      <strong className="text-gray-600">Mesurable:</strong>
+                      <strong className="text-gray-600">{t('objectives.measurable')}:</strong>
                       <p className="text-gray-700 mt-1">{obj.measurable}</p>
                     </div>
                     <div>
-                      <strong className="text-gray-600">Atteignable:</strong>
+                      <strong className="text-gray-600">{t('objectives.achievable')}:</strong>
                       <p className="text-gray-700 mt-1">{obj.achievable}</p>
                     </div>
                     <div>
-                      <strong className="text-gray-600">Pertinent:</strong>
+                      <strong className="text-gray-600">{t('objectives.relevant')}:</strong>
                       <p className="text-gray-700 mt-1">{obj.relevant}</p>
                     </div>
                     <div className="md:col-span-2">
-                      <strong className="text-gray-600">Temporellement défini:</strong>
+                      <strong className="text-gray-600">{t('objectives.timeBound')}:</strong>
                       <p className="text-gray-700 mt-1">{obj.time_bound}</p>
                     </div>
                   </div>
@@ -244,11 +246,11 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
         {/* Footer */}
         <div className="flex justify-between items-center text-xs text-gray-500 mt-4 pt-4 border-t">
           <span>
-            Créé le {format(new Date(objective.created_at), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+            {t('common.createdOn')} {format(new Date(objective.created_at), 'dd/MM/yyyy à HH:mm', { locale: fr })}
           </span>
           {objective.updated_at !== objective.created_at && (
             <span>
-              Modifié le {format(new Date(objective.updated_at), 'dd/MM/yyyy à HH:mm', { locale: fr })}
+              {t('common.modifiedOn')} {format(new Date(objective.updated_at), 'dd/MM/yyyy à HH:mm', { locale: fr })}
             </span>
           )}
         </div>

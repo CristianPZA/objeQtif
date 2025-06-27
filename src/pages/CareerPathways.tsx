@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 interface CareerArea {
   id: string;
@@ -26,6 +27,7 @@ interface CareerArea {
 }
 
 const CareerPathways = () => {
+  const { t } = useTranslation();
   const [careerAreas, setCareerAreas] = useState<CareerArea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +54,13 @@ const CareerPathways = () => {
   ];
 
   const colorOptions = [
-    { value: 'blue', label: 'Bleu', class: 'bg-blue-500' },
-    { value: 'green', label: 'Vert', class: 'bg-green-500' },
-    { value: 'purple', label: 'Violet', class: 'bg-purple-500' },
-    { value: 'indigo', label: 'Indigo', class: 'bg-indigo-500' },
-    { value: 'orange', label: 'Orange', class: 'bg-orange-500' },
-    { value: 'red', label: 'Rouge', class: 'bg-red-500' },
-    { value: 'gray', label: 'Gris', class: 'bg-gray-500' }
+    { value: 'blue', label: t('common.colors.blue'), class: 'bg-blue-500' },
+    { value: 'green', label: t('common.colors.green'), class: 'bg-green-500' },
+    { value: 'purple', label: t('common.colors.purple'), class: 'bg-purple-500' },
+    { value: 'indigo', label: t('common.colors.indigo'), class: 'bg-indigo-500' },
+    { value: 'orange', label: t('common.colors.orange'), class: 'bg-orange-500' },
+    { value: 'red', label: t('common.colors.red'), class: 'bg-red-500' },
+    { value: 'gray', label: t('common.colors.gray'), class: 'bg-gray-500' }
   ];
 
   useEffect(() => {
@@ -104,7 +106,7 @@ const CareerPathways = () => {
       setCareerAreas(data || []);
     } catch (err) {
       console.error('Error fetching career areas:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des domaines de carrière');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorFetchingData'));
     } finally {
       setLoading(false);
     }
@@ -113,7 +115,7 @@ const CareerPathways = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canManagePathways()) {
-      setError('Vous n\'avez pas les droits pour effectuer cette action');
+      setError(t('common.permissionDenied'));
       return;
     }
 
@@ -136,12 +138,12 @@ const CareerPathways = () => {
 
       if (error) throw error;
 
-      setSuccess('Domaine de carrière créé avec succès');
+      setSuccess(t('careerPathways.domainCreatedSuccess'));
       resetForm();
       setShowCreateForm(false);
       fetchCareerAreas();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création du domaine');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorCreatingDomain'));
     } finally {
       setSubmitting(false);
     }
@@ -150,7 +152,7 @@ const CareerPathways = () => {
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingArea || !canManagePathways()) {
-      setError('Vous n\'avez pas les droits pour effectuer cette action');
+      setError(t('common.permissionDenied'));
       return;
     }
 
@@ -171,12 +173,12 @@ const CareerPathways = () => {
 
       if (error) throw error;
 
-      setSuccess('Domaine de carrière modifié avec succès');
+      setSuccess(t('careerPathways.domainUpdatedSuccess'));
       setEditingArea(null);
       resetForm();
       fetchCareerAreas();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la modification du domaine');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorUpdatingDomain'));
     } finally {
       setSubmitting(false);
     }
@@ -184,11 +186,11 @@ const CareerPathways = () => {
 
   const handleDelete = async (area: CareerArea) => {
     if (!canManagePathways()) {
-      setError('Vous n\'avez pas les droits pour effectuer cette action');
+      setError(t('common.permissionDenied'));
       return;
     }
 
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer le domaine "${area.name}" ? Cette action supprimera également tous les thèmes et compétences associés.`)) {
+    if (!confirm(t('careerPathways.confirmDelete', { name: area.name }))) {
       return;
     }
 
@@ -204,10 +206,10 @@ const CareerPathways = () => {
 
       if (error) throw error;
 
-      setSuccess('Domaine de carrière supprimé avec succès');
+      setSuccess(t('careerPathways.domainDeletedSuccess'));
       fetchCareerAreas();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du domaine');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorDeletingDomain'));
     } finally {
       setSubmitting(false);
     }
@@ -320,11 +322,9 @@ const CareerPathways = () => {
               <BookOpen className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Career Pathways</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">{t('careerPathways.title')}</h1>
           <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-            Découvrez les parcours de développement professionnel et les compétences requises 
-            pour progresser dans votre carrière. Choisissez votre domaine d'expertise pour explorer 
-            les différents niveaux et thèmes de développement.
+            {t('careerPathways.discover')}
           </p>
         </div>
         
@@ -335,7 +335,7 @@ const CareerPathways = () => {
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
             >
               <Plus className="w-5 h-5" />
-              Nouveau domaine
+              {t('careerPathways.newDomain')}
             </button>
           </div>
         )}
@@ -360,9 +360,9 @@ const CareerPathways = () => {
           <div className="flex items-center gap-3">
             <Settings className="w-5 h-5 text-blue-600" />
             <div>
-              <h3 className="text-sm font-medium text-blue-800">Mode administrateur</h3>
+              <h3 className="text-sm font-medium text-blue-800">{t('careerPathways.adminMode')}</h3>
               <p className="text-sm text-blue-700 mt-1">
-                Vous pouvez créer, modifier et supprimer les domaines de carrière. Cliquez sur un domaine pour gérer ses thèmes et compétences.
+                {t('careerPathways.adminModeMessage')}
               </p>
             </div>
           </div>
@@ -396,7 +396,7 @@ const CareerPathways = () => {
                                 openEditForm(area);
                               }}
                               className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
-                              title="Modifier"
+                              title={t('common.edit')}
                             >
                               <Edit className="w-4 h-4" />
                             </button>
@@ -406,7 +406,7 @@ const CareerPathways = () => {
                                 handleDelete(area);
                               }}
                               className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
-                              title="Supprimer"
+                              title={t('common.delete')}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -415,7 +415,7 @@ const CareerPathways = () => {
                         <button
                           onClick={() => handleAreaClick(area.id)}
                           className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all"
-                          title="Explorer"
+                          title={t('common.explore')}
                         >
                           <ArrowRight className="w-4 h-4" />
                         </button>
@@ -438,10 +438,10 @@ const CareerPathways = () => {
                     
                     <div className="flex items-center justify-between mt-auto">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${colors.bg} ${colors.text}`}>
-                        Parcours disponible
+                        {t('careerPathways.pathwayAvailable')}
                       </span>
                       <div className="flex items-center text-indigo-600 font-medium text-sm group-hover:text-indigo-700 transition-colors">
-                        Explorer
+                        {t('careerPathways.explore')}
                         <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
                       </div>
                     </div>
@@ -455,11 +455,11 @@ const CareerPathways = () => {
         {careerAreas.length === 0 && (
           <div className="text-center py-16">
             <Target className="mx-auto h-16 w-16 text-gray-400 mb-6" />
-            <h3 className="text-2xl font-medium text-gray-900 mb-4">Aucun domaine de carrière disponible</h3>
+            <h3 className="text-2xl font-medium text-gray-900 mb-4">{t('careerPathways.noDomains')}</h3>
             <p className="text-gray-600 max-w-md mx-auto">
               {canManagePathways() 
-                ? 'Créez votre premier domaine de carrière pour commencer.'
-                : 'Les domaines de carrière seront bientôt disponibles. Contactez votre administrateur pour plus d\'informations.'
+                ? t('careerPathways.createFirstDomain')
+                : t('careerPathways.domainsComingSoon')
               }
             </p>
           </div>
@@ -474,26 +474,26 @@ const CareerPathways = () => {
               <Lightbulb className="w-6 h-6 text-blue-600" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-medium text-blue-900 mb-4">Comment utiliser les Career Pathways</h3>
+              <h3 className="text-xl font-medium text-blue-900 mb-4">{t('careerPathways.howToUse')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-blue-800">
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 text-sm font-bold mt-0.5">1</div>
-                    <p><strong>Choisissez votre domaine</strong> qui correspond à votre expertise ou vos aspirations professionnelles</p>
+                    <p><strong>{t('careerPathways.chooseYourDomain')}</strong></p>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 text-sm font-bold mt-0.5">2</div>
-                    <p><strong>Explorez les niveaux</strong> pour comprendre la progression de carrière dans votre domaine</p>
+                    <p><strong>{t('careerPathways.exploreLevels')}</strong></p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 text-sm font-bold mt-0.5">3</div>
-                    <p><strong>Consultez les thèmes</strong> pour identifier les compétences clés à développer</p>
+                    <p><strong>{t('careerPathways.consultThemes')}</strong></p>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 text-sm font-bold mt-0.5">4</div>
-                    <p><strong>Planifiez votre développement</strong> avec votre manager ou coach</p>
+                    <p><strong>{t('careerPathways.planDevelopment')}</strong></p>
                   </div>
                 </div>
               </div>
@@ -508,14 +508,14 @@ const CareerPathways = () => {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold text-gray-900">
-                {editingArea ? 'Modifier le domaine de carrière' : 'Nouveau domaine de carrière'}
+                {editingArea ? t('careerPathways.editDomain') : t('careerPathways.newDomain')}
               </h2>
             </div>
 
             <form onSubmit={editingArea ? handleEdit : handleSubmit} className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom du domaine *
+                  {t('careerPathways.domainName')} *
                 </label>
                 <input
                   type="text"
@@ -523,13 +523,13 @@ const CareerPathways = () => {
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Ex: AI Engineering Data Science Pathway 2025"
+                  placeholder={t('careerPathways.domainNamePlaceholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description *
+                  {t('common.description')} *
                 </label>
                 <textarea
                   required
@@ -537,14 +537,14 @@ const CareerPathways = () => {
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Description du domaine de carrière et des compétences couvertes"
+                  placeholder={t('careerPathways.domainDescriptionPlaceholder')}
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Icône
+                    {t('common.icon')}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {iconOptions.map((option) => {
@@ -570,7 +570,7 @@ const CareerPathways = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Couleur
+                    {t('common.color')}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {colorOptions.map((option) => (
@@ -595,7 +595,7 @@ const CareerPathways = () => {
               {/* Preview */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Aperçu
+                  {t('common.preview')}
                 </label>
                 <div className="border border-gray-200 rounded-lg p-4">
                   <div className={`bg-gradient-to-r ${getColorClasses(formData.color).gradient} p-4 text-white rounded-lg`}>
@@ -604,8 +604,8 @@ const CareerPathways = () => {
                         {getIconComponent(formData.icon)}
                       </div>
                       <div>
-                        <h3 className="font-bold">{formData.name || 'Nom du domaine'}</h3>
-                        <p className="text-sm opacity-90">{formData.description || 'Description du domaine'}</p>
+                        <h3 className="font-bold">{formData.name || t('careerPathways.domainName')}</h3>
+                        <p className="text-sm opacity-90">{formData.description || t('careerPathways.domainDescription')}</p>
                       </div>
                     </div>
                   </div>
@@ -625,7 +625,7 @@ const CareerPathways = () => {
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  Annuler
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -633,7 +633,7 @@ const CareerPathways = () => {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  {submitting ? (editingArea ? 'Modification...' : 'Création...') : (editingArea ? 'Modifier' : 'Créer')}
+                  {submitting ? (editingArea ? t('common.updating') : t('common.creating')) : (editingArea ? t('common.update') : t('common.create'))}
                 </button>
               </div>
             </form>

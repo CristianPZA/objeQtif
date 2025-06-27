@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 interface CareerArea {
   id: string;
@@ -68,6 +69,7 @@ interface PathwayData {
 const CareerPathwayDetail = () => {
   const { areaId } = useParams<{ areaId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   
   const [pathwayData, setPathwayData] = useState<PathwayData>({
     area: null,
@@ -160,7 +162,7 @@ const CareerPathwayDetail = () => {
       });
     } catch (err) {
       console.error('Error fetching pathway data:', err);
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des données');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorLoadingData'));
     } finally {
       setLoading(false);
     }
@@ -188,12 +190,12 @@ const CareerPathwayDetail = () => {
 
       if (error) throw error;
 
-      setSuccess('Thème de développement créé avec succès');
+      setSuccess(t('careerPathways.themeCreatedSuccess'));
       resetThemeForm();
       setShowCreateThemeForm(false);
       fetchPathwayData(pathwayData.area.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création du thème');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorCreatingTheme'));
     } finally {
       setSubmitting(false);
     }
@@ -218,12 +220,12 @@ const CareerPathwayDetail = () => {
 
       if (error) throw error;
 
-      setSuccess('Thème de développement modifié avec succès');
+      setSuccess(t('careerPathways.themeUpdatedSuccess'));
       setEditingTheme(null);
       resetThemeForm();
       fetchPathwayData(pathwayData.area.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la modification du thème');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorUpdatingTheme'));
     } finally {
       setSubmitting(false);
     }
@@ -232,7 +234,7 @@ const CareerPathwayDetail = () => {
   const handleDeleteTheme = async (theme: DevelopmentTheme) => {
     if (!canManagePathways()) return;
 
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer le thème "${theme.name}" ? Toutes les compétences associées seront également supprimées.`)) {
+    if (!confirm(t('careerPathways.confirmDeleteTheme', { name: theme.name }))) {
       return;
     }
 
@@ -248,12 +250,12 @@ const CareerPathwayDetail = () => {
 
       if (error) throw error;
 
-      setSuccess('Thème de développement supprimé avec succès');
+      setSuccess(t('careerPathways.themeDeletedSuccess'));
       if (pathwayData.area) {
         fetchPathwayData(pathwayData.area.id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du thème');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorDeletingTheme'));
     } finally {
       setSubmitting(false);
     }
@@ -280,14 +282,14 @@ const CareerPathwayDetail = () => {
 
       if (error) throw error;
 
-      setSuccess('Compétence créée avec succès');
+      setSuccess(t('careerPathways.skillCreatedSuccess'));
       resetSkillForm();
       setShowCreateSkillForm(false);
       if (pathwayData.area) {
         fetchPathwayData(pathwayData.area.id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création de la compétence');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorCreatingSkill'));
     } finally {
       setSubmitting(false);
     }
@@ -313,14 +315,14 @@ const CareerPathwayDetail = () => {
 
       if (error) throw error;
 
-      setSuccess('Compétence modifiée avec succès');
+      setSuccess(t('careerPathways.skillUpdatedSuccess'));
       setEditingSkill(null);
       resetSkillForm();
       if (pathwayData.area) {
         fetchPathwayData(pathwayData.area.id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la modification de la compétence');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorUpdatingSkill'));
     } finally {
       setSubmitting(false);
     }
@@ -329,7 +331,7 @@ const CareerPathwayDetail = () => {
   const handleDeleteSkill = async (skill: PathwaySkill) => {
     if (!canManagePathways()) return;
 
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette compétence ?')) {
+    if (!confirm(t('careerPathways.confirmDeleteSkill'))) {
       return;
     }
 
@@ -345,12 +347,12 @@ const CareerPathwayDetail = () => {
 
       if (error) throw error;
 
-      setSuccess('Compétence supprimée avec succès');
+      setSuccess(t('careerPathways.skillDeletedSuccess'));
       if (pathwayData.area) {
         fetchPathwayData(pathwayData.area.id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression de la compétence');
+      setError(err instanceof Error ? err.message : t('careerPathways.errorDeletingSkill'));
     } finally {
       setSubmitting(false);
     }
@@ -456,13 +458,13 @@ const CareerPathwayDetail = () => {
     return (
       <div className="text-center py-12">
         <div className="bg-red-50 text-red-700 p-4 rounded-lg max-w-md mx-auto">
-          <h3 className="font-medium mb-2">Erreur de chargement</h3>
-          <p className="text-sm">{error || 'Domaine de carrière non trouvé'}</p>
+          <h3 className="font-medium mb-2">{t('careerPathways.loadingError')}</h3>
+          <p className="text-sm">{error || t('careerPathways.domainNotFound')}</p>
           <button 
             onClick={() => navigate('/career-pathways')}
             className="mt-3 px-4 py-2 bg-red-100 hover:bg-red-200 rounded-md transition-colors text-sm"
           >
-            Retour aux domaines
+            {t('common.back')} {t('careerPathways.domains').toLowerCase()}
           </button>
         </div>
       </div>
@@ -480,7 +482,7 @@ const CareerPathwayDetail = () => {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span>Retour aux domaines</span>
+          <span>{t('common.back')} {t('careerPathways.domains').toLowerCase()}</span>
         </button>
 
         {canManagePathways() && (
@@ -489,7 +491,7 @@ const CareerPathwayDetail = () => {
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Nouveau thème
+            {t('careerPathways.newTheme')}
           </button>
         )}
       </div>
@@ -513,9 +515,9 @@ const CareerPathwayDetail = () => {
           <div className="flex items-center gap-3">
             <Settings className="w-5 h-5 text-blue-600" />
             <div>
-              <h3 className="text-sm font-medium text-blue-800">Mode administrateur</h3>
+              <h3 className="text-sm font-medium text-blue-800">{t('careerPathways.adminMode')}</h3>
               <p className="text-sm text-blue-700 mt-1">
-                Vous pouvez créer, modifier et supprimer les thèmes de développement et leurs compétences associées.
+                {t('careerPathways.adminModeThemes')}
               </p>
             </div>
           </div>
@@ -541,7 +543,7 @@ const CareerPathwayDetail = () => {
 
       {/* Career Levels Legend */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Niveaux de carrière</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.careerLevels')}</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {pathwayData.levels.map((level, index) => {
             const colors = getColorClasses(level.color);
@@ -579,7 +581,7 @@ const CareerPathwayDetail = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Rechercher dans les thèmes de développement..."
+              placeholder={t('careerPathways.searchThemes')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -590,13 +592,13 @@ const CareerPathwayDetail = () => {
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
           >
             <Filter className="w-4 h-4" />
-            Filtres
+            {t('common.filters')}
           </button>
         </div>
         
         {showFilters && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-3">Filtrer par niveau</h4>
+            <h4 className="font-medium text-gray-900 mb-3">{t('careerPathways.filterByLevel')}</h4>
             <div className="flex flex-wrap gap-2">
               {pathwayData.levels.map((level) => {
                 const colors = getColorClasses(level.color);
@@ -625,21 +627,21 @@ const CareerPathwayDetail = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
-            Thèmes de développement
+            {t('careerPathways.developmentThemes')}
           </h2>
           <span className="text-sm text-gray-500">
-            {filteredThemes.length} thème{filteredThemes.length > 1 ? 's' : ''}
+            {filteredThemes.length} {t('common.theme', { count: filteredThemes.length })}
           </span>
         </div>
 
         {filteredThemes.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun thème trouvé</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('careerPathways.noThemesFound')}</h3>
             <p className="text-gray-600">
               {searchTerm 
-                ? 'Aucun thème ne correspond à vos critères de recherche.'
-                : 'Aucun thème de développement disponible pour ce domaine.'
+                ? t('careerPathways.noMatchingThemes')
+                : t('careerPathways.noThemesAvailable')
               }
             </p>
           </div>
@@ -661,14 +663,14 @@ const CareerPathwayDetail = () => {
                               <button
                                 onClick={() => openEditThemeForm(theme)}
                                 className="p-1 text-gray-400 hover:text-indigo-600 rounded"
-                                title="Modifier le thème"
+                                title={t('common.editTheme')}
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteTheme(theme)}
                                 className="p-1 text-gray-400 hover:text-red-600 rounded"
-                                title="Supprimer le thème"
+                                title={t('common.deleteTheme')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -682,7 +684,7 @@ const CareerPathwayDetail = () => {
                       <div className="flex items-center gap-2">
                         {hasSkills && (
                           <span className="text-sm text-gray-500">
-                            {pathwayData.skills.filter(s => s.development_theme_id === theme.id).length} compétence{pathwayData.skills.filter(s => s.development_theme_id === theme.id).length > 1 ? 's' : ''}
+                            {pathwayData.skills.filter(s => s.development_theme_id === theme.id).length} {t('common.skill', { count: pathwayData.skills.filter(s => s.development_theme_id === theme.id).length })}
                           </span>
                         )}
                         <button
@@ -724,7 +726,7 @@ const CareerPathwayDetail = () => {
                                   className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm flex items-center gap-1"
                                 >
                                   <Plus className="w-3 h-3" />
-                                  Ajouter compétence
+                                  {t('careerPathways.addSkill')}
                                 </button>
                               )}
                             </div>
@@ -737,12 +739,12 @@ const CareerPathwayDetail = () => {
                                       <p className="text-gray-900 leading-relaxed">{skill.skill_description}</p>
                                       {skill.examples && (
                                         <div className="mt-2 text-sm text-gray-600">
-                                          <strong>Exemples:</strong> {skill.examples}
+                                          <strong>{t('common.examples')}:</strong> {skill.examples}
                                         </div>
                                       )}
                                       {skill.requirements && (
                                         <div className="mt-2 text-sm text-gray-600">
-                                          <strong>Prérequis:</strong> {skill.requirements}
+                                          <strong>{t('common.requirements')}:</strong> {skill.requirements}
                                         </div>
                                       )}
                                     </div>
@@ -751,14 +753,14 @@ const CareerPathwayDetail = () => {
                                         <button
                                           onClick={() => openEditSkillForm(skill)}
                                           className="p-1 text-gray-400 hover:text-indigo-600 rounded"
-                                          title="Modifier la compétence"
+                                          title={t('common.editSkill')}
                                         >
                                           <Edit className="w-3 h-3" />
                                         </button>
                                         <button
                                           onClick={() => handleDeleteSkill(skill)}
                                           className="p-1 text-gray-400 hover:text-red-600 rounded"
-                                          title="Supprimer la compétence"
+                                          title={t('common.deleteSkill')}
                                         >
                                           <Trash2 className="w-3 h-3" />
                                         </button>
@@ -769,7 +771,7 @@ const CareerPathwayDetail = () => {
                               ))}
                               {skills.length === 0 && (
                                 <div className="text-center py-4 text-gray-500">
-                                  Aucune compétence définie pour ce niveau
+                                  {t('careerPathways.noSkillsDefined')}
                                 </div>
                               )}
                             </div>
@@ -790,12 +792,12 @@ const CareerPathwayDetail = () => {
         <div className="flex items-start gap-3">
           <Lightbulb className="w-6 h-6 text-blue-600 mt-1 flex-shrink-0" />
           <div>
-            <h3 className="text-lg font-medium text-blue-900 mb-2">Utilisation de ce parcours</h3>
+            <h3 className="text-lg font-medium text-blue-900 mb-2">{t('careerPathways.usage')}</h3>
             <div className="text-blue-800 space-y-2">
-              <p>• <strong>Explorez les thèmes</strong> pour identifier les compétences à développer dans votre domaine</p>
-              <p>• <strong>Utilisez les filtres</strong> pour vous concentrer sur un niveau spécifique</p>
-              <p>• <strong>Consultez les exemples</strong> pour comprendre l'application pratique des compétences</p>
-              <p>• <strong>Discutez avec votre manager ou coach </strong> pour définir votre plan de développement personnalisé</p>
+              <p>• <strong>{t('careerPathways.exploreThemes')}</strong></p>
+              <p>• <strong>{t('careerPathways.useFilters')}</strong></p>
+              <p>• <strong>{t('careerPathways.consultExamples')}</strong></p>
+              <p>• <strong>{t('careerPathways.discussWithManager')}</strong></p>
             </div>
           </div>
         </div>
@@ -807,14 +809,14 @@ const CareerPathwayDetail = () => {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold text-gray-900">
-                {editingTheme ? 'Modifier le thème' : 'Nouveau thème de développement'}
+                {editingTheme ? t('careerPathways.editTheme') : t('careerPathways.newTheme')}
               </h2>
             </div>
 
             <form onSubmit={editingTheme ? handleEditTheme : handleCreateTheme} className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nom du thème *
+                  {t('careerPathways.themeName')} *
                 </label>
                 <input
                   type="text"
@@ -822,13 +824,13 @@ const CareerPathwayDetail = () => {
                   value={themeFormData.name}
                   onChange={(e) => setThemeFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Ex: Machine Learning Development"
+                  placeholder={t('careerPathways.themeNamePlaceholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description *
+                  {t('common.description')} *
                 </label>
                 <textarea
                   required
@@ -836,7 +838,7 @@ const CareerPathwayDetail = () => {
                   value={themeFormData.description}
                   onChange={(e) => setThemeFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Description du thème de développement"
+                  placeholder={t('careerPathways.themeDescriptionPlaceholder')}
                 />
               </div>
 
@@ -853,7 +855,7 @@ const CareerPathwayDetail = () => {
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  Annuler
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -861,7 +863,7 @@ const CareerPathwayDetail = () => {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  {submitting ? (editingTheme ? 'Modification...' : 'Création...') : (editingTheme ? 'Modifier' : 'Créer')}
+                  {submitting ? (editingTheme ? t('common.updating') : t('common.creating')) : (editingTheme ? t('common.update') : t('common.create'))}
                 </button>
               </div>
             </form>
@@ -875,12 +877,14 @@ const CareerPathwayDetail = () => {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold text-gray-900">
-                {editingSkill ? 'Modifier la compétence' : 'Nouvelle compétence'}
+                {editingSkill ? t('careerPathways.editSkill') : t('careerPathways.newSkill')}
               </h2>
               {!editingSkill && selectedThemeForSkill && selectedLevelForSkill && (
                 <p className="text-sm text-gray-600 mt-1">
-                  Thème: {pathwayData.themes.find(t => t.id === selectedThemeForSkill)?.name} • 
-                  Niveau: {pathwayData.levels.find(l => l.id === selectedLevelForSkill)?.name}
+                  {t('careerPathways.themeAndLevel', {
+                    theme: pathwayData.themes.find(t => t.id === selectedThemeForSkill)?.name,
+                    level: pathwayData.levels.find(l => l.id === selectedLevelForSkill)?.name
+                  })}
                 </p>
               )}
             </div>
@@ -888,7 +892,7 @@ const CareerPathwayDetail = () => {
             <form onSubmit={editingSkill ? handleEditSkill : handleCreateSkill} className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description de la compétence *
+                  {t('careerPathways.skillDescription')} *
                 </label>
                 <textarea
                   required
@@ -896,33 +900,33 @@ const CareerPathwayDetail = () => {
                   value={skillFormData.skill_description}
                   onChange={(e) => setSkillFormData(prev => ({ ...prev, skill_description: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Description détaillée de la compétence"
+                  placeholder={t('careerPathways.skillDescriptionPlaceholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Exemples
+                  {t('common.examples')}
                 </label>
                 <textarea
                   rows={2}
                   value={skillFormData.examples}
                   onChange={(e) => setSkillFormData(prev => ({ ...prev, examples: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Exemples concrets d'application de cette compétence"
+                  placeholder={t('careerPathways.examplesPlaceholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prérequis
+                  {t('common.requirements')}
                 </label>
                 <textarea
                   rows={2}
                   value={skillFormData.requirements}
                   onChange={(e) => setSkillFormData(prev => ({ ...prev, requirements: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Prérequis nécessaires pour développer cette compétence"
+                  placeholder={t('careerPathways.requirementsPlaceholder')}
                 />
               </div>
 
@@ -939,7 +943,7 @@ const CareerPathwayDetail = () => {
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  Annuler
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -947,7 +951,7 @@ const CareerPathwayDetail = () => {
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
-                  {submitting ? (editingSkill ? 'Modification...' : 'Création...') : (editingSkill ? 'Modifier' : 'Créer')}
+                  {submitting ? (editingSkill ? t('common.updating') : t('common.creating')) : (editingSkill ? t('common.update') : t('common.create'))}
                 </button>
               </div>
             </form>

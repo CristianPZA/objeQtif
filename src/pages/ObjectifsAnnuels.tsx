@@ -3,6 +3,7 @@ import { Plus, Target, Calendar, User, BookOpen, CheckCircle, Clock, AlertCircle
 import { supabase } from '../lib/supabase';
 import CreateObjectiveModal from '../components/objectives/CreateObjectiveModal';
 import ObjectiveCard from '../components/objectives/ObjectiveCard';
+import { useTranslation } from 'react-i18next';
 
 interface AnnualObjective {
   id: string;
@@ -41,6 +42,7 @@ interface ObjectiveDetail {
 }
 
 const ObjectifsAnnuels = () => {
+  const { t } = useTranslation();
   const [objectives, setObjectives] = useState<AnnualObjective[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -59,7 +61,7 @@ const ObjectifsAnnuels = () => {
       
       // Récupérer l'utilisateur actuel
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non connecté');
+      if (!user) throw new Error(t('common.notLoggedIn'));
 
       // Récupérer le profil utilisateur
       const { data: profile } = await supabase
@@ -68,14 +70,14 @@ const ObjectifsAnnuels = () => {
         .eq('id', user.id)
         .single();
 
-      if (!profile) throw new Error('Profil utilisateur non trouvé');
+      if (!profile) throw new Error(t('common.profileNotFound'));
 
       setCurrentUser(profile);
       setUserRole(profile.role);
 
       await fetchObjectives();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,7 @@ const ObjectifsAnnuels = () => {
       setObjectives(data || []);
     } catch (err) {
       console.error('Error fetching objectives:', err);
-      setError('Erreur lors du chargement des objectifs');
+      setError(t('annualObjectives.errorFetchingObjectives'));
     }
   };
 
@@ -108,12 +110,12 @@ const ObjectifsAnnuels = () => {
   const handleObjectiveCreated = () => {
     setShowCreateModal(false);
     fetchObjectives();
-    setSuccess('Objectifs annuels créés avec succès');
+    setSuccess(t('annualObjectives.objectivesCreatedSuccess'));
     setTimeout(() => setSuccess(null), 3000);
   };
 
   const handleDeleteObjective = async (objectiveId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ces objectifs annuels ?')) {
+    if (!confirm(t('annualObjectives.confirmDelete'))) {
       return;
     }
 
@@ -125,11 +127,11 @@ const ObjectifsAnnuels = () => {
 
       if (error) throw error;
 
-      setSuccess('Objectifs supprimés avec succès');
+      setSuccess(t('annualObjectives.objectivesDeletedSuccess'));
       fetchObjectives();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
+      setError(err instanceof Error ? err.message : t('common.deletionError'));
       setTimeout(() => setError(null), 5000);
     }
   };
@@ -152,15 +154,15 @@ const ObjectifsAnnuels = () => {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'draft':
-        return 'Brouillon';
+        return t('annualObjectives.objectiveStatuses.draft');
       case 'submitted':
-        return 'Soumis';
+        return t('annualObjectives.objectiveStatuses.submitted');
       case 'approved':
-        return 'Approuvé';
+        return t('annualObjectives.objectiveStatuses.approved');
       case 'rejected':
-        return 'Rejeté';
+        return t('annualObjectives.objectiveStatuses.rejected');
       default:
-        return 'Inconnu';
+        return t('common.unknown');
     }
   };
 
@@ -198,8 +200,8 @@ const ObjectifsAnnuels = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Objectifs Annuels</h1>
-          <p className="text-gray-600 mt-1">Définissez et suivez vos objectifs de développement professionnel</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('annualObjectives.title')}</h1>
+          <p className="text-gray-600 mt-1">{t('annualObjectives.subtitle')}</p>
         </div>
         {canCreateObjectives() && (
           <button
@@ -207,7 +209,7 @@ const ObjectifsAnnuels = () => {
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Créer des objectifs annuels
+            {t('annualObjectives.createAnnualObjectives')}
           </button>
         )}
       </div>
@@ -231,14 +233,13 @@ const ObjectifsAnnuels = () => {
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="text-sm font-medium text-yellow-800">Configuration requise</h3>
+              <h3 className="text-sm font-medium text-yellow-800">{t('annualObjectives.configurationRequired')}</h3>
               <p className="text-sm text-yellow-700 mt-1">
-                Pour créer des objectifs annuels, vous devez avoir un Career Pathway et un niveau de carrière assignés. 
-                Contactez votre administrateur ou votre coach pour configurer votre profil.
+                {t('annualObjectives.configurationMessage')}
               </p>
               <div className="mt-2 text-xs text-yellow-600">
-                <p>• Career Pathway: {currentUser?.career_pathway_id ? '✓ Configuré' : '✗ Non configuré'}</p>
-                <p>• Niveau de carrière: {currentUser?.career_level_id ? '✓ Configuré' : '✗ Non configuré'}</p>
+                <p>• {t('annualObjectives.careerPathway')}: {currentUser?.career_pathway_id ? t('annualObjectives.configured') : t('annualObjectives.notConfigured')}</p>
+                <p>• {t('annualObjectives.careerLevel')}: {currentUser?.career_level_id ? t('annualObjectives.configured') : t('annualObjectives.notConfigured')}</p>
               </div>
             </div>
           </div>
@@ -253,7 +254,7 @@ const ObjectifsAnnuels = () => {
               <Target className="w-5 h-5 text-indigo-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Objectifs</p>
+              <p className="text-sm font-medium text-gray-600">{t('annualObjectives.totalObjectives')}</p>
               <p className="text-2xl font-bold text-gray-900">{objectives.length}</p>
             </div>
           </div>
@@ -265,7 +266,7 @@ const ObjectifsAnnuels = () => {
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Approuvés</p>
+              <p className="text-sm font-medium text-gray-600">{t('annualObjectives.approved')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {objectives.filter(obj => obj.status === 'approved').length}
               </p>
@@ -279,7 +280,7 @@ const ObjectifsAnnuels = () => {
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">En attente</p>
+              <p className="text-sm font-medium text-gray-600">{t('annualObjectives.pending')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {objectives.filter(obj => obj.status === 'submitted').length}
               </p>
@@ -293,7 +294,7 @@ const ObjectifsAnnuels = () => {
               <Calendar className="w-5 h-5 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Année {currentYear}</p>
+              <p className="text-sm font-medium text-gray-600">{t('annualObjectives.currentYear')} {currentYear}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {objectives.filter(obj => obj.year === currentYear).length}
               </p>
@@ -317,9 +318,9 @@ const ObjectifsAnnuels = () => {
         ) : (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun objectif défini</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('annualObjectives.noObjectivesDefined')}</h3>
             <p className="text-gray-600 mb-4">
-              Commencez par créer vos objectifs annuels basés sur votre parcours de carrière.
+              {t('annualObjectives.startByCreating')}
             </p>
             {canCreateObjectives() && (
               <button
@@ -327,7 +328,7 @@ const ObjectifsAnnuels = () => {
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 mx-auto transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                Créer mes premiers objectifs
+                {t('annualObjectives.createFirstObjectives')}
               </button>
             )}
           </div>

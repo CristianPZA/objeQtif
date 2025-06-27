@@ -3,6 +3,7 @@ import { Users, Target, Star, TrendingUp, Calendar, User, BookOpen, Award, Chevr
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface CoachingEvaluation {
   evaluation_id: string;
@@ -31,6 +32,7 @@ interface CoachingEvaluation {
 }
 
 const MonCoaching = () => {
+  const { t } = useTranslation();
   const [evaluations, setEvaluations] = useState<CoachingEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ const MonCoaching = () => {
       setLoading(true);
       
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Non connecté');
+      if (!user) throw new Error(t('common.notLoggedIn'));
 
       const { data: profile } = await supabase
         .from('user_profiles')
@@ -55,12 +57,12 @@ const MonCoaching = () => {
         .eq('id', user.id)
         .single();
 
-      if (!profile) throw new Error('Profil utilisateur non trouvé');
+      if (!profile) throw new Error(t('common.profileNotFound'));
 
       setCurrentUser(profile);
       await fetchCoachingEvaluations(user.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
+      setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,7 @@ const MonCoaching = () => {
       setEvaluations(data || []);
     } catch (err) {
       console.error('Error fetching coaching evaluations:', err);
-      setError('Erreur lors du chargement des évaluations');
+      setError(t('coaching.errorFetchingEvaluations'));
     }
   };
 
@@ -161,8 +163,8 @@ const MonCoaching = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Mon Coaching</h1>
-          <p className="text-gray-600 mt-1">Suivez les évaluations et le développement de vos coachés</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('coaching.title')}</h1>
+          <p className="text-gray-600 mt-1">{t('coaching.subtitle')}</p>
         </div>
       </div>
 
@@ -181,7 +183,7 @@ const MonCoaching = () => {
               <Users className="w-5 h-5 text-indigo-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Coachés</p>
+              <p className="text-sm font-medium text-gray-600">{t('coaching.coachees')}</p>
               <p className="text-2xl font-bold text-gray-900">{getUniqueEmployees().length}</p>
             </div>
           </div>
@@ -193,7 +195,7 @@ const MonCoaching = () => {
               <Target className="w-5 h-5 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Évaluations</p>
+              <p className="text-sm font-medium text-gray-600">{t('coaching.evaluations')}</p>
               <p className="text-2xl font-bold text-gray-900">{evaluations.length}</p>
             </div>
           </div>
@@ -205,7 +207,7 @@ const MonCoaching = () => {
               <Star className="w-5 h-5 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Note moyenne</p>
+              <p className="text-sm font-medium text-gray-600">{t('coaching.averageScore')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {evaluations.length > 0 
                   ? (evaluations.reduce((sum, currentEval) => sum + currentEval.note_finale, 0) / evaluations.length).toFixed(1)
@@ -222,7 +224,7 @@ const MonCoaching = () => {
               <TrendingUp className="w-5 h-5 text-orange-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Projets</p>
+              <p className="text-sm font-medium text-gray-600">{t('coaching.projects')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {new Set(evaluations.map(currentEval => currentEval.projet_id)).size}
               </p>
@@ -234,13 +236,13 @@ const MonCoaching = () => {
       {/* Filtre par employé */}
       <div className="bg-white p-4 rounded-lg shadow-sm border">
         <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">Filtrer par coaché:</label>
+          <label className="text-sm font-medium text-gray-700">{t('coaching.filterByCoachee')}:</label>
           <select
             value={selectedEmployee}
             onChange={(e) => setSelectedEmployee(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <option value="">Tous les coachés</option>
+            <option value="">{t('coaching.allCoachees')}</option>
             {getUniqueEmployees().map(employee => (
               <option key={employee.id} value={employee.id}>
                 {employee.name} ({employee.role})
@@ -254,7 +256,7 @@ const MonCoaching = () => {
       {!selectedEmployee && (
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Vue d'ensemble des coachés</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{t('coaching.coacheesOverview')}</h2>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -276,12 +278,12 @@ const MonCoaching = () => {
                     </div>
                     <div className="space-y-1 text-sm text-gray-600">
                       <div className="flex justify-between">
-                        <span>Évaluations:</span>
+                        <span>{t('coaching.evaluations')}:</span>
                         <span>{stats.totalEvaluations}</span>
                       </div>
                       {stats.lastEvaluation && (
                         <div className="flex justify-between">
-                          <span>Dernière:</span>
+                          <span>{t('coaching.lastEvaluation')}:</span>
                           <span>{format(new Date(stats.lastEvaluation), 'dd/MM/yyyy', { locale: fr })}</span>
                         </div>
                       )}
@@ -290,7 +292,7 @@ const MonCoaching = () => {
                       onClick={() => setSelectedEmployee(employee.id)}
                       className="mt-3 w-full px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm hover:bg-indigo-200 transition-colors"
                     >
-                      Voir les détails
+                      {t('coaching.seeDetails')}
                     </button>
                   </div>
                 );
@@ -317,7 +319,7 @@ const MonCoaching = () => {
                           {evaluation.projet_titre}
                         </h3>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreBadgeColor(evaluation.note_finale)}`}>
-                          Note finale: {evaluation.note_finale}/5
+                          {t('coaching.finalScore')}: {evaluation.note_finale}/5
                         </span>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
@@ -327,11 +329,11 @@ const MonCoaching = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4" />
-                          <span>Client: {evaluation.nom_client}</span>
+                          <span>{t('projects.clientName')}: {evaluation.nom_client}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
-                          <span>Évalué le {format(new Date(evaluation.date_soumission), 'dd/MM/yyyy', { locale: fr })}</span>
+                          <span>{t('evaluation.evaluatedOn')} {format(new Date(evaluation.date_soumission), 'dd/MM/yyyy', { locale: fr })}</span>
                         </div>
                       </div>
                     </div>
@@ -351,7 +353,7 @@ const MonCoaching = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div className="bg-blue-50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-blue-800">Auto-évaluation</span>
+                        <span className="text-sm font-medium text-blue-800">{t('coaching.selfEvaluation')}</span>
                         <span className="text-sm font-bold text-blue-800">{evaluation.score_auto_evaluation}/5</span>
                       </div>
                       <div className="flex">
@@ -360,7 +362,7 @@ const MonCoaching = () => {
                     </div>
                     <div className="bg-green-50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-green-800">Éval. Référent</span>
+                        <span className="text-sm font-medium text-green-800">{t('coaching.referentEvaluation')}</span>
                         <span className="text-sm font-bold text-green-800">{evaluation.score_referent}/5</span>
                       </div>
                       <div className="flex">
@@ -369,7 +371,7 @@ const MonCoaching = () => {
                     </div>
                     <div className="bg-purple-50 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-purple-800">Note finale</span>
+                        <span className="text-sm font-medium text-purple-800">{t('coaching.finalScore')}</span>
                         <span className="text-sm font-bold text-purple-800">{evaluation.note_finale}/5</span>
                       </div>
                       <div className="flex">
@@ -383,7 +385,7 @@ const MonCoaching = () => {
                     <div className="border-t pt-4 space-y-6">
                       <div>
                         <h4 className="font-medium text-gray-900 mb-3">
-                          Objectifs évalués ({evaluation.objectifs.length})
+                          {t('objectives.evaluatedObjectives')} ({evaluation.objectifs.length})
                         </h4>
                         <div className="space-y-4">
                           {evaluation.objectifs.map((objective: any, index: number) => {
@@ -407,7 +409,7 @@ const MonCoaching = () => {
                                   {/* Auto-évaluation */}
                                   {autoEval && (
                                     <div className="bg-blue-50 rounded p-3">
-                                      <h6 className="text-sm font-medium text-blue-800 mb-2">Auto-évaluation</h6>
+                                      <h6 className="text-sm font-medium text-blue-800 mb-2">{t('coaching.selfEvaluation')}</h6>
                                       <div className="flex items-center gap-2 mb-2">
                                         <div className="flex">
                                           {getScoreStars(autoEval.auto_evaluation_score)}
@@ -417,7 +419,7 @@ const MonCoaching = () => {
                                       <p className="text-sm text-blue-700">{autoEval.auto_evaluation_comment}</p>
                                       {autoEval.achievements && (
                                         <p className="text-sm text-blue-700 mt-1">
-                                          <strong>Réalisations:</strong> {autoEval.achievements}
+                                          <strong>{t('evaluation.achievements')}:</strong> {autoEval.achievements}
                                         </p>
                                       )}
                                     </div>
@@ -426,7 +428,7 @@ const MonCoaching = () => {
                                   {/* Évaluation référent */}
                                   {referentEval && (
                                     <div className="bg-green-50 rounded p-3">
-                                      <h6 className="text-sm font-medium text-green-800 mb-2">Évaluation Référent</h6>
+                                      <h6 className="text-sm font-medium text-green-800 mb-2">{t('coaching.referentEvaluation')}</h6>
                                       <div className="flex items-center gap-2 mb-2">
                                         <div className="flex">
                                           {getScoreStars(referentEval.referent_score)}
@@ -436,12 +438,12 @@ const MonCoaching = () => {
                                       <p className="text-sm text-green-700">{referentEval.referent_comment}</p>
                                       {referentEval.observed_achievements && (
                                         <p className="text-sm text-green-700 mt-1">
-                                          <strong>Observations:</strong> {referentEval.observed_achievements}
+                                          <strong>{t('evaluation.observations')}:</strong> {referentEval.observed_achievements}
                                         </p>
                                       )}
                                       {referentEval.development_recommendations && (
                                         <p className="text-sm text-green-700 mt-1">
-                                          <strong>Recommandations:</strong> {referentEval.development_recommendations}
+                                          <strong>{t('evaluation.recommendations')}:</strong> {referentEval.development_recommendations}
                                         </p>
                                       )}
                                     </div>
@@ -455,27 +457,27 @@ const MonCoaching = () => {
 
                       {/* Synthèse pour le coaching */}
                       <div className="bg-purple-50 rounded-lg p-4">
-                        <h4 className="font-medium text-purple-800 mb-3">Synthèse pour le coaching</h4>
+                        <h4 className="font-medium text-purple-800 mb-3">{t('coaching.coachingSummary')}</h4>
                         <div className="space-y-2 text-sm text-purple-700">
                           <div className="flex justify-between">
-                            <span>Écart auto-évaluation / référent:</span>
+                            <span>{t('coaching.selfReferentGap')}:</span>
                             <span className={`font-medium ${Math.abs(evaluation.score_auto_evaluation - evaluation.score_referent) > 1 ? 'text-red-600' : 'text-green-600'}`}>
-                              {(evaluation.score_referent - evaluation.score_auto_evaluation).toFixed(1)} points
+                              {(evaluation.score_referent - evaluation.score_auto_evaluation).toFixed(1)} {t('coaching.points')}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Tendance d'auto-évaluation:</span>
+                            <span>{t('coaching.selfEvaluationTrend')}:</span>
                             <span className={`font-medium ${evaluation.score_auto_evaluation > evaluation.score_referent ? 'text-orange-600' : evaluation.score_auto_evaluation < evaluation.score_referent ? 'text-blue-600' : 'text-green-600'}`}>
-                              {evaluation.score_auto_evaluation > evaluation.score_referent ? 'Surévaluation' : 
-                               evaluation.score_auto_evaluation < evaluation.score_referent ? 'Sous-évaluation' : 'Alignée'}
+                              {evaluation.score_auto_evaluation > evaluation.score_referent ? t('coaching.overestimation') : 
+                               evaluation.score_auto_evaluation < evaluation.score_referent ? t('coaching.underestimation') : t('coaching.aligned')}
                             </span>
                           </div>
                           <div className="mt-3 p-3 bg-white rounded border-l-4 border-purple-400">
                             <p className="text-sm text-gray-700">
-                              <strong>Points de coaching suggérés:</strong>
+                              <strong>{t('coaching.suggestedCoachingPoints')}:</strong>
                               {Math.abs(evaluation.score_auto_evaluation - evaluation.score_referent) > 1 
-                                ? " Discuter de l'écart important entre auto-évaluation et évaluation référent. Explorer les perceptions et attentes."
-                                : " Féliciter pour l'alignement des perceptions. Identifier les prochaines étapes de développement."
+                                ? t('coaching.discussGap')
+                                : t('coaching.congratulateAlignment')
                               }
                             </p>
                           </div>
@@ -490,11 +492,11 @@ const MonCoaching = () => {
         ) : (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm border">
             <Award className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune évaluation disponible</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('coaching.noEvaluationsAvailable')}</h3>
             <p className="text-gray-600">
               {selectedEmployee 
-                ? 'Aucune évaluation finalisée pour ce coaché.'
-                : 'Aucune évaluation finalisée de vos coachés n\'est encore disponible.'
+                ? t('coaching.noEvaluationsForCoachee')
+                : t('coaching.noEvaluationsForAnyCoachee')
               }
             </p>
             {selectedEmployee && (
@@ -502,7 +504,7 @@ const MonCoaching = () => {
                 onClick={() => setSelectedEmployee('')}
                 className="mt-4 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors"
               >
-                Voir tous les coachés
+                {t('coaching.viewAllCoachees')}
               </button>
             )}
           </div>
