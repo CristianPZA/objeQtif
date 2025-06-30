@@ -197,10 +197,9 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
     setSelectedSkills(prev => {
       if (prev.includes(skillId)) {
         return prev.filter(id => id !== skillId);
-      } else if (prev.length < 4) {
+      } else {
         return [...prev, skillId];
       }
-      return prev;
     });
   };
 
@@ -264,7 +263,8 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       obj.time_bound.trim() !== ''
     );
 
-    return pathwayValid && customValid;
+    // Au moins un objectif doit être défini (pathway ou personnalisé)
+    return (pathwayValid && objectives.length > 0) || (customValid && customObjectives.length > 0);
   };
 
   const handleSubmit = async () => {
@@ -351,7 +351,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
           pour le parcours <strong>{selectedEmployee?.career_pathway?.name}</strong>
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          Sélectionnez jusqu'à 4 compétences ({selectedSkills.length}/4 sélectionnées)
+          Sélectionnez les compétences que vous souhaitez développer ({selectedSkills.length} sélectionnées)
         </p>
       </div>
 
@@ -368,17 +368,14 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         <div className="space-y-3">
           {availableSkills.map((skill) => {
             const isSelected = selectedSkills.includes(skill.id);
-            const isDisabled = !isSelected && selectedSkills.length >= 4;
             
             return (
               <div
                 key={skill.id}
-                onClick={() => !isDisabled && handleSkillToggle(skill.id)}
+                onClick={() => handleSkillToggle(skill.id)}
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                   isSelected
                     ? 'border-indigo-500 bg-indigo-50'
-                    : isDisabled
-                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
                     : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
                 }`}
               >
