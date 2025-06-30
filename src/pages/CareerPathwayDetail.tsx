@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft,
+  ArrowLeft, 
   Target, 
   Users, 
   TrendingUp, 
@@ -407,32 +407,6 @@ const CareerPathwayDetail = () => {
     setExpandedThemes(newExpanded);
   };
 
-  const getColorClasses = (color: string) => {
-    const colorMap: Record<string, { bg: string; text: string; border: string; hover: string }> = {
-      green: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200', hover: 'hover:bg-green-200' },
-      blue: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200', hover: 'hover:bg-blue-200' },
-      purple: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200', hover: 'hover:bg-purple-200' },
-      orange: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200', hover: 'hover:bg-orange-200' },
-      red: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200', hover: 'hover:bg-red-200' },
-      indigo: { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-200', hover: 'hover:bg-indigo-200' },
-      gray: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200', hover: 'hover:bg-gray-200' }
-    };
-    return colorMap[color] || colorMap.gray;
-  };
-
-  const getIconComponent = (iconName: string) => {
-    const iconMap: Record<string, React.ComponentType<any>> = {
-      target: Target,
-      calculator: TrendingUp,
-      users: Users,
-      award: Award,
-      lightbulb: Lightbulb,
-      star: Star
-    };
-    const IconComponent = iconMap[iconName] || Target;
-    return <IconComponent className="w-6 h-6" />;
-  };
-
   // Fonction pour extraire le nom de base d'un thème (sans les suffixes comme "- Teamwork")
   const getBaseThemeName = (themeName: string): string => {
     // Recherche des thèmes qui suivent un pattern comme "Consulting & Customer Relationship - X"
@@ -478,6 +452,32 @@ const CareerPathwayDetail = () => {
     return pathwayData.skills.filter(skill => 
       skill.development_theme_id === themeId && skill.career_level_id === levelId
     );
+  };
+
+  const getColorClasses = (color: string) => {
+    const colorMap: Record<string, { bg: string; text: string; border: string; hover: string }> = {
+      green: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200', hover: 'hover:bg-green-200' },
+      blue: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200', hover: 'hover:bg-blue-200' },
+      purple: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-200', hover: 'hover:bg-purple-200' },
+      orange: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-200', hover: 'hover:bg-orange-200' },
+      red: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200', hover: 'hover:bg-red-200' },
+      indigo: { bg: 'bg-indigo-100', text: 'text-indigo-800', border: 'border-indigo-200', hover: 'hover:bg-indigo-200' },
+      gray: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200', hover: 'hover:bg-gray-200' }
+    };
+    return colorMap[color] || colorMap.gray;
+  };
+
+  const getIconComponent = (iconName: string) => {
+    const iconMap: Record<string, React.ComponentType<any>> = {
+      target: Target,
+      calculator: TrendingUp,
+      users: Users,
+      award: Award,
+      lightbulb: Lightbulb,
+      star: Star
+    };
+    const IconComponent = iconMap[iconName] || Target;
+    return <IconComponent className="w-6 h-6" />;
   };
 
   if (loading) {
@@ -592,7 +592,7 @@ const CareerPathwayDetail = () => {
                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
                 }`}
               >
-                <div className="text-sm font-medium truncate">{group.baseThemeName}</div>
+                <div className="text-sm font-medium whitespace-normal">{group.baseThemeName}</div>
                 <div className="text-xs text-gray-500 mt-1">{group.themes.length} {t('common.theme', { count: group.themes.length })}</div>
               </button>
             );
@@ -631,7 +631,7 @@ const CareerPathwayDetail = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{theme.name}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 break-words">{theme.name}</h3>
                           {canManagePathways() && (
                             <div className="flex gap-1">
                               <button
@@ -708,7 +708,7 @@ const CareerPathwayDetail = () => {
                                 <div key={skill.id} className="p-4 bg-gray-50 rounded-lg">
                                   <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                      <p className="text-gray-900 leading-relaxed">{skill.skill_description}</p>
+                                      <p className="text-gray-900 leading-relaxed break-words">{skill.skill_description}</p>
                                       {skill.examples && (
                                         <div className="mt-2 text-sm text-gray-600">
                                           <strong>{t('common.examples')}:</strong> {skill.examples}
