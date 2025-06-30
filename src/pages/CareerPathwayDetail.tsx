@@ -61,6 +61,11 @@ interface PathwayData {
   skills: PathwaySkill[];
 }
 
+interface ThemeGroup {
+  baseThemeName: string;
+  themes: DevelopmentTheme[];
+}
+
 const CareerPathwayDetail = () => {
   const { areaId } = useParams<{ areaId: string }>();
   const navigate = useNavigate();
@@ -79,7 +84,7 @@ const CareerPathwayDetail = () => {
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  const [selectedThemeGroup, setSelectedThemeGroup] = useState<string | null>(null);
 
   // Form states
   const [showCreateThemeForm, setShowCreateThemeForm] = useState(false);
@@ -428,13 +433,46 @@ const CareerPathwayDetail = () => {
     return <IconComponent className="w-6 h-6" />;
   };
 
-  const handleThemeFilterChange = (themeId: string | null) => {
-    setSelectedTheme(themeId === selectedTheme ? null : themeId);
+  // Fonction pour extraire le nom de base d'un thème (sans les suffixes comme "- Teamwork")
+  const getBaseThemeName = (themeName: string): string => {
+    // Recherche des thèmes qui suivent un pattern comme "Consulting & Customer Relationship - X"
+    const match = themeName.match(/^([^-]+)(?:\s*-\s*.+)?$/);
+    return match ? match[1].trim() : themeName;
   };
 
-  const filteredThemes = selectedTheme 
-    ? pathwayData.themes.filter(theme => theme.id === selectedTheme)
+  // Regrouper les thèmes par nom de base
+  const groupThemesByBaseName = (): ThemeGroup[] => {
+    const themeGroups: Record<string, ThemeGroup> = {};
+    
+    pathwayData.themes.forEach(theme => {
+      const baseThemeName = getBaseThemeName(theme.name);
+      
+      if (!themeGroups[baseThemeName]) {
+        themeGroups[baseThemeName] = {
+          baseThemeName,
+          themes: []
+        };
+      }
+      
+      themeGroups[baseThemeName].themes.push(theme);
+    });
+    
+    // Convertir l'objet en tableau et trier par nom de base
+    return Object.values(themeGroups).sort((a, b) => 
+      a.baseThemeName.localeCompare(b.baseThemeName)
+    );
+  };
+
+  const themeGroups = groupThemesByBaseName();
+
+  // Filtrer les thèmes en fonction du groupe sélectionné
+  const filteredThemes = selectedThemeGroup 
+    ? pathwayData.themes.filter(theme => getBaseThemeName(theme.name) === selectedThemeGroup)
     : pathwayData.themes;
+
+  const handleThemeGroupFilterChange = (baseThemeName: string | null) => {
+    setSelectedThemeGroup(baseThemeName === selectedThemeGroup ? null : baseThemeName);
+  };
 
   const getSkillsForThemeAndLevel = (themeId: string, levelId: string) => {
     return pathwayData.skills.filter(skill => 
@@ -541,20 +579,21 @@ const CareerPathwayDetail = () => {
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.developmentThemes')}</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {pathwayData.themes.map((theme) => {
-            const isSelected = selectedTheme === theme.id;
+          {themeGroups.map((group) => {
+            const isSelected = selectedThemeGroup === group.baseThemeName;
             
             return (
               <button
-                key={theme.id}
-                onClick={() => handleThemeFilterChange(theme.id)}
+                key={group.baseThemeName}
+                onClick={() => handleThemeGroupFilterChange(group.baseThemeName)}
                 className={`p-3 rounded-lg border transition-all text-center ${
                   isSelected 
                     ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
                 }`}
               >
-                <div className="text-sm font-medium truncate">{theme.name}</div>
+                <div className="text-sm font-medium truncate">{group.baseThemeName}</div>
+                <div className="text-xs text-gray-500 mt-1">{group.themes.length} {t('common.theme', { count: group.themes.length })}</div>
               </button>
             );
           })}
@@ -565,7 +604,7 @@ const CareerPathwayDetail = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
-            {t('careerPathways.developmentThemes')}
+            {selectedThemeGroup ? selectedThemeGroup : t('careerPathways.developmentThemes')}
           </h2>
           <span className="text-sm text-gray-500">
             {filteredThemes.length} {t('common.theme', { count: filteredThemes.length })}
