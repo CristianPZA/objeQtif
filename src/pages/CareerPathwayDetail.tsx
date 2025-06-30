@@ -269,6 +269,20 @@ const CareerPathwayDetail = () => {
     setSuccess(null);
 
     try {
+      // Check if a skill already exists for this theme and level combination
+      const existingSkill = pathwayData.skills.find(skill => 
+        skill.development_theme_id === selectedThemeForSkill && 
+        skill.career_level_id === selectedLevelForSkill
+      );
+
+      if (existingSkill) {
+        const themeName = pathwayData.themes.find(t => t.id === selectedThemeForSkill)?.name;
+        const levelName = pathwayData.levels.find(l => l.id === selectedLevelForSkill)?.name;
+        setError(t('careerPathways.skillAlreadyExists', { theme: themeName, level: levelName }));
+        setSubmitting(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('pathway_skills')
         .insert([{
