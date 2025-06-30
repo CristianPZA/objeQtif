@@ -10,7 +10,6 @@ import {
   Award,
   Lightbulb,
   Star,
-  Search,
   ArrowRight,
   CheckCircle,
   Settings,
@@ -82,8 +81,7 @@ const CareerPathwayDetail = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [submitting, setSubmitting] = useState(false);
 
   // Form states
@@ -433,10 +431,38 @@ const CareerPathwayDetail = () => {
     return <IconComponent className="w-6 h-6" />;
   };
 
+  // Extraire les catégories uniques des thèmes
+  const getThemeCategories = () => {
+    const categories = new Set<string>();
+    
+    pathwayData.themes.forEach(theme => {
+      // Extraire la catégorie principale (avant le premier tiret ou parenthèse)
+      let category = theme.name;
+      
+      // Chercher le premier tiret ou parenthèse
+      const dashIndex = theme.name.indexOf(' - ');
+      const parenthesisIndex = theme.name.indexOf(' (');
+      
+      if (dashIndex > 0) {
+        category = theme.name.substring(0, dashIndex);
+      } else if (parenthesisIndex > 0) {
+        category = theme.name.substring(0, parenthesisIndex);
+      }
+      
+      categories.add(category);
+    });
+    
+    return Array.from(categories).sort();
+  };
+
+  const themeCategories = getThemeCategories();
+
+  // Filtrer les thèmes par catégorie
   const filteredThemes = pathwayData.themes.filter(theme => {
-    if (!searchTerm) return true;
-    return theme.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           theme.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    if (selectedCategory === 'all') return true;
+    
+    // Vérifier si le thème appartient à la catégorie sélectionnée
+    return theme.name.startsWith(selectedCategory);
   });
 
   const getSkillsForThemeAndLevel = (themeId: string, levelId: string) => {
@@ -540,18 +566,25 @@ const CareerPathwayDetail = () => {
         </div>
       </div>
 
-      {/* Search */}
+      {/* Category Filter */}
       <div className="bg-white rounded-lg shadow-sm border p-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder={t('careerPathways.searchThemes')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Filtrer par catégorie
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">Toutes les catégories</option>
+              {themeCategories.map(category => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
@@ -572,7 +605,7 @@ const CareerPathwayDetail = () => {
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">{t('careerPathways.noThemesFound')}</h3>
             <p className="text-gray-600">
-              {searchTerm 
+              {selectedCategory !== 'all'
                 ? t('careerPathways.noMatchingThemes')
                 : t('careerPathways.noThemesAvailable')
               }
