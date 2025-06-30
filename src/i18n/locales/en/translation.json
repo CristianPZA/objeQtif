@@ -1,6 +1,7 @@
 {
   "common": {
     "dashboard": "Dashboard",
+    "home": "Home",
     "projects": "Projects",
     "projectSheets": "Project Sheets",
     "annualObjectives": "Annual Objectives",

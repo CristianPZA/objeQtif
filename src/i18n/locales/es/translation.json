@@ -1,6 +1,7 @@
 {
   "common": {
     "dashboard": "Panel de control",
+    "home": "Inicio",
     "projects": "Proyectos",
     "projectSheets": "Fichas de Proyecto",
     "annualObjectives": "Objetivos Anuales",

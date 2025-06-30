@@ -60,7 +60,7 @@ const Sidebar = () => {
     {
       to: '/dashboard',
       icon: <LayoutDashboard className="w-5 h-5" />,
-      label: t('common.dashboard'),
+      label: t('common.home'),
     },
     {
       to: '/objectifs-annuels',
