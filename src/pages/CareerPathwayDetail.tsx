@@ -428,12 +428,6 @@ const CareerPathwayDetail = () => {
     return <IconComponent className="w-6 h-6" />;
   };
 
-  const getSkillsForThemeAndLevel = (themeId: string, levelId: string) => {
-    return pathwayData.skills.filter(skill => 
-      skill.development_theme_id === themeId && skill.career_level_id === levelId
-    );
-  };
-
   const handleThemeFilterChange = (themeId: string | null) => {
     setSelectedTheme(themeId === selectedTheme ? null : themeId);
   };
@@ -441,6 +435,12 @@ const CareerPathwayDetail = () => {
   const filteredThemes = selectedTheme 
     ? pathwayData.themes.filter(theme => theme.id === selectedTheme)
     : pathwayData.themes;
+
+  const getSkillsForThemeAndLevel = (themeId: string, levelId: string) => {
+    return pathwayData.skills.filter(skill => 
+      skill.development_theme_id === themeId && skill.career_level_id === levelId
+    );
+  };
 
   if (loading) {
     return (
@@ -555,39 +555,6 @@ const CareerPathwayDetail = () => {
                 }`}
               >
                 <div className="text-sm font-medium truncate">{theme.name}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Career Levels */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.careerLevels')}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {pathwayData.levels.map((level, index) => {
-            const colors = getColorClasses(level.color);
-            const isSelected = selectedLevel === level.id;
-            
-            return (
-              <button
-                key={level.id}
-                onClick={() => setSelectedLevel(isSelected ? null : level.id)}
-                className={`p-3 rounded-lg border transition-all text-center ${
-                  isSelected 
-                    ? `${colors.bg} ${colors.border} ${colors.text}` 
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center justify-center mb-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    isSelected ? 'bg-white bg-opacity-50' : colors.bg
-                  }`}>
-                    {index + 1}
-                  </div>
-                </div>
-                <h3 className="font-medium text-sm text-gray-900 mb-1">{level.name}</h3>
-                <p className="text-xs text-gray-600">{level.description}</p>
               </button>
             );
           })}
