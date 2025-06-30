@@ -9,7 +9,9 @@ import {
   Target, 
   AlertTriangle, 
   CheckCircle, 
-  Award
+  Award,
+  Edit,
+  Plus
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -17,7 +19,6 @@ import { fr } from 'date-fns/locale';
 import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
 import ObjectivesTab from '../components/evaluation/ObjectivesTab';
 import EvaluationTab from '../components/evaluation/EvaluationTab';
-import CustomObjectiveForm from '../components/objectives/CustomObjectiveForm';
 import { useTranslation } from 'react-i18next';
 
 interface ProjectCollaboration {
@@ -80,7 +81,6 @@ const FicheProjetDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [showObjectivesForm, setShowObjectivesForm] = useState(false);
   const [showAutoEvaluationModal, setShowAutoEvaluationModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'objectives' | 'evaluation'>('objectives');
 
@@ -162,17 +162,11 @@ const FicheProjetDetail = () => {
   };
 
   const handleCreateObjectives = () => {
-    setShowObjectivesForm(true);
+    navigate(`/objectifs-definition/${collaborationId}`);
   };
 
   const handleEditObjectives = () => {
-    setShowObjectivesForm(true);
-  };
-
-  const handleObjectivesSaved = () => {
-    setShowObjectivesForm(false);
-    setSuccess(t('objectives.objectivesSaved'));
-    fetchCollaborationDetail();
+    navigate(`/objectifs-definition/${collaborationId}`);
   };
 
   const handleStartAutoEvaluation = () => {
@@ -478,20 +472,6 @@ const FicheProjetDetail = () => {
           )}
         </div>
       </div>
-
-      {/* Modal de définition des objectifs */}
-      {showObjectivesForm && (
-        <CustomObjectiveForm
-          collaboration={collaboration}
-          existingObjectives={collaboration.objectifs?.objectifs || null}
-          onClose={() => setShowObjectivesForm(false)}
-          onSuccess={handleObjectivesSaved}
-          onError={(error) => {
-            setError(error);
-            setTimeout(() => setError(null), 5000);
-          }}
-        />
-      )}
 
       {/* Modal d'auto-évaluation */}
       {showAutoEvaluationModal && collaboration && collaboration.objectifs && (

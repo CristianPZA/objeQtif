@@ -1,6 +1,7 @@
 import React from 'react';
 import { Target, Plus, Edit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 interface ObjectivesTabProps {
   collaboration: any;
@@ -16,6 +17,7 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
   onEditObjectives
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   
   // Déterminer si des objectifs personnalisés sont présents
   const hasCustomObjectives = collaboration.objectifs?.objectifs?.some((obj: any) => obj.is_custom === true);
@@ -36,6 +38,10 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
   
   const objectiveCounts = countObjectivesByType();
 
+  const handleDefineObjectives = () => {
+    navigate(`/objectifs-definition/${collaboration.id}`);
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -49,7 +55,7 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
           <div className="flex gap-2">
             {collaboration.objectifs ? (
               <button
-                onClick={onEditObjectives}
+                onClick={handleDefineObjectives}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors"
               >
                 <Edit className="w-4 h-4" />
@@ -57,7 +63,7 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
               </button>
             ) : (
               <button
-                onClick={onCreateObjectives}
+                onClick={handleDefineObjectives}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -146,7 +152,7 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
           </p>
           {canDefineObjectives && (
             <button
-              onClick={onCreateObjectives}
+              onClick={handleDefineObjectives}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 mx-auto transition-colors"
             >
               <Plus className="w-4 h-4" />

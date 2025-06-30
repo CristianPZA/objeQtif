@@ -5,6 +5,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import FichesProjets from './pages/FichesProjets';
 import FicheProjetDetail from './pages/FicheProjetDetail';
+import ObjectiveDefinition from './pages/ObjectiveDefinition';
 import Projets from './pages/Projets';
 import ProjetDetail from './pages/ProjetDetail';
 import ObjectifsAnnuels from './pages/ObjectifsAnnuels';
@@ -42,6 +43,7 @@ function App() {
               <Route path="objectifs-annuels" element={<ObjectifsAnnuels />} />
               <Route path="fiches-projets" element={<FichesProjets />} />
               <Route path="fiche-projet/:collaborationId" element={<FicheProjetDetail />} />
+              <Route path="objectifs-definition/:collaborationId" element={<ObjectiveDefinition />} />
               <Route path="projets" element={<Projets />} />
               <Route path="projet/:id" element={<ProjetDetail />} />
               <Route path="administration" element={<Administration />} />
