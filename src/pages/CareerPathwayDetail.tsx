@@ -11,7 +11,6 @@ import {
   Lightbulb,
   Star,
   Search,
-  Filter,
   ArrowRight,
   CheckCircle,
   Settings,
@@ -145,7 +144,7 @@ const CareerPathwayDetail = () => {
       const [areaResult, levelsResult, themesResult, skillsResult] = await Promise.all([
         supabase.from('career_areas').select('*').eq('id', careerAreaId).eq('is_active', true).single(),
         supabase.from('career_levels').select('*').eq('is_active', true).order('sort_order'),
-        supabase.from('development_themes').select('*').eq('career_area_id', careerAreaId).eq('is_active', true).order('sort_order'),
+        supabase.from('development_themes').select('*').eq('career_area_id', careerAreaId).eq('is_active', true).order('name'),
         supabase.from('pathway_skills').select('*').order('sort_order')
       ]);
 
@@ -541,40 +540,7 @@ const CareerPathwayDetail = () => {
         </div>
       </div>
 
-      {/* Career Levels Legend */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.careerLevels')}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {pathwayData.levels.map((level, index) => {
-            const colors = getColorClasses(level.color);
-            const isSelected = selectedLevel === level.id;
-            
-            return (
-              <button
-                key={level.id}
-                onClick={() => setSelectedLevel(isSelected ? null : level.id)}
-                className={`p-3 rounded-lg border transition-all text-center ${
-                  isSelected 
-                    ? `${colors.bg} ${colors.border} ${colors.text}` 
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center justify-center mb-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                    isSelected ? 'bg-white bg-opacity-50' : colors.bg
-                  }`}>
-                    {index + 1}
-                  </div>
-                </div>
-                <h3 className="font-medium text-sm text-gray-900 mb-1">{level.name}</h3>
-                <p className="text-xs text-gray-600">{level.description}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Search and Filters */}
+      {/* Search */}
       <div className="bg-white rounded-lg shadow-sm border p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
@@ -587,40 +553,7 @@ const CareerPathwayDetail = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-          >
-            <Filter className="w-4 h-4" />
-            {t('common.filters')}
-          </button>
         </div>
-        
-        {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-3">{t('careerPathways.filterByLevel')}</h4>
-            <div className="flex flex-wrap gap-2">
-              {pathwayData.levels.map((level) => {
-                const colors = getColorClasses(level.color);
-                const isActive = selectedLevel === level.id;
-                
-                return (
-                  <button
-                    key={level.id}
-                    onClick={() => setSelectedLevel(isActive ? null : level.id)}
-                    className={`px-3 py-1 rounded-full text-sm transition-all ${
-                      isActive 
-                        ? `${colors.bg} ${colors.text}` 
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {level.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Development Themes and Skills */}
