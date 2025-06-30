@@ -10,11 +10,6 @@ import {
   Award,
   Lightbulb,
   Star,
-  Search,
-  Filter,
-  ArrowRight,
-  CheckCircle,
-  Settings,
   Plus,
   Edit,
   Trash2,
@@ -83,9 +78,8 @@ const CareerPathwayDetail = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
 
   // Form states
   const [showCreateThemeForm, setShowCreateThemeForm] = useState(false);
@@ -133,7 +127,7 @@ const CareerPathwayDetail = () => {
   };
 
   const canManagePathways = () => {
-    return userRole && ['direction', 'admin'].includes(userRole);
+    return userRole && ['admin'].includes(userRole);
   };
 
   const fetchPathwayData = async (careerAreaId: string) => {
@@ -145,7 +139,7 @@ const CareerPathwayDetail = () => {
       const [areaResult, levelsResult, themesResult, skillsResult] = await Promise.all([
         supabase.from('career_areas').select('*').eq('id', careerAreaId).eq('is_active', true).single(),
         supabase.from('career_levels').select('*').eq('is_active', true).order('sort_order'),
-        supabase.from('development_themes').select('*').eq('career_area_id', careerAreaId).eq('is_active', true).order('sort_order'),
+        supabase.from('development_themes').select('*').eq('career_area_id', careerAreaId).eq('is_active', true).order('name'),
         supabase.from('pathway_skills').select('*').order('sort_order')
       ]);
 
@@ -434,17 +428,19 @@ const CareerPathwayDetail = () => {
     return <IconComponent className="w-6 h-6" />;
   };
 
-  const filteredThemes = pathwayData.themes.filter(theme => {
-    if (!searchTerm) return true;
-    return theme.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           theme.description?.toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
   const getSkillsForThemeAndLevel = (themeId: string, levelId: string) => {
     return pathwayData.skills.filter(skill => 
       skill.development_theme_id === themeId && skill.career_level_id === levelId
     );
   };
+
+  const handleThemeFilterChange = (themeId: string | null) => {
+    setSelectedTheme(themeId === selectedTheme ? null : themeId);
+  };
+
+  const filteredThemes = selectedTheme 
+    ? pathwayData.themes.filter(theme => theme.id === selectedTheme)
+    : pathwayData.themes;
 
   if (loading) {
     return (
@@ -513,7 +509,7 @@ const CareerPathwayDetail = () => {
       {canManagePathways() && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <Settings className="w-5 h-5 text-blue-600" />
+            <Edit className="w-5 h-5 text-blue-600" />
             <div>
               <h3 className="text-sm font-medium text-blue-800">{t('careerPathways.adminMode')}</h3>
               <p className="text-sm text-blue-700 mt-1">
@@ -541,7 +537,31 @@ const CareerPathwayDetail = () => {
         </div>
       </div>
 
-      {/* Career Levels Legend */}
+      {/* Development Themes Filter */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.developmentThemes')}</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {pathwayData.themes.map((theme) => {
+            const isSelected = selectedTheme === theme.id;
+            
+            return (
+              <button
+                key={theme.id}
+                onClick={() => handleThemeFilterChange(theme.id)}
+                className={`p-3 rounded-lg border transition-all text-center ${
+                  isSelected 
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+                }`}
+              >
+                <div className="text-sm font-medium truncate">{theme.name}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Career Levels */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.careerLevels')}</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -574,55 +594,6 @@ const CareerPathwayDetail = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder={t('careerPathways.searchThemes')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-          >
-            <Filter className="w-4 h-4" />
-            {t('common.filters')}
-          </button>
-        </div>
-        
-        {showFilters && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-900 mb-3">{t('careerPathways.filterByLevel')}</h4>
-            <div className="flex flex-wrap gap-2">
-              {pathwayData.levels.map((level) => {
-                const colors = getColorClasses(level.color);
-                const isActive = selectedLevel === level.id;
-                
-                return (
-                  <button
-                    key={level.id}
-                    onClick={() => setSelectedLevel(isActive ? null : level.id)}
-                    className={`px-3 py-1 rounded-full text-sm transition-all ${
-                      isActive 
-                        ? `${colors.bg} ${colors.text}` 
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {level.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Development Themes and Skills */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -639,10 +610,7 @@ const CareerPathwayDetail = () => {
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">{t('careerPathways.noThemesFound')}</h3>
             <p className="text-gray-600">
-              {searchTerm 
-                ? t('careerPathways.noMatchingThemes')
-                : t('careerPathways.noThemesAvailable')
-              }
+              {t('careerPathways.noThemesAvailable')}
             </p>
           </div>
         ) : (
@@ -717,8 +685,6 @@ const CareerPathwayDetail = () => {
                                 <div className={`px-3 py-1 rounded-full text-sm font-medium ${colors.bg} ${colors.text}`}>
                                   {level.name}
                                 </div>
-                                <ArrowRight className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm text-gray-600">{level.description}</span>
                               </div>
                               {canManagePathways() && (
                                 <button
