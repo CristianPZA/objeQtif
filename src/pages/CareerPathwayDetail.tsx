@@ -133,7 +133,7 @@ const CareerPathwayDetail = () => {
   };
 
   const canManagePathways = () => {
-    return userRole === 'admin';
+    return userRole && ['direction', 'admin'].includes(userRole);
   };
 
   const fetchPathwayData = async (careerAreaId: string) => {
@@ -703,118 +703,81 @@ const CareerPathwayDetail = () => {
 
                   {isExpanded && (
                     <div className="border-t border-gray-200">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {t('common.skill')}
-                              </th>
-                              {pathwayData.levels.map(level => {
-                                // Skip if a level is selected and it's not this one
-                                if (selectedLevel && selectedLevel !== level.id) return null;
-                                
-                                const colors = getColorClasses(level.color);
-                                return (
-                                  <th 
-                                    key={level.id} 
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                  >
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
-                                      {level.name}
-                                    </span>
-                                  </th>
-                                );
-                              })}
+                      {pathwayData.levels.map((level) => {
+                        const skills = getSkillsForThemeAndLevel(theme.id, level.id);
+                        const colors = getColorClasses(level.color);
+                        const isLevelSelected = selectedLevel === level.id;
+                        
+                        if (selectedLevel && !isLevelSelected) return null;
+
+                        return (
+                          <div key={level.id} className="p-6 border-b border-gray-100 last:border-b-0">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`px-3 py-1 rounded-full text-sm font-medium ${colors.bg} ${colors.text}`}>
+                                  {level.name}
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-gray-400" />
+                                <span className="text-sm text-gray-600">{level.description}</span>
+                              </div>
                               {canManagePathways() && (
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  {t('common.actions')}
-                                </th>
+                                <button
+                                  onClick={() => openCreateSkillForm(theme.id, level.id)}
+                                  className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm flex items-center gap-1"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  {t('careerPathways.addSkill')}
+                                </button>
                               )}
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {pathwayData.levels.some(level => {
-                              // If a level is selected, only check that level
-                              if (selectedLevel) {
-                                return level.id === selectedLevel && getSkillsForThemeAndLevel(theme.id, level.id).length > 0;
-                              }
-                              // Otherwise check all levels
-                              return getSkillsForThemeAndLevel(theme.id, level.id).length > 0;
-                            }) ? (
-                              // There are skills for this theme
-                              pathwayData.levels.map(level => {
-                                // Skip if a level is selected and it's not this one
-                                if (selectedLevel && selectedLevel !== level.id) return null;
-                                
-                                const skills = getSkillsForThemeAndLevel(theme.id, level.id);
-                                if (skills.length === 0) return null;
-                                
-                                return skills.map((skill, skillIndex) => (
-                                  <tr key={skill.id} className="hover:bg-gray-50">
-                                    {skillIndex === 0 && (
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {theme.name}
-                                        {canManagePathways() && (
-                                          <button
-                                            onClick={() => openCreateSkillForm(theme.id, level.id)}
-                                            className="ml-2 text-xs text-indigo-600 hover:text-indigo-900"
-                                          >
-                                            +
-                                          </button>
-                                        )}
-                                      </td>
-                                    )}
-                                    {skillIndex > 0 && (
-                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-400">
-                                        {/* Empty cell for subsequent skills */}
-                                      </td>
-                                    )}
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      <div className="space-y-2">
-                                        <p>{skill.skill_description}</p>
-                                        {skill.examples && (
-                                          <p className="text-xs text-gray-600">
-                                            <strong>{t('common.examples')}:</strong> {skill.examples}
-                                          </p>
-                                        )}
-                                        {skill.requirements && (
-                                          <p className="text-xs text-gray-600">
-                                            <strong>{t('common.requirements')}:</strong> {skill.requirements}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </td>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              {skills.map((skill) => (
+                                <div key={skill.id} className="p-4 bg-gray-50 rounded-lg">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <p className="text-gray-900 leading-relaxed">{skill.skill_description}</p>
+                                      {skill.examples && (
+                                        <div className="mt-2 text-sm text-gray-600">
+                                          <strong>{t('common.examples')}:</strong> {skill.examples}
+                                        </div>
+                                      )}
+                                      {skill.requirements && (
+                                        <div className="mt-2 text-sm text-gray-600">
+                                          <strong>{t('common.requirements')}:</strong> {skill.requirements}
+                                        </div>
+                                      )}
+                                    </div>
                                     {canManagePathways() && (
-                                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                      <div className="flex gap-1 ml-3">
                                         <button
                                           onClick={() => openEditSkillForm(skill)}
-                                          className="text-indigo-600 hover:text-indigo-900 mr-3"
+                                          className="p-1 text-gray-400 hover:text-indigo-600 rounded"
+                                          title={t('common.editSkill')}
                                         >
-                                          <Edit className="w-4 h-4" />
+                                          <Edit className="w-3 h-3" />
                                         </button>
                                         <button
                                           onClick={() => handleDeleteSkill(skill)}
-                                          className="text-red-600 hover:text-red-900"
+                                          className="p-1 text-gray-400 hover:text-red-600 rounded"
+                                          title={t('common.deleteSkill')}
                                         >
-                                          <Trash2 className="w-4 h-4" />
+                                          <Trash2 className="w-3 h-3" />
                                         </button>
-                                      </td>
+                                      </div>
                                     )}
-                                  </tr>
-                                ));
-                              })
-                            ) : (
-                              // No skills for this theme
-                              <tr>
-                                <td colSpan={pathwayData.levels.length + 2} className="px-6 py-4 text-center text-sm text-gray-500">
+                                  </div>
+                                </div>
+                              ))}
+                              {skills.length === 0 && (
+                                <div className="text-center py-4 text-gray-500">
                                   {t('careerPathways.noSkillsDefined')}
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
