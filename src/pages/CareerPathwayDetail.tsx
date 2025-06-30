@@ -567,25 +567,33 @@ const CareerPathwayDetail = () => {
       </div>
 
       {/* Category Filter */}
-      <div className="bg-white rounded-lg shadow-sm border p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filtrer par catégorie
-            </label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Filtrer par catégorie</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`p-3 rounded-lg border-2 transition-all text-center ${
+              selectedCategory === 'all'
+                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+            }`}
+          >
+            <h3 className="font-medium text-sm">Toutes les catégories</h3>
+          </button>
+          
+          {themeCategories.map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`p-3 rounded-lg border-2 transition-all text-center ${
+                selectedCategory === category
+                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+              }`}
             >
-              <option value="all">Toutes les catégories</option>
-              {themeCategories.map(category => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
+              <h3 className="font-medium text-sm">{category}</h3>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -617,34 +625,58 @@ const CareerPathwayDetail = () => {
               const isExpanded = expandedThemes.has(theme.id);
               const hasSkills = pathwayData.skills.some(skill => skill.development_theme_id === theme.id);
               
+              // Extraire le nom du thème (après le tiret ou la parenthèse)
+              let themeName = theme.name;
+              let themeCategory = '';
+              
+              const dashIndex = theme.name.indexOf(' - ');
+              const parenthesisIndex = theme.name.indexOf(' (');
+              
+              if (dashIndex > 0) {
+                themeCategory = theme.name.substring(0, dashIndex);
+                themeName = theme.name.substring(dashIndex + 3);
+              } else if (parenthesisIndex > 0) {
+                themeCategory = theme.name.substring(0, parenthesisIndex);
+                themeName = theme.name.substring(parenthesisIndex + 2, theme.name.length - 1);
+              }
+              
               return (
                 <div key={theme.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
                   <div className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{theme.name}</h3>
-                          {canManagePathways() && (
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => openEditThemeForm(theme)}
-                                className="p-1 text-gray-400 hover:text-indigo-600 rounded"
-                                title={t('common.editTheme')}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTheme(theme)}
-                                className="p-1 text-gray-400 hover:text-red-600 rounded"
-                                title={t('common.deleteTheme')}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                        {/* Description d'abord, puis nom du thème en petit */}
+                        <div className="mb-2">
+                          {theme.description && (
+                            <p className="text-gray-700 font-medium">{theme.description}</p>
                           )}
+                          <p className="text-sm text-gray-500 mt-1">
+                            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
+                              {themeCategory}
+                            </span>
+                            {themeName && (
+                              <span className="ml-2">{themeName}</span>
+                            )}
+                          </p>
                         </div>
-                        {theme.description && (
-                          <p className="text-gray-600">{theme.description}</p>
+                        
+                        {canManagePathways() && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => openEditThemeForm(theme)}
+                              className="p-1 text-gray-400 hover:text-indigo-600 rounded"
+                              title={t('common.editTheme')}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTheme(theme)}
+                              className="p-1 text-gray-400 hover:text-red-600 rounded"
+                              title={t('common.deleteTheme')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
