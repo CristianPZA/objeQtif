@@ -10,6 +10,8 @@ import {
   Award,
   Lightbulb,
   Star,
+  Search,
+  Filter,
   ArrowRight,
   CheckCircle,
   Settings,
@@ -81,7 +83,8 @@ const CareerPathwayDetail = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Form states
@@ -142,7 +145,7 @@ const CareerPathwayDetail = () => {
       const [areaResult, levelsResult, themesResult, skillsResult] = await Promise.all([
         supabase.from('career_areas').select('*').eq('id', careerAreaId).eq('is_active', true).single(),
         supabase.from('career_levels').select('*').eq('is_active', true).order('sort_order'),
-        supabase.from('development_themes').select('*').eq('career_area_id', careerAreaId).eq('is_active', true).order('name'),
+        supabase.from('development_themes').select('*').eq('career_area_id', careerAreaId).eq('is_active', true).order('sort_order'),
         supabase.from('pathway_skills').select('*').order('sort_order')
       ]);
 
@@ -431,38 +434,10 @@ const CareerPathwayDetail = () => {
     return <IconComponent className="w-6 h-6" />;
   };
 
-  // Extraire les catégories uniques des thèmes
-  const getThemeCategories = () => {
-    const categories = new Set<string>();
-    
-    pathwayData.themes.forEach(theme => {
-      // Extraire la catégorie principale (avant le premier tiret ou parenthèse)
-      let category = theme.name;
-      
-      // Chercher le premier tiret ou parenthèse
-      const dashIndex = theme.name.indexOf(' - ');
-      const parenthesisIndex = theme.name.indexOf(' (');
-      
-      if (dashIndex > 0) {
-        category = theme.name.substring(0, dashIndex);
-      } else if (parenthesisIndex > 0) {
-        category = theme.name.substring(0, parenthesisIndex);
-      }
-      
-      categories.add(category);
-    });
-    
-    return Array.from(categories).sort();
-  };
-
-  const themeCategories = getThemeCategories();
-
-  // Filtrer les thèmes par catégorie
   const filteredThemes = pathwayData.themes.filter(theme => {
-    if (selectedCategory === 'all') return true;
-    
-    // Vérifier si le thème appartient à la catégorie sélectionnée
-    return theme.name.startsWith(selectedCategory);
+    if (!searchTerm) return true;
+    return theme.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           theme.description?.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const getSkillsForThemeAndLevel = (themeId: string, levelId: string) => {
@@ -566,35 +541,86 @@ const CareerPathwayDetail = () => {
         </div>
       </div>
 
-      {/* Category Filter */}
+      {/* Career Levels Legend */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Filtrer par catégorie</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button
-            onClick={() => setSelectedCategory('all')}
-            className={`p-3 rounded-lg border-2 transition-all text-center ${
-              selectedCategory === 'all'
-                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
-            }`}
-          >
-            <h3 className="font-medium text-sm">Toutes les catégories</h3>
-          </button>
-          
-          {themeCategories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`p-3 rounded-lg border-2 transition-all text-center ${
-                selectedCategory === category
-                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
-              }`}
-            >
-              <h3 className="font-medium text-sm">{category}</h3>
-            </button>
-          ))}
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.careerLevels')}</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {pathwayData.levels.map((level, index) => {
+            const colors = getColorClasses(level.color);
+            const isSelected = selectedLevel === level.id;
+            
+            return (
+              <button
+                key={level.id}
+                onClick={() => setSelectedLevel(isSelected ? null : level.id)}
+                className={`p-3 rounded-lg border transition-all text-center ${
+                  isSelected 
+                    ? `${colors.bg} ${colors.border} ${colors.text}` 
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-center mb-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                    isSelected ? 'bg-white bg-opacity-50' : colors.bg
+                  }`}>
+                    {index + 1}
+                  </div>
+                </div>
+                <h3 className="font-medium text-sm text-gray-900 mb-1">{level.name}</h3>
+                <p className="text-xs text-gray-600">{level.description}</p>
+              </button>
+            );
+          })}
         </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder={t('careerPathways.searchThemes')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Filter className="w-4 h-4" />
+            {t('common.filters')}
+          </button>
+        </div>
+        
+        {showFilters && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-3">{t('careerPathways.filterByLevel')}</h4>
+            <div className="flex flex-wrap gap-2">
+              {pathwayData.levels.map((level) => {
+                const colors = getColorClasses(level.color);
+                const isActive = selectedLevel === level.id;
+                
+                return (
+                  <button
+                    key={level.id}
+                    onClick={() => setSelectedLevel(isActive ? null : level.id)}
+                    className={`px-3 py-1 rounded-full text-sm transition-all ${
+                      isActive 
+                        ? `${colors.bg} ${colors.text}` 
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {level.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Development Themes and Skills */}
@@ -613,7 +639,7 @@ const CareerPathwayDetail = () => {
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">{t('careerPathways.noThemesFound')}</h3>
             <p className="text-gray-600">
-              {selectedCategory !== 'all'
+              {searchTerm 
                 ? t('careerPathways.noMatchingThemes')
                 : t('careerPathways.noThemesAvailable')
               }
@@ -625,58 +651,34 @@ const CareerPathwayDetail = () => {
               const isExpanded = expandedThemes.has(theme.id);
               const hasSkills = pathwayData.skills.some(skill => skill.development_theme_id === theme.id);
               
-              // Extraire le nom du thème (après le tiret ou la parenthèse)
-              let themeName = theme.name;
-              let themeCategory = '';
-              
-              const dashIndex = theme.name.indexOf(' - ');
-              const parenthesisIndex = theme.name.indexOf(' (');
-              
-              if (dashIndex > 0) {
-                themeCategory = theme.name.substring(0, dashIndex);
-                themeName = theme.name.substring(dashIndex + 3);
-              } else if (parenthesisIndex > 0) {
-                themeCategory = theme.name.substring(0, parenthesisIndex);
-                themeName = theme.name.substring(parenthesisIndex + 2, theme.name.length - 1);
-              }
-              
               return (
                 <div key={theme.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
                   <div className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        {/* Description d'abord, puis nom du thème en petit */}
-                        <div className="mb-2">
-                          {theme.description && (
-                            <p className="text-gray-700 font-medium">{theme.description}</p>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{theme.name}</h3>
+                          {canManagePathways() && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => openEditThemeForm(theme)}
+                                className="p-1 text-gray-400 hover:text-indigo-600 rounded"
+                                title={t('common.editTheme')}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTheme(theme)}
+                                className="p-1 text-gray-400 hover:text-red-600 rounded"
+                                title={t('common.deleteTheme')}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           )}
-                          <p className="text-sm text-gray-500 mt-1">
-                            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                              {themeCategory}
-                            </span>
-                            {themeName && (
-                              <span className="ml-2">{themeName}</span>
-                            )}
-                          </p>
                         </div>
-                        
-                        {canManagePathways() && (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => openEditThemeForm(theme)}
-                              className="p-1 text-gray-400 hover:text-indigo-600 rounded"
-                              title={t('common.editTheme')}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTheme(theme)}
-                              className="p-1 text-gray-400 hover:text-red-600 rounded"
-                              title={t('common.deleteTheme')}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                        {theme.description && (
+                          <p className="text-gray-600">{theme.description}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
