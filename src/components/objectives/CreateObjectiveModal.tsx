@@ -23,6 +23,7 @@ interface ObjectiveForm {
   achievable: string;
   relevant: string;
   time_bound: string;
+  is_custom?: boolean;
 }
 
 interface CreateObjectiveModalProps {
@@ -47,6 +48,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   const [canSelectEmployee, setCanSelectEmployee] = useState(false);
+  const [customObjectives, setCustomObjectives] = useState<ObjectiveForm[]>([]);
 
   const currentYear = new Date().getFullYear();
 
@@ -179,7 +181,8 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         measurable: '',
         achievable: '',
         relevant: '',
-        time_bound: ''
+        time_bound: '',
+        is_custom: false
       };
     });
     setObjectives(newObjectives);
@@ -209,8 +212,39 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
     });
   };
 
+  const handleCustomObjectiveChange = (index: number, field: keyof ObjectiveForm, value: string) => {
+    setCustomObjectives(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addCustomObjective = () => {
+    setCustomObjectives(prev => [
+      ...prev,
+      {
+        skill_id: `custom_${Date.now()}`,
+        skill_description: '',
+        theme_name: 'Objectif personnalisé',
+        smart_objective: '',
+        specific: '',
+        measurable: '',
+        achievable: '',
+        relevant: '',
+        time_bound: '',
+        is_custom: true
+      }
+    ]);
+  };
+
+  const removeCustomObjective = (index: number) => {
+    setCustomObjectives(prev => prev.filter((_, i) => i !== index));
+  };
+
   const validateObjectives = () => {
-    return objectives.every(obj => 
+    // Valider les objectifs du career pathway
+    const pathwayValid = objectives.every(obj => 
       obj.smart_objective.trim() !== '' &&
       obj.specific.trim() !== '' &&
       obj.measurable.trim() !== '' &&
@@ -218,6 +252,19 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       obj.relevant.trim() !== '' &&
       obj.time_bound.trim() !== ''
     );
+
+    // Valider les objectifs personnalisés
+    const customValid = customObjectives.every(obj => 
+      obj.skill_description.trim() !== '' &&
+      obj.smart_objective.trim() !== '' &&
+      obj.specific.trim() !== '' &&
+      obj.measurable.trim() !== '' &&
+      obj.achievable.trim() !== '' &&
+      obj.relevant.trim() !== '' &&
+      obj.time_bound.trim() !== ''
+    );
+
+    return pathwayValid && customValid;
   };
 
   const handleSubmit = async () => {
@@ -229,13 +276,16 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
     try {
       setSubmitting(true);
 
+      // Combiner les objectifs du career pathway et les objectifs personnalisés
+      const allObjectives = [...objectives, ...customObjectives];
+
       const objectiveData = {
         employee_id: selectedEmployee.id,
         year: currentYear,
         career_pathway_id: selectedEmployee.career_pathway_id,
         career_level_id: selectedEmployee.career_level_id,
         selected_themes: selectedSkills, // On stocke les IDs des compétences sélectionnées
-        objectives: objectives,
+        objectives: allObjectives,
         status: 'draft'
       };
 
@@ -295,13 +345,13 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
     <div className="space-y-4">
       <div className="text-center mb-6">
         <Target className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900">Sélectionner 4 compétences à développer</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Sélectionner des compétences à développer</h3>
         <p className="text-sm text-gray-600">
           Compétences du niveau <strong>{selectedEmployee?.career_level?.name}</strong> 
           pour le parcours <strong>{selectedEmployee?.career_pathway?.name}</strong>
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          Sélectionnez exactement 4 compétences ({selectedSkills.length}/4 sélectionnées)
+          Sélectionnez jusqu'à 4 compétences ({selectedSkills.length}/4 sélectionnées)
         </p>
       </div>
 
@@ -372,7 +422,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         )}
         <button
           onClick={() => setStep('objectives')}
-          disabled={selectedSkills.length !== 4}
+          disabled={selectedSkills.length === 0}
           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
         >
           Définir les objectifs SMART
@@ -387,11 +437,13 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         <Target className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
         <h3 className="text-lg font-semibold text-gray-900">Définir les objectifs SMART</h3>
         <p className="text-sm text-gray-600">
-          Créez un objectif SMART pour chacune des 4 compétences sélectionnées
+          Créez un objectif SMART pour chacune des compétences sélectionnées
         </p>
       </div>
 
+      {/* Objectifs du Career Pathway */}
       <div className="space-y-8">
+        <h4 className="font-semibold text-gray-800 border-b pb-2">Objectifs basés sur le Career Pathway</h4>
         {objectives.map((objective, index) => (
           <div key={objective.skill_id} className="border border-gray-200 rounded-lg p-6">
             <div className="mb-4">
@@ -492,6 +544,146 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         ))}
       </div>
 
+      {/* Objectifs personnalisés */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-gray-800 border-b pb-2">Objectifs personnalisés</h4>
+          <button
+            type="button"
+            onClick={addCustomObjective}
+            className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+          >
+            Ajouter un objectif personnalisé
+          </button>
+        </div>
+
+        {customObjectives.length === 0 ? (
+          <div className="text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <p className="text-gray-500">Aucun objectif personnalisé défini</p>
+            <p className="text-xs text-gray-400 mt-1">Vous pouvez ajouter des objectifs spécifiques qui ne sont pas liés à votre Career Pathway</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {customObjectives.map((objective, index) => (
+              <div key={objective.skill_id} className="border border-purple-200 rounded-lg p-6 bg-purple-50">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                      Objectif personnalisé
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeCustomObjective(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Compétence personnalisée */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Compétence à développer *
+                    </label>
+                    <input
+                      type="text"
+                      value={objective.skill_description}
+                      onChange={(e) => handleCustomObjectiveChange(index, 'skill_description', e.target.value)}
+                      placeholder="Ex: Leadership, Communication, Gestion de projet..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+
+                  {/* Objectif SMART global */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Objectif SMART *
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={objective.smart_objective}
+                      onChange={(e) => handleCustomObjectiveChange(index, 'smart_objective', e.target.value)}
+                      placeholder="Décrivez votre objectif de développement..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+
+                  {/* Critères SMART */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Spécifique (S) *
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={objective.specific}
+                        onChange={(e) => handleCustomObjectiveChange(index, 'specific', e.target.value)}
+                        placeholder="Que voulez-vous accomplir exactement ?"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mesurable (M) *
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={objective.measurable}
+                        onChange={(e) => handleCustomObjectiveChange(index, 'measurable', e.target.value)}
+                        placeholder="Comment allez-vous mesurer votre progression ?"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Atteignable (A) *
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={objective.achievable}
+                        onChange={(e) => handleCustomObjectiveChange(index, 'achievable', e.target.value)}
+                        placeholder="Pourquoi cet objectif est-il réalisable ?"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Pertinent (R) *
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={objective.relevant}
+                        onChange={(e) => handleCustomObjectiveChange(index, 'relevant', e.target.value)}
+                        placeholder="En quoi cet objectif est-il important ?"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Temporellement défini (T) *
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={objective.time_bound}
+                      onChange={(e) => handleCustomObjectiveChange(index, 'time_bound', e.target.value)}
+                      placeholder="Quelle est l'échéance pour atteindre cet objectif ?"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-between pt-6 border-t">
         <button
           onClick={() => setStep('skills')}
@@ -518,7 +710,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Créer des objectifs annuels {currentYear}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Définissez 4 objectifs SMART basés sur les compétences de votre niveau
+              Définissez des objectifs SMART basés sur les compétences de votre niveau et vos objectifs personnels
             </p>
           </div>
           <button

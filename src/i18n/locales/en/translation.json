@@ -87,7 +87,13 @@
     "retry": "Retry",
     "user": "User",
     "points": "points",
-    "observations": "Observations"
+    "observations": "Observations",
+    "profile": "Profile",
+    "phone": "Phone"
+  },
+  "profile": {
+    "joinDate": "Join date",
+    "careerInfo": "Career information"
   },
   "auth": {
     "login": "Login",

@@ -87,7 +87,13 @@
     "retry": "Réessayer",
     "user": "Utilisateur",
     "points": "points",
-    "observations": "Observations"
+    "observations": "Observations",
+    "profile": "Profil",
+    "phone": "Téléphone"
+  },
+  "profile": {
+    "joinDate": "Date d'entrée",
+    "careerInfo": "Informations de carrière"
   },
   "auth": {
     "login": "Connexion",

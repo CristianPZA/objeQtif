@@ -31,7 +31,8 @@ interface AnnualObjective {
 }
 
 interface ObjectiveDetail {
-  theme_id: string;
+  skill_id: string;
+  skill_description: string;
   theme_name: string;
   smart_objective: string;
   specific: string;
@@ -39,6 +40,7 @@ interface ObjectiveDetail {
   achievable: string;
   relevant: string;
   time_bound: string;
+  is_custom?: boolean;
 }
 
 const ObjectifsAnnuels = () => {

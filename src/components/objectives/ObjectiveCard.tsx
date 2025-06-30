@@ -101,6 +101,22 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
     return colorMap[color] || 'bg-gray-100 text-gray-800';
   };
 
+  // Compter les objectifs par type (career pathway vs personnalisé)
+  const countObjectivesByType = () => {
+    if (!objective.objectives) return { custom: 0, career: 0 };
+    
+    return objective.objectives.reduce((acc: {custom: number, career: number}, obj: any) => {
+      if (obj.is_custom) {
+        acc.custom += 1;
+      } else {
+        acc.career += 1;
+      }
+      return acc;
+    }, { custom: 0, career: 0 });
+  };
+  
+  const objectiveCounts = countObjectivesByType();
+
   return (
     <div className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
       <div className="p-6">
@@ -169,7 +185,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           </div>
         </div>
 
-        {/* Résumé des compétences */}
+        {/* Résumé des objectifs */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-gray-500" />
@@ -184,36 +200,49 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {objective.objectives.map((obj: any, index: number) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800"
-                title={obj.skill_description}
-              >
-                {obj.theme_name}
-              </span>
-            ))}
-          </div>
+          {/* Résumé des objectifs par type */}
+          {(objectiveCounts.custom > 0 || objectiveCounts.career > 0) && (
+            <div className="flex flex-wrap gap-2">
+              {objectiveCounts.career > 0 && (
+                <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                  {objectiveCounts.career} {t('objectives.careerObjectives')}{objectiveCounts.career > 1 ? 's' : ''}
+                </div>
+              )}
+              {objectiveCounts.custom > 0 && (
+                <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                  {objectiveCounts.custom} {t('objectives.customObjectives')}{objectiveCounts.custom > 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Détails des objectifs */}
         {expanded && (
           <div className="border-t pt-4 space-y-4">
             {objective.objectives.map((obj: any, index: number) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-4">
+              <div 
+                key={index} 
+                className={`bg-gray-50 rounded-lg p-4 border ${obj.is_custom ? 'border-purple-200' : 'border-blue-200'}`}
+              >
                 <div className="mb-2">
-                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                    {obj.theme_name}
-                  </span>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs px-2 py-1 rounded ${obj.is_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-700'}`}>
+                      {obj.theme_name || `${t('objectives.theme')} ${index + 1}`}
+                    </span>
+                    {obj.is_custom && (
+                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                        {t('objectives.customized')}
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-medium text-gray-900">
+                    {index + 1}. {obj.skill_description}
+                  </h4>
                 </div>
-                <h4 className="font-medium text-gray-900 mb-2">
-                  {index + 1}. {obj.skill_description}
-                </h4>
                 <p className="text-sm text-gray-700 mb-3">
                   <strong>{t('objectives.smartObjective')}:</strong> {obj.smart_objective}
                 </p>
-
                 {showDetails && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>

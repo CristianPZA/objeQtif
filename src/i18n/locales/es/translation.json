@@ -87,7 +87,13 @@
     "retry": "Reintentar",
     "user": "Usuario",
     "points": "puntos",
-    "observations": "Observaciones"
+    "observations": "Observaciones",
+    "profile": "Perfil",
+    "phone": "Teléfono"
+  },
+  "profile": {
+    "joinDate": "Fecha de ingreso",
+    "careerInfo": "Información de carrera"
   },
   "auth": {
     "login": "Iniciar sesión",
