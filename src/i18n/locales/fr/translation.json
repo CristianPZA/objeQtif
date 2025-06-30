@@ -424,7 +424,8 @@
     "skillDescription": "Description de la compétence",
     "skillDescriptionPlaceholder": "Description détaillée de la compétence",
     "examplesPlaceholder": "Exemples concrets d'application de cette compétence",
-    "requirementsPlaceholder": "Prérequis nécessaires pour développer cette compétence"
+    "requirementsPlaceholder": "Prérequis nécessaires pour développer cette compétence",
+    "skillAlreadyExists": "Une compétence existe déjà pour le thème \"{{theme}}\" et le niveau \"{{level}}\""
   },
   "coaching": {
     "title": "Mon Coaching",

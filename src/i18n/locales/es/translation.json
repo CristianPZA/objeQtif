@@ -132,7 +132,7 @@
     "adminMessage": "¡Gestione y supervise la plataforma!",
     "quickActions": "Acciones rápidas",
     "manageObjectives": "Gestionar sus objetivos",
-    "viewProjects": "Ver proyectos",
+    "viewProjects": "Consultar los proyectos",
     "trackObjectives": "Seguir sus objetivos",
     "manageAccount": "Gestionar su cuenta",
     "recentActivity": "Actividad reciente",
@@ -424,7 +424,8 @@
     "skillDescription": "Descripción de la competencia",
     "skillDescriptionPlaceholder": "Descripción detallada de la competencia",
     "examplesPlaceholder": "Ejemplos concretos de aplicación de esta competencia",
-    "requirementsPlaceholder": "Requisitos necesarios para desarrollar esta competencia"
+    "requirementsPlaceholder": "Requisitos necesarios para desarrollar esta competencia",
+    "skillAlreadyExists": "Ya existe una competencia para el tema \"{{theme}}\" y el nivel \"{{level}}\""
   },
   "coaching": {
     "title": "Mi Coaching",

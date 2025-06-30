@@ -424,7 +424,8 @@
     "skillDescription": "Skill description",
     "skillDescriptionPlaceholder": "Detailed description of the skill",
     "examplesPlaceholder": "Concrete examples of applying this skill",
-    "requirementsPlaceholder": "Prerequisites needed to develop this skill"
+    "requirementsPlaceholder": "Prerequisites needed to develop this skill",
+    "skillAlreadyExists": "A skill already exists for theme \"{{theme}}\" and level \"{{level}}\""
   },
   "coaching": {
     "title": "My Coaching",
