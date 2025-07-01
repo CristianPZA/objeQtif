@@ -14,7 +14,10 @@ import {
   Edit,
   Trash2,
   Save,
-  X
+  X,
+  Filter,
+  Tag,
+  Layers
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +46,8 @@ interface DevelopmentTheme {
   name: string;
   description: string;
   sort_order: number;
+  is_core?: boolean; // Nouvelle propriété pour indiquer si c'est un tronc commun
+  specialty?: string; // Nouvelle propriété pour indiquer la spécialité
 }
 
 interface PathwaySkill {
@@ -64,6 +69,7 @@ interface PathwayData {
 interface ThemeGroup {
   baseThemeName: string;
   themes: DevelopmentTheme[];
+  isCore: boolean;
 }
 
 const CareerPathwayDetail = () => {
@@ -85,6 +91,8 @@ const CareerPathwayDetail = () => {
   const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [selectedThemeGroup, setSelectedThemeGroup] = useState<string | null>(null);
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
+  const [showCoreOnly, setShowCoreOnly] = useState(false);
 
   // Form states
   const [showCreateThemeForm, setShowCreateThemeForm] = useState(false);
@@ -96,7 +104,9 @@ const CareerPathwayDetail = () => {
 
   const [themeFormData, setThemeFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    is_core: false,
+    specialty: ''
   });
 
   const [skillFormData, setSkillFormData] = useState({
@@ -153,10 +163,23 @@ const CareerPathwayDetail = () => {
       if (themesResult.error) throw themesResult.error;
       if (skillsResult.error) throw skillsResult.error;
 
+      // Enrichir les thèmes avec les propriétés is_core et specialty
+      const enrichedThemes = (themesResult.data || []).map(theme => {
+        // Détecter si c'est un tronc commun ou une spécialité basé sur le nom
+        const isCore = !theme.name.includes('-');
+        const specialty = isCore ? null : theme.name.split('-')[1]?.trim() || null;
+        
+        return {
+          ...theme,
+          is_core: isCore,
+          specialty: specialty
+        };
+      });
+
       setPathwayData({
         area: areaResult.data,
         levels: levelsResult.data || [],
-        themes: themesResult.data || [],
+        themes: enrichedThemes,
         skills: skillsResult.data || []
       });
     } catch (err) {
@@ -178,11 +201,17 @@ const CareerPathwayDetail = () => {
     try {
       const maxSortOrder = Math.max(...pathwayData.themes.map(theme => theme.sort_order), 0);
       
+      // Construire le nom complet du thème (avec spécialité si applicable)
+      let fullName = themeFormData.name;
+      if (!themeFormData.is_core && themeFormData.specialty) {
+        fullName = `${themeFormData.name} - ${themeFormData.specialty}`;
+      }
+      
       const { error } = await supabase
         .from('development_themes')
         .insert([{
           career_area_id: pathwayData.area.id,
-          name: themeFormData.name,
+          name: fullName,
           description: themeFormData.description,
           sort_order: maxSortOrder + 1
         }]);
@@ -209,10 +238,16 @@ const CareerPathwayDetail = () => {
     setSuccess(null);
 
     try {
+      // Construire le nom complet du thème (avec spécialité si applicable)
+      let fullName = themeFormData.name;
+      if (!themeFormData.is_core && themeFormData.specialty) {
+        fullName = `${themeFormData.name} - ${themeFormData.specialty}`;
+      }
+      
       const { error } = await supabase
         .from('development_themes')
         .update({
-          name: themeFormData.name,
+          name: fullName,
           description: themeFormData.description
         })
         .eq('id', editingTheme.id);
@@ -269,7 +304,21 @@ const CareerPathwayDetail = () => {
     setSuccess(null);
 
     try {
-      // No need to check for duplicates - we're allowing multiple skills per theme/level combination
+      // Vérifier si une compétence avec la même description existe déjà pour ce thème et niveau
+      const existingSkills = pathwayData.skills.filter(
+        skill => skill.development_theme_id === selectedThemeForSkill && 
+                skill.career_level_id === selectedLevelForSkill &&
+                skill.skill_description === skillFormData.skill_description
+      );
+      
+      if (existingSkills.length > 0) {
+        const theme = pathwayData.themes.find(t => t.id === selectedThemeForSkill);
+        const level = pathwayData.levels.find(l => l.id === selectedLevelForSkill);
+        throw new Error(t('careerPathways.skillAlreadyExists', { 
+          theme: theme?.name || 'Unknown', 
+          level: level?.name || 'Unknown' 
+        }));
+      }
       
       const { error } = await supabase
         .from('pathway_skills')
@@ -360,10 +409,24 @@ const CareerPathwayDetail = () => {
   };
 
   const openEditThemeForm = (theme: DevelopmentTheme) => {
+    // Extraire le nom de base et la spécialité
+    let baseName = theme.name;
+    let specialty = '';
+    let isCore = true;
+    
+    if (theme.name.includes('-')) {
+      const parts = theme.name.split('-');
+      baseName = parts[0].trim();
+      specialty = parts[1].trim();
+      isCore = false;
+    }
+    
     setEditingTheme(theme);
     setThemeFormData({
-      name: theme.name,
-      description: theme.description
+      name: baseName,
+      description: theme.description,
+      is_core: isCore,
+      specialty: specialty
     });
   };
 
@@ -385,7 +448,9 @@ const CareerPathwayDetail = () => {
   const resetThemeForm = () => {
     setThemeFormData({
       name: '',
-      description: ''
+      description: '',
+      is_core: false,
+      specialty: ''
     });
   };
 
@@ -416,17 +481,25 @@ const CareerPathwayDetail = () => {
     return match ? match[1].trim() : themeName;
   };
 
+  // Fonction pour extraire la spécialité d'un thème
+  const getSpecialty = (themeName: string): string | null => {
+    if (!themeName.includes('-')) return null;
+    return themeName.split('-')[1].trim();
+  };
+
   // Regrouper les thèmes par nom de base
   const groupThemesByBaseName = (): ThemeGroup[] => {
     const themeGroups: Record<string, ThemeGroup> = {};
     
     pathwayData.themes.forEach(theme => {
       const baseThemeName = getBaseThemeName(theme.name);
+      const isCore = !theme.name.includes('-');
       
       if (!themeGroups[baseThemeName]) {
         themeGroups[baseThemeName] = {
           baseThemeName,
-          themes: []
+          themes: [],
+          isCore
         };
       }
       
@@ -439,15 +512,51 @@ const CareerPathwayDetail = () => {
     );
   };
 
-  const themeGroups = groupThemesByBaseName();
+  // Obtenir toutes les spécialités uniques
+  const getUniqueSpecialties = (): string[] => {
+    const specialties = new Set<string>();
+    
+    pathwayData.themes.forEach(theme => {
+      const specialty = getSpecialty(theme.name);
+      if (specialty) {
+        specialties.add(specialty);
+      }
+    });
+    
+    return Array.from(specialties).sort();
+  };
 
-  // Filtrer les thèmes en fonction du groupe sélectionné
-  const filteredThemes = selectedThemeGroup 
-    ? pathwayData.themes.filter(theme => getBaseThemeName(theme.name) === selectedThemeGroup)
-    : pathwayData.themes;
+  const themeGroups = groupThemesByBaseName();
+  const specialties = getUniqueSpecialties();
+
+  // Filtrer les thèmes en fonction des sélections
+  const filteredThemes = pathwayData.themes.filter(theme => {
+    // Filtre par groupe de thème
+    if (selectedThemeGroup && getBaseThemeName(theme.name) !== selectedThemeGroup) {
+      return false;
+    }
+    
+    // Filtre par spécialité
+    if (selectedSpecialty) {
+      if (!theme.name.includes('-') || !theme.name.includes(selectedSpecialty)) {
+        return false;
+      }
+    }
+    
+    // Filtre pour afficher uniquement le tronc commun
+    if (showCoreOnly && theme.name.includes('-')) {
+      return false;
+    }
+    
+    return true;
+  });
 
   const handleThemeGroupFilterChange = (baseThemeName: string | null) => {
     setSelectedThemeGroup(baseThemeName === selectedThemeGroup ? null : baseThemeName);
+  };
+
+  const handleSpecialtyFilterChange = (specialty: string | null) => {
+    setSelectedSpecialty(specialty === selectedSpecialty ? null : specialty);
   };
 
   const getSkillsForThemeAndLevel = (themeId: string, levelId: string) => {
@@ -577,28 +686,110 @@ const CareerPathwayDetail = () => {
         </div>
       </div>
 
-      {/* Development Themes Filter */}
+      {/* Filtres */}
       <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('careerPathways.developmentThemes')}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {themeGroups.map((group) => {
-            const isSelected = selectedThemeGroup === group.baseThemeName;
-            
-            return (
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Filter className="w-5 h-5 text-indigo-600" />
+          Filtres
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Filtre par groupe de thème */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Groupes de thèmes</h3>
+            <div className="flex flex-wrap gap-2">
+              {themeGroups.map((group) => {
+                const isSelected = selectedThemeGroup === group.baseThemeName;
+                
+                return (
+                  <button
+                    key={group.baseThemeName}
+                    onClick={() => handleThemeGroupFilterChange(group.baseThemeName)}
+                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                      isSelected 
+                        ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' 
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {group.baseThemeName}
+                  </button>
+                );
+              })}
+              
+              {selectedThemeGroup && (
+                <button
+                  onClick={() => setSelectedThemeGroup(null)}
+                  className="px-3 py-1 rounded-lg text-sm bg-red-100 text-red-700 border border-red-200 hover:bg-red-200 transition-colors"
+                >
+                  Effacer
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Filtre par spécialité */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Spécialités</h3>
+            <div className="flex flex-wrap gap-2">
+              {specialties.map((specialty) => {
+                const isSelected = selectedSpecialty === specialty;
+                
+                return (
+                  <button
+                    key={specialty}
+                    onClick={() => handleSpecialtyFilterChange(specialty)}
+                    className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                      isSelected 
+                        ? 'bg-purple-100 text-purple-800 border border-purple-300' 
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {specialty}
+                  </button>
+                );
+              })}
+              
+              {selectedSpecialty && (
+                <button
+                  onClick={() => setSelectedSpecialty(null)}
+                  className="px-3 py-1 rounded-lg text-sm bg-red-100 text-red-700 border border-red-200 hover:bg-red-200 transition-colors"
+                >
+                  Effacer
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Filtre tronc commun */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Type de contenu</h3>
+            <div className="flex gap-2">
               <button
-                key={group.baseThemeName}
-                onClick={() => handleThemeGroupFilterChange(group.baseThemeName)}
-                className={`p-3 rounded-lg border transition-all text-center ${
-                  isSelected 
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+                onClick={() => setShowCoreOnly(!showCoreOnly)}
+                className={`px-3 py-1 rounded-lg text-sm transition-colors flex items-center gap-1 ${
+                  showCoreOnly 
+                    ? 'bg-green-100 text-green-800 border border-green-300' 
+                    : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
                 }`}
               >
-                <div className="text-sm font-medium whitespace-normal">{group.baseThemeName}</div>
-                <div className="text-xs text-gray-500 mt-1">{group.themes.length} {t('common.theme', { count: group.themes.length })}</div>
+                <Layers className="w-4 h-4" />
+                Tronc commun uniquement
               </button>
-            );
-          })}
+              
+              {(selectedThemeGroup || selectedSpecialty || showCoreOnly) && (
+                <button
+                  onClick={() => {
+                    setSelectedThemeGroup(null);
+                    setSelectedSpecialty(null);
+                    setShowCoreOnly(false);
+                  }}
+                  className="px-3 py-1 rounded-lg text-sm bg-red-100 text-red-700 border border-red-200 hover:bg-red-200 transition-colors"
+                >
+                  Réinitialiser tous les filtres
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -607,6 +798,8 @@ const CareerPathwayDetail = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900">
             {selectedThemeGroup ? selectedThemeGroup : t('careerPathways.developmentThemes')}
+            {selectedSpecialty && <span className="ml-2 text-purple-600">• Spécialité: {selectedSpecialty}</span>}
+            {showCoreOnly && <span className="ml-2 text-green-600">• Tronc commun uniquement</span>}
           </h2>
           <span className="text-sm text-gray-500">
             {filteredThemes.length} {t('common.theme', { count: filteredThemes.length })}
@@ -626,6 +819,8 @@ const CareerPathwayDetail = () => {
             {filteredThemes.map((theme) => {
               const isExpanded = expandedThemes.has(theme.id);
               const hasSkills = pathwayData.skills.some(skill => skill.development_theme_id === theme.id);
+              const isCore = !theme.name.includes('-');
+              const specialty = theme.name.includes('-') ? theme.name.split('-')[1].trim() : null;
               
               return (
                 <div key={theme.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -633,6 +828,15 @@ const CareerPathwayDetail = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
+                          {isCore ? (
+                            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                              Tronc commun
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                              Spécialité: {specialty}
+                            </span>
+                          )}
                           <h3 className="text-lg font-semibold text-gray-900 break-words">{theme.name}</h3>
                           {canManagePathways() && (
                             <div className="flex gap-1">
@@ -814,6 +1018,40 @@ const CareerPathwayDetail = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder={t('careerPathways.themeDescriptionPlaceholder')}
                 />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="is_core"
+                    checked={themeFormData.is_core}
+                    onChange={(e) => setThemeFormData(prev => ({ ...prev, is_core: e.target.checked }))}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="is_core" className="ml-2 block text-sm text-gray-900">
+                    Tronc commun
+                  </label>
+                </div>
+                
+                {!themeFormData.is_core && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Spécialité *
+                    </label>
+                    <input
+                      type="text"
+                      required={!themeFormData.is_core}
+                      value={themeFormData.specialty}
+                      onChange={(e) => setThemeFormData(prev => ({ ...prev, specialty: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Ex: Teamwork, Innovation, Customer Recognition"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      La spécialité sera ajoutée au nom du thème sous la forme "Nom - Spécialité"
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-6 border-t">
