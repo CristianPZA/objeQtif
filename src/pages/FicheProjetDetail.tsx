@@ -49,7 +49,7 @@ interface ProjectCollaboration {
   };
   objectifs?: {
     id: string;
-    objectifs: ObjectiveDetail[];
+    objectifs: any[];
   };
   evaluation?: {
     id: string;
