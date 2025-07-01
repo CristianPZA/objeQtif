@@ -165,9 +165,11 @@ const CareerPathwayDetail = () => {
 
       // Enrichir les thèmes avec les propriétés is_core et specialty
       const enrichedThemes = (themesResult.data || []).map(theme => {
-        // Détecter si c'est un tronc commun ou une spécialité basé sur le nom
-        const isCore = !theme.name.includes('-');
-        const specialty = isCore ? null : theme.name.split('-')[1]?.trim() || null;
+        // Un thème est considéré comme tronc commun s'il ne contient pas de tiret
+        // Utiliser une regex pour détecter spécifiquement le pattern "Nom - Spécialité"
+        const specialtyMatch = theme.name.match(/^([^-]+)\s*-\s*([^(]+)/);
+        const isCore = !specialtyMatch;
+        const specialty = specialtyMatch ? specialtyMatch[2].trim() : null;
         
         return {
           ...theme,
@@ -414,10 +416,11 @@ const CareerPathwayDetail = () => {
     let specialty = '';
     let isCore = true;
     
-    if (theme.name.includes('-')) {
-      const parts = theme.name.split('-');
-      baseName = parts[0].trim();
-      specialty = parts[1].trim();
+    // Utiliser une regex pour détecter spécifiquement le pattern "Nom - Spécialité"
+    const specialtyMatch = theme.name.match(/^([^-]+)\s*-\s*([^(]+)/);
+    if (specialtyMatch) {
+      baseName = specialtyMatch[1].trim();
+      specialty = specialtyMatch[2].trim();
       isCore = false;
     }
     
@@ -476,15 +479,16 @@ const CareerPathwayDetail = () => {
 
   // Fonction pour extraire le nom de base d'un thème (sans les suffixes comme "- Teamwork")
   const getBaseThemeName = (themeName: string): string => {
-    // Recherche des thèmes qui suivent un pattern comme "Consulting & Customer Relationship - X"
+    // Utiliser une regex pour extraire le nom de base avant le tiret
     const match = themeName.match(/^([^-]+)(?:\s*-\s*.+)?$/);
     return match ? match[1].trim() : themeName;
   };
 
   // Fonction pour extraire la spécialité d'un thème
   const getSpecialty = (themeName: string): string | null => {
-    if (!themeName.includes('-')) return null;
-    return themeName.split('-')[1].trim();
+    // Utiliser une regex pour extraire la spécialité après le tiret
+    const match = themeName.match(/^[^-]+\s*-\s*([^(]+)/);
+    return match ? match[1].trim() : null;
   };
 
   // Regrouper les thèmes par nom de base
@@ -493,7 +497,8 @@ const CareerPathwayDetail = () => {
     
     pathwayData.themes.forEach(theme => {
       const baseThemeName = getBaseThemeName(theme.name);
-      const isCore = !theme.name.includes('-');
+      // Un thème est considéré comme tronc commun s'il ne contient pas de tiret suivi d'un texte
+      const isCore = !theme.name.match(/^[^-]+\s*-\s*[^(]+/);
       
       if (!themeGroups[baseThemeName]) {
         themeGroups[baseThemeName] = {
@@ -538,14 +543,19 @@ const CareerPathwayDetail = () => {
     
     // Filtre par spécialité
     if (selectedSpecialty) {
-      if (!theme.name.includes('-') || !theme.name.includes(selectedSpecialty)) {
+      // Utiliser une regex pour vérifier si le thème contient la spécialité après un tiret
+      const specialtyPattern = new RegExp(`^[^-]+\\s*-\\s*${selectedSpecialty}(?:\\s|$)`);
+      if (!specialtyPattern.test(theme.name)) {
         return false;
       }
     }
     
     // Filtre pour afficher uniquement le tronc commun
-    if (showCoreOnly && theme.name.includes('-')) {
-      return false;
+    if (showCoreOnly) {
+      // Un thème est considéré comme tronc commun s'il ne contient pas de tiret suivi d'un texte
+      if (theme.name.match(/^[^-]+\s*-\s*[^(]+/)) {
+        return false;
+      }
     }
     
     return true;
@@ -819,8 +829,10 @@ const CareerPathwayDetail = () => {
             {filteredThemes.map((theme) => {
               const isExpanded = expandedThemes.has(theme.id);
               const hasSkills = pathwayData.skills.some(skill => skill.development_theme_id === theme.id);
-              const isCore = !theme.name.includes('-');
-              const specialty = theme.name.includes('-') ? theme.name.split('-')[1].trim() : null;
+              // Utiliser une regex pour détecter spécifiquement le pattern "Nom - Spécialité"
+              const specialtyMatch = theme.name.match(/^([^-]+)\s*-\s*([^(]+)/);
+              const isCore = !specialtyMatch;
+              const specialty = specialtyMatch ? specialtyMatch[2].trim() : null;
               
               return (
                 <div key={theme.id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
