@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserCheck, CheckCircle, Clock, Star } from 'lucide-react';
+import { UserCheck, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface ReferentEvaluationSectionProps {
