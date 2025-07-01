@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, Flag } from 'lucide-react';
+import { Users, Settings, AlertTriangle, CheckCircle, XCircle, Info, Flag, Calendar, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import UserManagement from '../components/administration/UserManagement';
 import DepartmentManagement from '../components/administration/DepartmentManagement';
@@ -9,6 +9,7 @@ const Administration = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserCountry, setCurrentUserCountry] = useState<string>('france');
+  const [triggeringEvaluations, setTriggeringEvaluations] = useState(false);
 
   useEffect(() => {
     fetchCurrentUserCountry();
@@ -51,6 +52,64 @@ const Administration = () => {
     setError(null);
     // Auto-clear success after 3 seconds
     setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const triggerAnnualEvaluations = async () => {
+    if (!confirm("Êtes-vous sûr de vouloir déclencher les auto-évaluations annuelles pour tous les utilisateurs ? Cette action enverra une notification à tous les employés.")) {
+      return;
+    }
+
+    setTriggeringEvaluations(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Récupérer l'utilisateur actuel (admin)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Utilisateur non connecté");
+
+      // Récupérer tous les utilisateurs actifs
+      const { data: users, error: usersError } = await supabase
+        .from('user_profiles')
+        .select('id, full_name')
+        .eq('is_active', true)
+        .eq('country', currentUserCountry); // Filtrer par pays
+
+      if (usersError) throw usersError;
+      if (!users || users.length === 0) {
+        throw new Error("Aucun utilisateur actif trouvé");
+      }
+
+      const currentYear = new Date().getFullYear();
+
+      // Créer une notification pour chaque utilisateur
+      const notifications = users.map(targetUser => ({
+        destinataire_id: targetUser.id,
+        expediteur_id: user.id,
+        titre: `Auto-évaluation annuelle ${currentYear} à compléter`,
+        message: `Votre auto-évaluation annuelle pour l'année ${currentYear} est maintenant disponible. Veuillez la compléter dans la section "Objectifs Annuels".`,
+        type: 'reminder',
+        priority: 2,
+        action_url: '/objectifs-annuels',
+        metadata: {
+          year: currentYear,
+          action_type: 'annual_evaluation_required'
+        }
+      }));
+
+      // Insérer les notifications
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert(notifications);
+
+      if (notificationError) throw notificationError;
+
+      handleSuccess(`Auto-évaluations annuelles déclenchées avec succès pour ${users.length} utilisateurs.`);
+    } catch (err) {
+      handleError(err instanceof Error ? err.message : "Une erreur est survenue lors du déclenchement des auto-évaluations");
+    } finally {
+      setTriggeringEvaluations(false);
+    }
   };
 
   return (
@@ -107,6 +166,49 @@ const Administration = () => {
           </div>
         </div>
       )}
+
+      {/* Bouton de déclenchement des auto-évaluations annuelles */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Calendar className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Auto-évaluations annuelles</h2>
+              <p className="text-sm text-gray-600 mt-1">Déclencher les auto-évaluations annuelles pour tous les utilisateurs</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-medium text-blue-800">Information importante</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  Cette action enverra une notification à tous les employés actifs de {currentUserCountry === 'france' ? 'France' : 'Espagne'} pour leur demander de compléter leur auto-évaluation annuelle.
+                </p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Assurez-vous que les objectifs annuels ont été définis avant de déclencher cette action.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <button
+              onClick={triggerAnnualEvaluations}
+              disabled={triggeringEvaluations}
+              className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 shadow-md"
+            >
+              <Bell className="w-5 h-5" />
+              {triggeringEvaluations ? 'Envoi en cours...' : 'Déclencher les auto-évaluations annuelles'}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
