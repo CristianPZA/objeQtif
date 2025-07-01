@@ -76,6 +76,7 @@ const Sidebar = () => {
       to: '/projets',
       icon: <Briefcase className="w-5 h-5" />,
       label: t('common.projects'),
+      roles: ['admin', 'referent_projet'] // Restreindre l'accès aux projets
     },
     {
       to: '/career-pathways',
@@ -118,13 +119,24 @@ const Sidebar = () => {
     }
   }
 
+  // Filtrer les éléments du menu en fonction du rôle de l'utilisateur
+  const filteredMenuItems = menuItems.filter(item => {
+    // Si l'élément n'a pas de restriction de rôle, l'afficher
+    if (!item.roles) return true;
+    
+    // Sinon, vérifier si l'utilisateur a le rôle requis
+    return item.roles.includes(userRole || '');
+  });
+
   return (
     <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
       <div className="flex flex-col items-center mb-8">
         <h1 className="text-2xl font-bold mb-2">objeQtifs</h1>
         <div className="flex items-center gap-2">
           <p className="text-sm text-gray-400">
-            {userRole === 'admin' ? t('administration.currentRole.admin') : t('administration.currentRole.employee')}
+            {userRole === 'admin' ? t('administration.currentRole.admin') : 
+             userRole === 'referent_projet' ? 'Référent Projet' :
+             t('administration.currentRole.employee')}
           </p>
           {userCountry && (
             <span className="text-sm bg-gray-800 px-2 py-1 rounded">
@@ -135,7 +147,7 @@ const Sidebar = () => {
       </div>
       
       <nav className="space-y-2">
-        {menuItems.map((item) => (
+        {filteredMenuItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
