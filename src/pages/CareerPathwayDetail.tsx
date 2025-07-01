@@ -997,7 +997,6 @@ const CareerPathwayDetail = () => {
                   {t('common.description')}
                 </label>
                 <textarea
-                  required
                   rows={3}
                   value={themeFormData.description}
                   onChange={(e) => setThemeFormData(prev => ({ ...prev, description: e.target.value }))}
