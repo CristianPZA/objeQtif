@@ -12,6 +12,8 @@ interface ObjectiveDetail {
   achievable: string;
   relevant: string;
   time_bound: string;
+  is_custom?: boolean;
+  objective_type?: string;
 }
 
 interface AutoEvaluationData {

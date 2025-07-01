@@ -9,9 +9,7 @@ import {
   Target, 
   AlertTriangle, 
   CheckCircle, 
-  Award,
-  Edit,
-  Plus
+  Award
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
