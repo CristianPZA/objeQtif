@@ -15,7 +15,8 @@ import {
   UserPlus, 
   X, 
   Save,
-  Trash2
+  Trash2,
+  ExternalLink
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -56,6 +57,14 @@ interface Collaborateur {
   date_debut: string | null;
   date_fin: string | null;
   is_active: boolean;
+  objectifs?: {
+    id: string;
+    objectifs: any[];
+  };
+  evaluation?: {
+    id: string;
+    statut: string;
+  };
 }
 
 interface UserProfile {
@@ -161,7 +170,40 @@ const ProjetDetail = () => {
         return;
       }
 
-      setProjet(data);
+      // Enrichir les collaborateurs avec leurs objectifs et évaluations
+      const enrichedCollaborateurs = await Promise.all(
+        data.collaborateurs.map(async (collab: Collaborateur) => {
+          // Récupérer les objectifs
+          const { data: objectifsData } = await supabase
+            .from('objectifs_collaborateurs')
+            .select('id, objectifs')
+            .eq('collaboration_id', collab.id)
+            .maybeSingle();
+          
+          // Récupérer l'évaluation si des objectifs existent
+          let evaluationData = null;
+          if (objectifsData) {
+            const { data: evalData } = await supabase
+              .from('evaluations_objectifs')
+              .select('id, statut')
+              .eq('objectifs_id', objectifsData.id)
+              .maybeSingle();
+            
+            evaluationData = evalData;
+          }
+          
+          return {
+            ...collab,
+            objectifs: objectifsData,
+            evaluation: evaluationData
+          };
+        })
+      );
+
+      setProjet({
+        ...data,
+        collaborateurs: enrichedCollaborateurs
+      });
       
       // Initialiser le formulaire avec les données du projet
       setFormData({
@@ -395,6 +437,37 @@ const ProjetDetail = () => {
     return prioriteOptions.find(p => p.value === priorite)?.color || 'bg-gray-100 text-gray-600';
   };
 
+  const handleViewCollaboratorObjectives = (collaborateurId: string) => {
+    navigate(`/fiche-projet/${collaborateurId}`);
+  };
+
+  const getObjectifsStatus = (collaborateur: Collaborateur) => {
+    if (!collaborateur.objectifs) {
+      return { status: 'not_defined', label: 'Objectifs à définir', color: 'bg-gray-100 text-gray-800', icon: Clock };
+    }
+    
+    if (!collaborateur.evaluation) {
+      if (projet?.statut === 'termine') {
+        return { status: 'to_evaluate', label: 'Auto-évaluation à faire', color: 'bg-orange-100 text-orange-800', icon: AlertTriangle };
+      }
+      return { status: 'defined', label: 'Objectifs définis', color: 'bg-blue-100 text-blue-800', icon: CheckCircle };
+    }
+
+    switch (collaborateur.evaluation.statut) {
+      case 'brouillon':
+        return { status: 'draft', label: 'Brouillon', color: 'bg-gray-100 text-gray-800', icon: Clock };
+      case 'soumise':
+      case 'en_attente_referent':
+        return { status: 'waiting_referent', label: 'En attente évaluation', color: 'bg-yellow-100 text-yellow-800', icon: Clock };
+      case 'evaluee_referent':
+        return { status: 'evaluated_referent', label: 'Évaluée par référent', color: 'bg-purple-100 text-purple-800', icon: CheckCircle };
+      case 'finalisee':
+        return { status: 'finalized', label: 'Évaluation finalisée', color: 'bg-green-100 text-green-800', icon: CheckCircle };
+      default:
+        return { status: 'unknown', label: 'Statut inconnu', color: 'bg-gray-100 text-gray-800', icon: Clock };
+    }
+  };
+
   if (loading && !projet) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -438,24 +511,7 @@ const ProjetDetail = () => {
     );
   }
 
-  // DEBUG: Afficher les informations de debug
-  console.log('DEBUG ProjetDetail:', {
-    projet: {
-      id: projet.id,
-      titre: projet.titre,
-      statut: projet.statut,
-      auteur_id: projet.auteur_id,
-      referent_projet_id: projet.referent_projet_id
-    },
-    currentUser: {
-      id: currentUserId,
-      role: currentUserRole
-    },
-    permissions: {
-      canEdit: canEditProject(),
-      canTerminate: canTerminateProject()
-    }
-  });
+  const isReferent = currentUserId === projet.referent_projet_id || currentUserId === projet.auteur_id || currentUserRole === 'admin';
 
   return (
     <div className="space-y-6">
@@ -472,8 +528,7 @@ const ProjetDetail = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* DEBUG: Affichage conditionnel avec informations de debug */}
-          {canTerminateProject() ? (
+          {canTerminateProject() && (
             <button
               onClick={() => setShowTerminateConfirm(true)}
               className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all font-medium shadow-lg flex items-center gap-2"
@@ -481,11 +536,6 @@ const ProjetDetail = () => {
               <CheckCircle className="w-5 h-5" />
               Finir le projet
             </button>
-          ) : (
-            // DEBUG: Afficher pourquoi le bouton n'est pas visible
-            <div className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
-              Debug: Bouton masqué - Statut: {projet.statut}, User: {currentUserId === projet.auteur_id ? 'Auteur' : currentUserId === projet.referent_projet_id ? 'Référent' : 'Autre'}, Role: {currentUserRole}
-            </div>
           )}
 
           {canEditProject() && (
@@ -640,34 +690,64 @@ const ProjetDetail = () => {
         <div className="p-6">
           {projet.collaborateurs.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {projet.collaborateurs.map((collab) => (
-                <div key={collab.id} className="bg-gray-50 rounded-lg p-4 border">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{collab.employe_nom}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {collab.role_projet} • {collab.taux_allocation}%
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {collab.employe_role}
-                        {collab.employe_department && ` • ${collab.employe_department}`}
-                      </p>
-                      {collab.responsabilites && (
-                        <p className="text-sm text-gray-600 mt-2">{collab.responsabilites}</p>
+              {projet.collaborateurs.map((collab) => {
+                const objectifsStatus = getObjectifsStatus(collab);
+                const StatusIcon = objectifsStatus.icon;
+                
+                return (
+                  <div 
+                    key={collab.id} 
+                    className={`bg-gray-50 rounded-lg p-4 border ${isReferent ? 'cursor-pointer hover:border-indigo-300 hover:bg-indigo-50' : ''}`}
+                    onClick={() => isReferent && handleViewCollaboratorObjectives(collab.id)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-gray-900">{collab.employe_nom}</h4>
+                          {isReferent && (
+                            <ExternalLink className="w-4 h-4 text-indigo-600" />
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {collab.role_projet} • {collab.taux_allocation}%
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {collab.employe_role}
+                          {collab.employe_department && ` • ${collab.employe_department}`}
+                        </p>
+                        
+                        <div className="flex items-center gap-2 mt-2">
+                          <StatusIcon className="w-4 h-4 text-gray-500" />
+                          <span className={`text-xs px-2 py-1 rounded-full ${objectifsStatus.color}`}>
+                            {objectifsStatus.label}
+                          </span>
+                        </div>
+                        
+                        {isReferent && (
+                          <p className="text-xs text-indigo-600 mt-2">
+                            Cliquez pour voir les objectifs et évaluer
+                          </p>
+                        )}
+                      </div>
+                      {canEditProject() && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveCollaborateur(collab.id);
+                          }}
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                          title="Retirer du projet"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       )}
                     </div>
-                    {canEditProject() && (
-                      <button
-                        onClick={() => handleRemoveCollaborateur(collab.id)}
-                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                        title="Retirer du projet"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                    {collab.responsabilites && (
+                      <p className="text-sm text-gray-600 mt-2">{collab.responsabilites}</p>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
@@ -689,6 +769,11 @@ const ProjetDetail = () => {
                 Les collaborateurs ont été notifiés pour compléter leur auto-évaluation des objectifs.
                 Ils peuvent maintenant accéder à leurs fiches projets pour définir et évaluer leurs objectifs de développement.
               </p>
+              {isReferent && (
+                <p className="text-amber-700 mt-2 font-medium">
+                  En tant que référent, vous pouvez cliquer sur chaque collaborateur pour consulter et évaluer leurs objectifs.
+                </p>
+              )}
             </div>
           </div>
         </div>
