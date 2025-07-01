@@ -103,16 +103,22 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   // Compter les objectifs par type (career pathway vs personnalisé)
   const countObjectivesByType = () => {
-    if (!objective.objectives) return { custom: 0, career: 0 };
+    if (!objective.objectives) return { custom: 0, career: 0, formation: 0, simple: 0 };
     
-    return objective.objectives.reduce((acc: {custom: number, career: number}, obj: any) => {
+    return objective.objectives.reduce((acc: {custom: number, career: number, formation: number, simple: number}, obj: any) => {
       if (obj.is_custom) {
-        acc.custom += 1;
+        if (obj.objective_type === 'formation') {
+          acc.formation += 1;
+        } else if (obj.objective_type === 'custom') {
+          acc.simple += 1;
+        } else {
+          acc.custom += 1;
+        }
       } else {
         acc.career += 1;
       }
       return acc;
-    }, { custom: 0, career: 0 });
+    }, { custom: 0, career: 0, formation: 0, simple: 0 });
   };
   
   const objectiveCounts = countObjectivesByType();
@@ -201,20 +207,28 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           </div>
 
           {/* Résumé des objectifs par type */}
-          {(objectiveCounts.custom > 0 || objectiveCounts.career > 0) && (
-            <div className="flex flex-wrap gap-2">
-              {objectiveCounts.career > 0 && (
-                <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                  {objectiveCounts.career} {t('objectives.careerObjectives')}{objectiveCounts.career > 1 ? 's' : ''}
-                </div>
-              )}
-              {objectiveCounts.custom > 0 && (
-                <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
-                  {objectiveCounts.custom} {t('objectives.customObjectives')}{objectiveCounts.custom > 1 ? 's' : ''}
-                </div>
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {objectiveCounts.career > 0 && (
+              <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                {objectiveCounts.career} {t('objectives.careerObjectives')}{objectiveCounts.career > 1 ? 's' : ''}
+              </div>
+            )}
+            {objectiveCounts.custom > 0 && (
+              <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                {objectiveCounts.custom} objectif{objectiveCounts.custom > 1 ? 's' : ''} SMART
+              </div>
+            )}
+            {objectiveCounts.formation > 0 && (
+              <div className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm">
+                {objectiveCounts.formation} formation{objectiveCounts.formation > 1 ? 's' : ''}
+              </div>
+            )}
+            {objectiveCounts.simple > 0 && (
+              <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">
+                {objectiveCounts.simple} objectif{objectiveCounts.simple > 1 ? 's' : ''} simple{objectiveCounts.simple > 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Détails des objectifs */}
@@ -223,16 +237,43 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             {objective.objectives.map((obj: any, index: number) => (
               <div 
                 key={index} 
-                className={`bg-gray-50 rounded-lg p-4 border ${obj.is_custom ? 'border-purple-200' : 'border-blue-200'}`}
+                className={`bg-gray-50 rounded-lg p-4 border ${
+                  obj.is_custom 
+                    ? obj.objective_type === 'formation' 
+                      ? 'border-orange-200' 
+                      : obj.objective_type === 'custom' 
+                        ? 'border-indigo-200' 
+                        : 'border-purple-200' 
+                    : 'border-blue-200'
+                }`}
               >
                 <div className="mb-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs px-2 py-1 rounded ${obj.is_custom ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-700'}`}>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      obj.is_custom 
+                        ? obj.objective_type === 'formation' 
+                          ? 'bg-orange-100 text-orange-700' 
+                          : obj.objective_type === 'custom' 
+                            ? 'bg-indigo-100 text-indigo-700' 
+                            : 'bg-purple-100 text-purple-700' 
+                        : 'bg-gray-200 text-gray-700'
+                    }`}>
                       {obj.theme_name || `${t('objectives.theme')} ${index + 1}`}
                     </span>
                     {obj.is_custom && (
                       <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                         {t('objectives.customized')}
+                      </span>
+                    )}
+                    {obj.is_custom && obj.objective_type && (
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        obj.objective_type === 'smart' ? 'bg-green-100 text-green-800' : 
+                        obj.objective_type === 'formation' ? 'bg-orange-100 text-orange-800' : 
+                        'bg-indigo-100 text-indigo-800'
+                      }`}>
+                        {obj.objective_type === 'smart' ? 'SMART' : 
+                         obj.objective_type === 'formation' ? 'Formation' : 
+                         'Personnalisé'}
                       </span>
                     )}
                   </div>
@@ -241,9 +282,33 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
                   </h4>
                 </div>
                 <p className="text-sm text-gray-700 mb-3">
-                  <strong>{t('objectives.smartObjective')}:</strong> {obj.smart_objective}
+                  <strong>{obj.is_custom && obj.objective_type !== 'smart' ? 'Objectif:' : t('objectives.smartObjective')}:</strong> {obj.smart_objective}
                 </p>
-                {showDetails && (
+                {showDetails && obj.is_custom && obj.objective_type === 'smart' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <strong className="text-gray-600">{t('objectives.specific')}:</strong>
+                      <p className="text-gray-700 mt-1">{obj.specific}</p>
+                    </div>
+                    <div>
+                      <strong className="text-gray-600">{t('objectives.measurable')}:</strong>
+                      <p className="text-gray-700 mt-1">{obj.measurable}</p>
+                    </div>
+                    <div>
+                      <strong className="text-gray-600">{t('objectives.achievable')}:</strong>
+                      <p className="text-gray-700 mt-1">{obj.achievable}</p>
+                    </div>
+                    <div>
+                      <strong className="text-gray-600">{t('objectives.relevant')}:</strong>
+                      <p className="text-gray-700 mt-1">{obj.relevant}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <strong className="text-gray-600">{t('objectives.timeBound')}:</strong>
+                      <p className="text-gray-700 mt-1">{obj.time_bound}</p>
+                    </div>
+                  </div>
+                )}
+                {showDetails && !obj.is_custom && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>
                       <strong className="text-gray-600">{t('objectives.specific')}:</strong>

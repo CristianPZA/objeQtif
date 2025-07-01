@@ -43,6 +43,7 @@ interface ObjectiveDetail {
   relevant: string;
   time_bound: string;
   is_custom?: boolean;
+  objective_type?: string; // Type d'objectif personnalisé
 }
 
 interface UserProfile {
@@ -88,6 +89,7 @@ const ObjectiveDefinition = () => {
   
   // État pour l'objectif en cours d'édition
   const [currentObjective, setCurrentObjective] = useState<ObjectiveDetail | null>(null);
+  const [objectiveTypeSelection, setObjectiveTypeSelection] = useState<string>('smart');
   
   // Grouper les compétences par thème
   const [skillsByTheme, setSkillsByTheme] = useState<Record<string, PathwaySkill[]>>({});
@@ -285,7 +287,8 @@ const ObjectiveDefinition = () => {
       achievable: '',
       relevant: '',
       time_bound: '',
-      is_custom: true
+      is_custom: true,
+      objective_type: objectiveTypeSelection // Ajouter le type d'objectif sélectionné
     };
     
     setSelectedSkill(null);
@@ -310,14 +313,23 @@ const ObjectiveDefinition = () => {
       return;
     }
     
-    if (!currentObjective.smart_objective || 
-        !currentObjective.specific || 
-        !currentObjective.measurable || 
-        !currentObjective.achievable || 
-        !currentObjective.relevant || 
-        !currentObjective.time_bound) {
-      setError('Veuillez remplir tous les champs SMART');
-      return;
+    // Validation selon le type d'objectif
+    if (!currentObjective.is_custom || (currentObjective.is_custom && currentObjective.objective_type === 'smart')) {
+      if (!currentObjective.smart_objective || 
+          !currentObjective.specific || 
+          !currentObjective.measurable || 
+          !currentObjective.achievable || 
+          !currentObjective.relevant || 
+          !currentObjective.time_bound) {
+        setError('Veuillez remplir tous les champs SMART');
+        return;
+      }
+    } else if (currentObjective.is_custom && 
+              (currentObjective.objective_type === 'formation' || currentObjective.objective_type === 'custom')) {
+      if (!currentObjective.smart_objective) {
+        setError('Veuillez définir l\'objectif');
+        return;
+      }
     }
     
     // Vérifier si cet objectif existe déjà
@@ -357,6 +369,10 @@ const ObjectiveDefinition = () => {
       }
     } else {
       setSelectedSkill(null);
+      // Si c'est un objectif personnalisé, définir le type d'objectif
+      if (objective.objective_type) {
+        setObjectiveTypeSelection(objective.objective_type);
+      }
     }
   };
   
@@ -420,6 +436,167 @@ const ObjectiveDefinition = () => {
       'gray': 'bg-gray-100 text-gray-800'
     };
     return colorMap[color] || 'bg-gray-100 text-gray-800';
+  };
+  
+  // Fonction pour rendre les champs SMART en fonction du type d'objectif
+  const renderObjectiveFields = () => {
+    if (!currentObjective) return null;
+    
+    // Si ce n'est pas un objectif personnalisé ou si c'est un objectif SMART
+    if (!currentObjective.is_custom || (currentObjective.is_custom && currentObjective.objective_type === 'smart')) {
+      return (
+        <>
+          {/* Objectif SMART */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Objectif SMART *
+            </label>
+            <textarea
+              rows={3}
+              value={currentObjective.smart_objective}
+              onChange={(e) => handleObjectiveChange('smart_objective', e.target.value)}
+              placeholder="Décrivez votre objectif de développement de manière Spécifique, Mesurable, Atteignable, Pertinent et Temporellement défini"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+          
+          {/* Critères SMART */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-blue-700">
+                Un objectif SMART est Spécifique, Mesurable, Atteignable, Pertinent et Temporellement défini. Remplissez chaque critère ci-dessous pour créer un objectif efficace.
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Spécifique (S) *
+              </label>
+              <textarea
+                rows={2}
+                value={currentObjective.specific}
+                onChange={(e) => handleObjectiveChange('specific', e.target.value)}
+                placeholder="Que voulez-vous accomplir exactement ?"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mesurable (M) *
+              </label>
+              <textarea
+                rows={2}
+                value={currentObjective.measurable}
+                onChange={(e) => handleObjectiveChange('measurable', e.target.value)}
+                placeholder="Comment allez-vous mesurer votre progression ?"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Atteignable (A) *
+              </label>
+              <textarea
+                rows={2}
+                value={currentObjective.achievable}
+                onChange={(e) => handleObjectiveChange('achievable', e.target.value)}
+                placeholder="Pourquoi cet objectif est-il réalisable ?"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pertinent (R) *
+              </label>
+              <textarea
+                rows={2}
+                value={currentObjective.relevant}
+                onChange={(e) => handleObjectiveChange('relevant', e.target.value)}
+                placeholder="En quoi cet objectif est-il important ?"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Temporellement défini (T) *
+            </label>
+            <textarea
+              rows={2}
+              value={currentObjective.time_bound}
+              onChange={(e) => handleObjectiveChange('time_bound', e.target.value)}
+              placeholder="Quelle est l'échéance pour atteindre cet objectif ?"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </>
+      );
+    } 
+    // Si c'est un objectif de formation
+    else if (currentObjective.is_custom && currentObjective.objective_type === 'formation') {
+      return (
+        <div>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-orange-700">
+                Décrivez la formation que vous souhaitez suivre, ses objectifs et comment elle contribuera à votre développement professionnel.
+              </p>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Objectif de formation *
+            </label>
+            <textarea
+              rows={4}
+              value={currentObjective.smart_objective}
+              onChange={(e) => handleObjectiveChange('smart_objective', e.target.value)}
+              placeholder="Décrivez la formation que vous souhaitez suivre, ses objectifs et comment elle contribuera à votre développement professionnel."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
+      );
+    }
+    // Si c'est un objectif personnalisable simple
+    else if (currentObjective.is_custom && currentObjective.objective_type === 'custom') {
+      return (
+        <div>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-indigo-700">
+                Décrivez librement votre objectif personnel ou professionnel.
+              </p>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Objectif personnalisé *
+            </label>
+            <textarea
+              rows={4}
+              value={currentObjective.smart_objective}
+              onChange={(e) => handleObjectiveChange('smart_objective', e.target.value)}
+              placeholder="Décrivez librement votre objectif personnel ou professionnel."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
   };
   
   if (loading) {
@@ -524,13 +701,25 @@ const ObjectiveDefinition = () => {
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Mes objectifs ({objectives.length})</h2>
-              <button
-                onClick={handleAddCustomObjective}
-                className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                Personnalisé
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Sélection du type d'objectif personnalisé */}
+                <select
+                  value={objectiveTypeSelection}
+                  onChange={(e) => setObjectiveTypeSelection(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                >
+                  <option value="smart">Objectif SMART</option>
+                  <option value="formation">Objectif de formation</option>
+                  <option value="custom">Objectif personnalisable</option>
+                </select>
+                <button
+                  onClick={handleAddCustomObjective}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-lg flex items-center gap-1 transition-colors text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Personnalisé
+                </button>
+              </div>
             </div>
             
             {objectives.length === 0 ? (
@@ -559,12 +748,26 @@ const ObjectiveDefinition = () => {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`text-xs px-2 py-1 rounded ${
-                            objective.is_custom 
-                              ? 'bg-purple-100 text-purple-700' 
-                              : 'bg-blue-100 text-blue-700'
+                            objective.is_custom ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-700'
                           }`}>
                             {objective.theme_name}
                           </span>
+                          {objective.is_custom && (
+                            <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                              Personnalisé
+                            </span>
+                          )}
+                          {objective.is_custom && objective.objective_type && (
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              objective.objective_type === 'smart' ? 'bg-green-100 text-green-800' : 
+                              objective.objective_type === 'formation' ? 'bg-orange-100 text-orange-800' : 
+                              'bg-indigo-100 text-indigo-800'
+                            }`}>
+                              {objective.objective_type === 'smart' ? 'SMART' : 
+                               objective.objective_type === 'formation' ? 'Formation' : 
+                               'Libre'}
+                            </span>
+                          )}
                         </div>
                         <h4 className="font-medium text-gray-900 line-clamp-2">{objective.skill_description}</h4>
                       </div>
@@ -719,96 +922,8 @@ const ObjectiveDefinition = () => {
                   </div>
                 )}
                 
-                {/* Objectif SMART */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Objectif SMART *
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={currentObjective.smart_objective}
-                    onChange={(e) => handleObjectiveChange('smart_objective', e.target.value)}
-                    placeholder="Décrivez votre objectif de développement de manière Spécifique, Mesurable, Atteignable, Pertinent et Temporellement défini"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                
-                {/* Critères SMART */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start gap-3">
-                    <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-blue-700">
-                      Un objectif SMART est Spécifique, Mesurable, Atteignable, Pertinent et Temporellement défini. Remplissez chaque critère ci-dessous pour créer un objectif efficace.
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Spécifique (S) *
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={currentObjective.specific}
-                      onChange={(e) => handleObjectiveChange('specific', e.target.value)}
-                      placeholder="Que voulez-vous accomplir exactement ?"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Mesurable (M) *
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={currentObjective.measurable}
-                      onChange={(e) => handleObjectiveChange('measurable', e.target.value)}
-                      placeholder="Comment allez-vous mesurer votre progression ?"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Atteignable (A) *
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={currentObjective.achievable}
-                      onChange={(e) => handleObjectiveChange('achievable', e.target.value)}
-                      placeholder="Pourquoi cet objectif est-il réalisable ?"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pertinent (R) *
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={currentObjective.relevant}
-                      onChange={(e) => handleObjectiveChange('relevant', e.target.value)}
-                      placeholder="En quoi cet objectif est-il important ?"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Temporellement défini (T) *
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={currentObjective.time_bound}
-                    onChange={(e) => handleObjectiveChange('time_bound', e.target.value)}
-                    placeholder="Quelle est l'échéance pour atteindre cet objectif ?"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
+                {/* Champs d'objectif selon le type */}
+                {renderObjectiveFields()}
                 
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <button
@@ -830,17 +945,19 @@ const ObjectiveDefinition = () => {
           ) : (
             <div className="bg-white rounded-lg shadow-sm border p-6 h-full flex flex-col justify-center items-center">
               <Target className="h-16 w-16 text-gray-300 mb-4" />
-              <h2 className="text-xl font-semibold text-gray-700 mb-2">Définissez vos objectifs SMART</h2>
+              <h2 className="text-xl font-semibold text-gray-700 mb-2">Définissez vos objectifs</h2>
               <p className="text-gray-500 text-center max-w-md mb-6">
                 Sélectionnez une compétence dans la liste à gauche ou créez un objectif personnalisé pour commencer à définir vos objectifs de développement.
               </p>
-              <button
-                onClick={handleAddCustomObjective}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Créer un objectif personnalisé
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleAddCustomObjective}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Créer un objectif personnalisé
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -14,6 +14,7 @@ interface ObjectiveDetail {
   relevant: string;
   time_bound: string;
   is_custom?: boolean;
+  objective_type?: string; // Type d'objectif personnalisé
 }
 
 interface PathwaySkill {
@@ -48,6 +49,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [objectiveTypeSelection, setObjectiveTypeSelection] = useState<string>('smart');
 
   useEffect(() => {
     fetchUserProfile();
@@ -177,7 +179,8 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
       achievable: '',
       relevant: '',
       time_bound: '',
-      is_custom: true
+      is_custom: true,
+      objective_type: objectiveTypeSelection // Ajouter le type d'objectif sélectionné
     };
 
     setObjectives([...objectives, newObjective]);
@@ -196,15 +199,32 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
   };
 
   const validateObjectives = () => {
-    return objectives.every(obj => 
-      obj.skill_description.trim() !== '' &&
-      obj.smart_objective.trim() !== '' &&
-      obj.specific.trim() !== '' &&
-      obj.measurable.trim() !== '' &&
-      obj.achievable.trim() !== '' &&
-      obj.relevant.trim() !== '' &&
-      obj.time_bound.trim() !== ''
-    );
+    return objectives.every(obj => {
+      // Vérifier que la description de compétence est remplie pour tous les objectifs
+      if (!obj.skill_description.trim()) return false;
+      
+      // Pour les objectifs SMART, vérifier tous les champs SMART
+      if (!obj.is_custom || (obj.is_custom && obj.objective_type === 'smart')) {
+        return obj.smart_objective.trim() !== '' &&
+               obj.specific.trim() !== '' &&
+               obj.measurable.trim() !== '' &&
+               obj.achievable.trim() !== '' &&
+               obj.relevant.trim() !== '' &&
+               obj.time_bound.trim() !== '';
+      }
+      
+      // Pour les objectifs de formation, vérifier seulement l'objectif principal
+      if (obj.is_custom && obj.objective_type === 'formation') {
+        return obj.smart_objective.trim() !== '';
+      }
+      
+      // Pour les objectifs personnalisables, vérifier seulement l'objectif principal
+      if (obj.is_custom && obj.objective_type === 'custom') {
+        return obj.smart_objective.trim() !== '';
+      }
+      
+      return true;
+    });
   };
 
   const handleSubmit = async () => {
@@ -251,6 +271,133 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
       setSubmitting(false);
       setLoading(false);
     }
+  };
+
+  // Fonction pour rendre les champs SMART en fonction du type d'objectif
+  const renderObjectiveFields = (objective: ObjectiveDetail, index: number) => {
+    // Si ce n'est pas un objectif personnalisé ou si c'est un objectif SMART
+    if (!objective.is_custom || (objective.is_custom && objective.objective_type === 'smart')) {
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('objectives.smartObjective')} *
+            </label>
+            <textarea
+              rows={3}
+              value={objective.smart_objective}
+              onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
+              placeholder={t('objectives.smartObjective')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('objectives.specific')} *
+              </label>
+              <textarea
+                rows={2}
+                value={objective.specific}
+                onChange={(e) => updateObjective(index, 'specific', e.target.value)}
+                placeholder={t('objectives.specific')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('objectives.measurable')} *
+              </label>
+              <textarea
+                rows={2}
+                value={objective.measurable}
+                onChange={(e) => updateObjective(index, 'measurable', e.target.value)}
+                placeholder={t('objectives.measurable')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('objectives.achievable')} *
+              </label>
+              <textarea
+                rows={2}
+                value={objective.achievable}
+                onChange={(e) => updateObjective(index, 'achievable', e.target.value)}
+                placeholder={t('objectives.achievable')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('objectives.relevant')} *
+              </label>
+              <textarea
+                rows={2}
+                value={objective.relevant}
+                onChange={(e) => updateObjective(index, 'relevant', e.target.value)}
+                placeholder={t('objectives.relevant')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('objectives.timeBound')} *
+            </label>
+            <textarea
+              rows={2}
+              value={objective.time_bound}
+              onChange={(e) => updateObjective(index, 'time_bound', e.target.value)}
+              placeholder={t('objectives.timeBound')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
+      );
+    } 
+    // Si c'est un objectif de formation
+    else if (objective.is_custom && objective.objective_type === 'formation') {
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Objectif de formation *
+            </label>
+            <textarea
+              rows={3}
+              value={objective.smart_objective}
+              onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
+              placeholder="Décrivez la formation que vous souhaitez suivre et ses objectifs"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
+      );
+    }
+    // Si c'est un objectif personnalisable simple
+    else if (objective.is_custom && objective.objective_type === 'custom') {
+      return (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Objectif personnalisé *
+            </label>
+            <textarea
+              rows={3}
+              value={objective.smart_objective}
+              onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
+              placeholder="Décrivez votre objectif personnalisé"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -305,6 +452,18 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                     {t('objectives.myDevelopmentObjectives')} ({objectives.length})
                   </h3>
                   <div className="flex gap-2">
+                    {/* Sélection du type d'objectif personnalisé */}
+                    <div className="flex items-center mr-2">
+                      <select
+                        value={objectiveTypeSelection}
+                        onChange={(e) => setObjectiveTypeSelection(e.target.value)}
+                        className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                      >
+                        <option value="smart">Objectif SMART</option>
+                        <option value="formation">Objectif de formation</option>
+                        <option value="custom">Objectif personnalisable</option>
+                      </select>
+                    </div>
                     <button
                       onClick={addCustomObjective}
                       className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm flex items-center gap-1"
@@ -338,6 +497,17 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                                   {t('objectives.customized')}
                                 </span>
                               )}
+                              {objective.is_custom && objective.objective_type && (
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  objective.objective_type === 'smart' ? 'bg-green-100 text-green-800' : 
+                                  objective.objective_type === 'formation' ? 'bg-orange-100 text-orange-800' : 
+                                  'bg-indigo-100 text-indigo-800'
+                                }`}>
+                                  {objective.objective_type === 'smart' ? 'SMART' : 
+                                   objective.objective_type === 'formation' ? 'Formation' : 
+                                   'Personnalisé'}
+                                </span>
+                              )}
                             </div>
                             
                             {objective.is_custom ? (
@@ -367,84 +537,7 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                           </button>
                         </div>
 
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              {t('objectives.smartObjective')} *
-                            </label>
-                            <textarea
-                              rows={3}
-                              value={objective.smart_objective}
-                              onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
-                              placeholder={t('objectives.smartObjective')}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {t('objectives.specific')} *
-                              </label>
-                              <textarea
-                                rows={2}
-                                value={objective.specific}
-                                onChange={(e) => updateObjective(index, 'specific', e.target.value)}
-                                placeholder={t('objectives.specific')}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {t('objectives.measurable')} *
-                              </label>
-                              <textarea
-                                rows={2}
-                                value={objective.measurable}
-                                onChange={(e) => updateObjective(index, 'measurable', e.target.value)}
-                                placeholder={t('objectives.measurable')}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {t('objectives.achievable')} *
-                              </label>
-                              <textarea
-                                rows={2}
-                                value={objective.achievable}
-                                onChange={(e) => updateObjective(index, 'achievable', e.target.value)}
-                                placeholder={t('objectives.achievable')}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {t('objectives.relevant')} *
-                              </label>
-                              <textarea
-                                rows={2}
-                                value={objective.relevant}
-                                onChange={(e) => updateObjective(index, 'relevant', e.target.value)}
-                                placeholder={t('objectives.relevant')}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              {t('objectives.timeBound')} *
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={objective.time_bound}
-                              onChange={(e) => updateObjective(index, 'time_bound', e.target.value)}
-                              placeholder={t('objectives.timeBound')}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-                          </div>
-                        </div>
+                        {renderObjectiveFields(objective, index)}
                       </div>
                     ))}
                   </div>
