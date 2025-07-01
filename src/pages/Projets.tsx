@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, User, Building, Target, CheckCircle, Clock, AlertCircle, Flag } from 'lucide-react';
+import { Plus, Search, Calendar, User, Building, Target, CheckCircle, Clock, AlertCircle, Flag, X, UserPlus, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
