@@ -26,6 +26,21 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
     ));
   };
 
+  // Check if the evaluation is in a state where the referent can evaluate
+  const canEvaluate = () => {
+    // If the user is not a referent, they can't evaluate
+    if (!isReferent) return false;
+    
+    // If there's no auto-evaluation yet, referent can't evaluate
+    if (!collaboration.evaluation || !collaboration.evaluation.auto_evaluation) return false;
+    
+    // If the evaluation is already completed by the referent, they can't evaluate again
+    if (collaboration.evaluation.evaluation_referent) return false;
+    
+    // If the evaluation status is appropriate for referent evaluation
+    return ['soumise', 'en_attente_referent'].includes(collaboration.evaluation.statut);
+  };
+
   return (
     <div className="bg-purple-50 rounded-lg border border-purple-200 p-6 h-full">
       <div className="flex items-center justify-between mb-4">
@@ -40,7 +55,7 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
             </p>
           </div>
         </div>
-        {canReferentEvaluate && isReferent && (
+        {canEvaluate() && (
           <button
             onClick={onStartReferentEvaluation}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"

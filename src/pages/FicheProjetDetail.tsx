@@ -9,7 +9,8 @@ import {
   Target, 
   AlertTriangle, 
   CheckCircle, 
-  Award
+  Award,
+  Star
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -374,8 +375,9 @@ const FicheProjetDetail = () => {
   };
 
   const canReferentEvaluate = () => {
-    return isReferent && 
-           collaboration && 
+    if (!isReferent) return false;
+    
+    return collaboration && 
            collaboration.objectifs && 
            collaboration.projet.statut === 'termine' &&
            collaboration.evaluation && 
