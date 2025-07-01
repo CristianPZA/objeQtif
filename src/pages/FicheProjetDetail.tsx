@@ -120,9 +120,16 @@ const FicheProjetDetail = () => {
         `)
         .eq('id', collaborationId)
         .eq('employe_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (collaborationError) throw collaborationError;
+
+      // Check if collaboration exists for this user
+      if (!collaborationData) {
+        setCollaboration(null);
+        setLoading(false);
+        return;
+      }
 
       // Récupérer les objectifs
       const { data: objectifsData } = await supabase
