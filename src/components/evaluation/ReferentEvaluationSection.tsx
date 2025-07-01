@@ -4,10 +4,16 @@ import { useTranslation } from 'react-i18next';
 
 interface ReferentEvaluationSectionProps {
   collaboration: any;
+  canReferentEvaluate?: boolean;
+  onStartReferentEvaluation?: () => void;
+  isReferent?: boolean;
 }
 
 const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
-  collaboration
+  collaboration,
+  canReferentEvaluate = false,
+  onStartReferentEvaluation = () => {},
+  isReferent = false
 }) => {
   const { t } = useTranslation();
   
@@ -22,16 +28,27 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
 
   return (
     <div className="bg-purple-50 rounded-lg border border-purple-200 p-6 h-full">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-purple-100 rounded-lg">
-          <UserCheck className="w-5 h-5 text-purple-600" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-100 rounded-lg">
+            <UserCheck className="w-5 h-5 text-purple-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-purple-900">{t('evaluation.referentEvaluation')}</h3>
+            <p className="text-sm text-purple-700">
+              {t('evaluation.evaluationBy')} {collaboration.projet.referent_nom}
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-lg font-semibold text-purple-900">{t('evaluation.referentEvaluation')}</h3>
-          <p className="text-sm text-purple-700">
-            {t('evaluation.evaluationBy')} {collaboration.projet.referent_nom}
-          </p>
-        </div>
+        {canReferentEvaluate && isReferent && (
+          <button
+            onClick={onStartReferentEvaluation}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <UserCheck className="w-4 h-4" />
+            Évaluer
+          </button>
+        )}
       </div>
 
       {!collaboration.evaluation || !collaboration.evaluation.auto_evaluation ? (
@@ -124,7 +141,10 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
             <div>
               <h4 className="text-sm font-medium text-yellow-800">{t('evaluation.waitingForEvaluation')}</h4>
               <p className="text-sm text-yellow-700 mt-1">
-                {t('evaluation.evaluationSubmitted')}
+                {isReferent 
+                  ? "L'auto-évaluation a été soumise. Vous pouvez maintenant procéder à l'évaluation."
+                  : t('evaluation.evaluationSubmitted')
+                }
               </p>
             </div>
           </div>
