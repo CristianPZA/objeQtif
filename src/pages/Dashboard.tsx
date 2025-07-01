@@ -476,55 +476,6 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.recentActivity')}</h2>
-        </div>
-        <div className="p-6">
-          <div className="text-center py-8">
-            <Bell className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('dashboard.noRecentActivity')}</h3>
-            <p className="text-gray-600">
-              {t('dashboard.activityWillAppear')}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Welcome Message for First Time Users */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <div className="flex items-start">
-          <CheckCircle className="h-6 w-6 text-blue-600 mt-1 mr-3 flex-shrink-0" />
-          <div>
-            <h3 className="text-lg font-medium text-blue-900 mb-2">
-              {t('dashboard.welcomeMessage')}
-            </h3>
-            <p className="text-blue-800 mb-4">
-              {t('dashboard.profileConfigured')}
-            </p>
-            <ul className="text-blue-800 space-y-2">
-              <li className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                {t('dashboard.createManageObjectives')}
-              </li>
-              <li className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                {t('dashboard.consultProjects')}
-              </li>
-              <li className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                {t('dashboard.trackAnnualObjectives')}
-              </li>
-              <li className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-blue-600 mr-2" />
-                {t('dashboard.modifyAccountSettings')}
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
