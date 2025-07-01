@@ -92,7 +92,6 @@ const CareerPathwayDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [selectedThemeGroup, setSelectedThemeGroup] = useState<string | null>(null);
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
-  const [showCoreOnly, setShowCoreOnly] = useState(false);
 
   // Form states
   const [showCreateThemeForm, setShowCreateThemeForm] = useState(false);
@@ -550,14 +549,6 @@ const CareerPathwayDetail = () => {
       }
     }
     
-    // Filtre pour afficher uniquement le tronc commun
-    if (showCoreOnly) {
-      // Un thème est considéré comme tronc commun s'il ne contient pas de tiret suivi d'un texte
-      if (theme.name.match(/^[^-]+\s*-\s*[^(]+/)) {
-        return false;
-      }
-    }
-    
     return true;
   });
 
@@ -703,7 +694,7 @@ const CareerPathwayDetail = () => {
           Filtres
         </h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Filtre par groupe de thème */}
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-2">Groupes de thèmes</h3>
@@ -770,36 +761,20 @@ const CareerPathwayDetail = () => {
             </div>
           </div>
           
-          {/* Filtre tronc commun */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Type de contenu</h3>
-            <div className="flex gap-2">
+          {/* Bouton de réinitialisation des filtres */}
+          {(selectedThemeGroup || selectedSpecialty) && (
+            <div className="md:col-span-2">
               <button
-                onClick={() => setShowCoreOnly(!showCoreOnly)}
-                className={`px-3 py-1 rounded-lg text-sm transition-colors flex items-center gap-1 ${
-                  showCoreOnly 
-                    ? 'bg-green-100 text-green-800 border border-green-300' 
-                    : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
-                }`}
+                onClick={() => {
+                  setSelectedThemeGroup(null);
+                  setSelectedSpecialty(null);
+                }}
+                className="px-3 py-1 rounded-lg text-sm bg-red-100 text-red-700 border border-red-200 hover:bg-red-200 transition-colors"
               >
-                <Layers className="w-4 h-4" />
-                Tronc commun uniquement
+                Réinitialiser tous les filtres
               </button>
-              
-              {(selectedThemeGroup || selectedSpecialty || showCoreOnly) && (
-                <button
-                  onClick={() => {
-                    setSelectedThemeGroup(null);
-                    setSelectedSpecialty(null);
-                    setShowCoreOnly(false);
-                  }}
-                  className="px-3 py-1 rounded-lg text-sm bg-red-100 text-red-700 border border-red-200 hover:bg-red-200 transition-colors"
-                >
-                  Réinitialiser tous les filtres
-                </button>
-              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -809,7 +784,6 @@ const CareerPathwayDetail = () => {
           <h2 className="text-xl font-semibold text-gray-900">
             {selectedThemeGroup ? selectedThemeGroup : t('careerPathways.developmentThemes')}
             {selectedSpecialty && <span className="ml-2 text-purple-600">• Spécialité: {selectedSpecialty}</span>}
-            {showCoreOnly && <span className="ml-2 text-green-600">• Tronc commun uniquement</span>}
           </h2>
           <span className="text-sm text-gray-500">
             {filteredThemes.length} {t('common.theme', { count: filteredThemes.length })}
