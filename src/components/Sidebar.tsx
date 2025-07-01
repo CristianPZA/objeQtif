@@ -78,11 +78,6 @@ const Sidebar = () => {
       label: t('common.projects'),
     },
     {
-      to: '/archives',
-      icon: <Archive className="w-5 h-5" />,
-      label: t('common.archives'),
-    },
-    {
       to: '/career-pathways',
       icon: <BookOpen className="w-5 h-5" />,
       label: t('common.careerPathways'),
@@ -96,6 +91,13 @@ const Sidebar = () => {
       icon: <Users className="w-5 h-5" />,
       label: t('common.myCoaching'),
     });
+    
+    // Ajouter le lien vers la page Employees pour les coaches
+    menuItems.push({
+      to: '/employees',
+      icon: <Archive className="w-5 h-5" />,
+      label: 'Dossiers Employés',
+    });
   }
 
   // Add administration menu item for admin role only
@@ -105,6 +107,15 @@ const Sidebar = () => {
       icon: <Settings className="w-5 h-5" />,
       label: t('common.administration'),
     });
+    
+    // Ajouter le lien vers la page Employees pour les admins
+    if (!menuItems.some(item => item.to === '/employees')) {
+      menuItems.push({
+        to: '/employees',
+        icon: <Archive className="w-5 h-5" />,
+        label: 'Dossiers Employés',
+      });
+    }
   }
 
   return (

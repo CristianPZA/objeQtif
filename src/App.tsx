@@ -15,6 +15,7 @@ import CareerPathways from './pages/CareerPathways';
 import CareerPathwayDetail from './pages/CareerPathwayDetail';
 import CompleteProfile from './pages/CompleteProfile';
 import MonCoaching from './pages/MonCoaching';
+import Employees from './pages/Employees'; // Nouvelle page Employees
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -51,6 +52,7 @@ function App() {
               <Route path="career-pathways" element={<CareerPathways />} />
               <Route path="career-pathway/:areaId" element={<CareerPathwayDetail />} />
               <Route path="mon-coaching" element={<MonCoaching />} />
+              <Route path="employees" element={<Employees />} /> {/* Nouvelle route pour Employees */}
             </Route>
           </Routes>
         </AuthProvider>
