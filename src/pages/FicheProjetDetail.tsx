@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
+import ReferentEvaluationModal from '../components/evaluation/ReferentEvaluationModal';
 import ObjectivesTab from '../components/evaluation/ObjectivesTab';
 import EvaluationTab from '../components/evaluation/EvaluationTab';
 import CustomObjectiveForm from '../components/objectives/CustomObjectiveForm';
@@ -43,10 +44,10 @@ interface ProjectCollaboration {
     statut: string;
     priorite: string;
     taux_avancement: number;
-    referent_nom: string;
-    auteur_nom: string;
     referent_projet_id: string;
     auteur_id: string;
+    referent_nom: string;
+    auteur_nom: string;
   };
   objectifs?: {
     id: string;
@@ -59,6 +60,7 @@ interface ProjectCollaboration {
     evaluation_referent: any;
     date_soumission: string;
   };
+  employe_nom?: string; // Nom de l'employé pour les référents
 }
 
 interface ObjectiveDetail {
@@ -87,6 +89,7 @@ const FicheProjetDetail = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [showAutoEvaluationModal, setShowAutoEvaluationModal] = useState(false);
+  const [showReferentEvaluationModal, setShowReferentEvaluationModal] = useState(false);
   const [showObjectivesForm, setShowObjectivesForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'objectives' | 'evaluation'>('objectives');
   const [isReferent, setIsReferent] = useState(false);
@@ -243,6 +246,20 @@ const FicheProjetDetail = () => {
         return;
       }
 
+      // Si c'est un référent, récupérer le nom de l'employé
+      let employeNom = '';
+      if (isReferent) {
+        const { data: employeData } = await supabase
+          .from('user_profiles')
+          .select('full_name')
+          .eq('id', collaborationData.employe_id)
+          .single();
+        
+        if (employeData) {
+          employeNom = employeData.full_name;
+        }
+      }
+
       // Récupérer les objectifs
       const { data: objectifsData } = await supabase
         .from('objectifs_collaborateurs')
@@ -263,6 +280,7 @@ const FicheProjetDetail = () => {
 
       const enrichedCollaboration = {
         ...collaborationData,
+        employe_nom: employeNom,
         projet: {
           ...collaborationData.projet,
           referent_nom: collaborationData.projet.referent_nom?.full_name || t('common.undefined'),
@@ -292,9 +310,19 @@ const FicheProjetDetail = () => {
     setShowAutoEvaluationModal(true);
   };
 
+  const handleStartReferentEvaluation = () => {
+    setShowReferentEvaluationModal(true);
+  };
+
   const handleAutoEvaluationSuccess = () => {
     setShowAutoEvaluationModal(false);
     setSuccess(t('evaluation.evaluationSubmitted'));
+    fetchCollaborationDetail();
+  };
+
+  const handleReferentEvaluationSuccess = () => {
+    setShowReferentEvaluationModal(false);
+    setSuccess('Évaluation du référent soumise avec succès');
     fetchCollaborationDetail();
   };
 
@@ -345,6 +373,17 @@ const FicheProjetDetail = () => {
            collaboration.objectifs && 
            collaboration.projet.statut === 'termine' &&
            (!collaboration.evaluation || collaboration.evaluation.statut === 'brouillon');
+  };
+
+  const canReferentEvaluate = () => {
+    return isReferent && 
+           collaboration && 
+           collaboration.objectifs && 
+           collaboration.projet.statut === 'termine' &&
+           collaboration.evaluation && 
+           (collaboration.evaluation.statut === 'en_attente_referent' || 
+            collaboration.evaluation.statut === 'soumise') &&
+           !collaboration.evaluation.evaluation_referent;
   };
 
   const getEvaluationStatusBadge = () => {
@@ -521,8 +560,8 @@ const FicheProjetDetail = () => {
           <div className="flex items-center gap-3">
             <Users className="w-5 h-5 text-gray-400" />
             <div>
-              <p className="text-sm text-gray-600">{t('projectSheets.role')}</p>
-              <p className="font-medium text-gray-900">{collaboration.role_projet}</p>
+              <p className="text-sm text-gray-600">{isReferent ? 'Collaborateur' : t('projectSheets.role')}</p>
+              <p className="font-medium text-gray-900">{isReferent ? collaboration.employe_nom : collaboration.role_projet}</p>
             </div>
           </div>
         </div>
@@ -601,6 +640,9 @@ const FicheProjetDetail = () => {
               collaboration={collaboration}
               canAutoEvaluate={canAutoEvaluate()}
               onStartAutoEvaluation={handleStartAutoEvaluation}
+              canReferentEvaluate={canReferentEvaluate()}
+              onStartReferentEvaluation={handleStartReferentEvaluation}
+              isReferent={isReferent}
             />
           )}
         </div>
@@ -613,6 +655,21 @@ const FicheProjetDetail = () => {
           objectives={collaboration.objectifs.objectifs}
           onClose={() => setShowAutoEvaluationModal(false)}
           onSuccess={handleAutoEvaluationSuccess}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
+        />
+      )}
+
+      {/* Modal d'évaluation référent */}
+      {showReferentEvaluationModal && collaboration && collaboration.objectifs && collaboration.evaluation && (
+        <ReferentEvaluationModal
+          evaluation={collaboration.evaluation}
+          objectives={collaboration.objectifs.objectifs}
+          autoEvaluations={collaboration.evaluation.auto_evaluation.evaluations}
+          onClose={() => setShowReferentEvaluationModal(false)}
+          onSuccess={handleReferentEvaluationSuccess}
           onError={(error) => {
             setError(error);
             setTimeout(() => setError(null), 5000);

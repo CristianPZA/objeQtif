@@ -8,12 +8,14 @@ interface AutoEvaluationSectionProps {
   collaboration: any;
   onStartAutoEvaluation: () => void;
   canAutoEvaluate: boolean;
+  isReferent?: boolean;
 }
 
 const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
   collaboration,
   onStartAutoEvaluation,
-  canAutoEvaluate
+  canAutoEvaluate,
+  isReferent = false
 }) => {
   const { t } = useTranslation();
   
@@ -38,7 +40,7 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
             <p className="text-sm text-blue-700">{t('evaluation.evaluateObjectivesAchievement')}</p>
           </div>
         </div>
-        {canAutoEvaluate && (
+        {canAutoEvaluate && !isReferent && (
           <button
             onClick={onStartAutoEvaluation}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -78,7 +80,7 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
           {/* Résultats de l'auto-évaluation */}
           {collaboration.evaluation.auto_evaluation.evaluations && (
             <div className="space-y-3">
-              <h4 className="font-medium text-blue-900">{t('evaluation.yourResults')}</h4>
+              <h4 className="font-medium text-blue-900">{isReferent ? 'Résultats de l\'auto-évaluation' : t('evaluation.yourResults')}</h4>
               {collaboration.evaluation.auto_evaluation.evaluations.map((evalItem: any, index: number) => {
                 const objective = collaboration.objectifs?.objectifs[index];
                 return (
@@ -117,7 +119,10 @@ const AutoEvaluationSection: React.FC<AutoEvaluationSectionProps> = ({
             <div>
               <h4 className="text-sm font-medium text-orange-800">{t('evaluation.selfEvaluationRequired')}</h4>
               <p className="text-sm text-orange-700 mt-1">
-                {t('evaluation.projectCompletedEvaluate')}
+                {isReferent 
+                  ? "Le collaborateur doit compléter son auto-évaluation avant que vous puissiez l'évaluer."
+                  : t('evaluation.projectCompletedEvaluate')
+                }
               </p>
             </div>
           </div>

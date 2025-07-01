@@ -9,12 +9,18 @@ interface EvaluationTabProps {
   collaboration: any;
   canAutoEvaluate: boolean;
   onStartAutoEvaluation: () => void;
+  canReferentEvaluate?: boolean;
+  onStartReferentEvaluation?: () => void;
+  isReferent?: boolean;
 }
 
 const EvaluationTab: React.FC<EvaluationTabProps> = ({
   collaboration,
   canAutoEvaluate,
-  onStartAutoEvaluation
+  onStartAutoEvaluation,
+  canReferentEvaluate = false,
+  onStartReferentEvaluation = () => {},
+  isReferent = false
 }) => {
   const { t } = useTranslation();
   
@@ -34,11 +40,15 @@ const EvaluationTab: React.FC<EvaluationTabProps> = ({
           collaboration={collaboration}
           onStartAutoEvaluation={onStartAutoEvaluation}
           canAutoEvaluate={canAutoEvaluate}
+          isReferent={isReferent}
         />
 
         {/* Colonne 2: Évaluation du référent */}
         <ReferentEvaluationSection
           collaboration={collaboration}
+          canReferentEvaluate={canReferentEvaluate}
+          onStartReferentEvaluation={onStartReferentEvaluation}
+          isReferent={isReferent}
         />
       </div>
 
