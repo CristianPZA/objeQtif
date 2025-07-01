@@ -15,7 +15,7 @@ import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
-import ReferentEvaluationModal from '../components/evaluation/ReferentEvaluationModal';
+import ReferentEvaluationModal from '../components/objectives/ReferentEvaluationModal';
 import ObjectivesTab from '../components/evaluation/ObjectivesTab';
 import EvaluationTab from '../components/evaluation/EvaluationTab';
 import CustomObjectiveForm from '../components/objectives/CustomObjectiveForm';
