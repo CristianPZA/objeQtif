@@ -19,6 +19,7 @@ import { fr } from 'date-fns/locale';
 import AutoEvaluationModal from '../components/objectives/AutoEvaluationModal';
 import ObjectivesTab from '../components/evaluation/ObjectivesTab';
 import EvaluationTab from '../components/evaluation/EvaluationTab';
+import CustomObjectiveForm from '../components/objectives/CustomObjectiveForm';
 import { useTranslation } from 'react-i18next';
 
 interface ProjectCollaboration {
@@ -44,6 +45,8 @@ interface ProjectCollaboration {
     taux_avancement: number;
     referent_nom: string;
     auteur_nom: string;
+    referent_projet_id: string;
+    auteur_id: string;
   };
   objectifs?: {
     id: string;
@@ -69,6 +72,7 @@ interface ObjectiveDetail {
   relevant: string;
   time_bound: string;
   is_custom?: boolean;
+  objective_type?: string;
 }
 
 const FicheProjetDetail = () => {
@@ -81,24 +85,131 @@ const FicheProjetDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [showAutoEvaluationModal, setShowAutoEvaluationModal] = useState(false);
+  const [showObjectivesForm, setShowObjectivesForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'objectives' | 'evaluation'>('objectives');
+  const [isReferent, setIsReferent] = useState(false);
 
   useEffect(() => {
     if (collaborationId) {
-      fetchCollaborationDetail();
+      checkUserAccess();
     }
   }, [collaborationId]);
 
-  const fetchCollaborationDetail = async () => {
+  const checkUserAccess = async () => {
     try {
-      setLoading(true);
-      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(t('common.notLoggedIn'));
 
       setCurrentUserId(user.id);
 
+      // Récupérer le rôle de l'utilisateur
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        setCurrentUserRole(profile.role);
+      }
+
+      // Vérifier si l'utilisateur est l'employé associé à cette collaboration
+      const { data: collaborationData, error: collaborationError } = await supabase
+        .from('projet_collaborateurs')
+        .select(`
+          *,
+          projet:projets!inner(
+            id,
+            nom_client,
+            titre,
+            description,
+            date_debut,
+            date_fin_prevue,
+            statut,
+            priorite,
+            taux_avancement,
+            referent_projet_id,
+            auteur_id,
+            referent_nom:user_profiles!referent_projet_id(full_name),
+            auteur_nom:user_profiles!auteur_id(full_name)
+          )
+        `)
+        .eq('id', collaborationId)
+        .maybeSingle();
+
+      if (collaborationError) throw collaborationError;
+
+      // Si la collaboration n'existe pas, vérifier si l'utilisateur est référent ou admin
+      if (!collaborationData) {
+        // Vérifier si l'utilisateur est référent ou admin
+        if (profile.role === 'admin') {
+          // Les admins peuvent voir toutes les collaborations
+          await fetchCollaborationDetail();
+        } else {
+          // Vérifier si l'utilisateur est référent de ce projet
+          const { data: referentData, error: referentError } = await supabase
+            .from('projet_collaborateurs')
+            .select(`
+              *,
+              projet:projets!inner(
+                id,
+                nom_client,
+                titre,
+                description,
+                date_debut,
+                date_fin_prevue,
+                statut,
+                priorite,
+                taux_avancement,
+                referent_projet_id,
+                auteur_id,
+                referent_nom:user_profiles!referent_projet_id(full_name),
+                auteur_nom:user_profiles!auteur_id(full_name)
+              )
+            `)
+            .eq('id', collaborationId);
+
+          if (referentError) throw referentError;
+
+          if (referentData && referentData.length > 0) {
+            const projet = referentData[0].projet;
+            if (projet.referent_projet_id === user.id || projet.auteur_id === user.id) {
+              setIsReferent(true);
+              await fetchCollaborationDetail();
+            } else {
+              throw new Error('Vous n\'avez pas accès à cette fiche projet');
+            }
+          } else {
+            throw new Error('Fiche projet non trouvée');
+          }
+        }
+      } else {
+        // L'utilisateur est l'employé associé à cette collaboration
+        if (collaborationData.employe_id === user.id) {
+          await fetchCollaborationDetail();
+        } else {
+          // Vérifier si l'utilisateur est référent ou auteur du projet
+          const projet = collaborationData.projet;
+          if (projet.referent_projet_id === user.id || projet.auteur_id === user.id || profile.role === 'admin') {
+            setIsReferent(true);
+            await fetchCollaborationDetail();
+          } else {
+            throw new Error('Vous n\'avez pas accès à cette fiche projet');
+          }
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.loadingError'));
+      setLoading(false);
+    }
+  };
+
+  const fetchCollaborationDetail = async () => {
+    try {
+      setLoading(true);
+      
       // Récupérer les détails de la collaboration
       const { data: collaborationData, error: collaborationError } = await supabase
         .from('projet_collaborateurs')
@@ -114,17 +225,18 @@ const FicheProjetDetail = () => {
             statut,
             priorite,
             taux_avancement,
+            referent_projet_id,
+            auteur_id,
             referent_nom:user_profiles!referent_projet_id(full_name),
             auteur_nom:user_profiles!auteur_id(full_name)
           )
         `)
         .eq('id', collaborationId)
-        .eq('employe_id', user.id)
         .maybeSingle();
 
       if (collaborationError) throw collaborationError;
 
-      // Check if collaboration exists for this user
+      // Check if collaboration exists
       if (!collaborationData) {
         setCollaboration(null);
         setLoading(false);
@@ -169,11 +281,11 @@ const FicheProjetDetail = () => {
   };
 
   const handleCreateObjectives = () => {
-    navigate(`/objectifs-definition/${collaborationId}`);
+    setShowObjectivesForm(true);
   };
 
   const handleEditObjectives = () => {
-    navigate(`/objectifs-definition/${collaborationId}`);
+    setShowObjectivesForm(true);
   };
 
   const handleStartAutoEvaluation = () => {
@@ -183,6 +295,12 @@ const FicheProjetDetail = () => {
   const handleAutoEvaluationSuccess = () => {
     setShowAutoEvaluationModal(false);
     setSuccess(t('evaluation.evaluationSubmitted'));
+    fetchCollaborationDetail();
+  };
+
+  const handleObjectivesSuccess = () => {
+    setShowObjectivesForm(false);
+    setSuccess(t('objectives.objectivesSaved'));
     fetchCollaborationDetail();
   };
 
@@ -217,10 +335,12 @@ const FicheProjetDetail = () => {
   };
 
   const canDefineObjectives = () => {
+    if (isReferent) return true;
     return collaboration && collaboration.projet.statut !== 'annule';
   };
 
   const canAutoEvaluate = () => {
+    if (isReferent) return false;
     return collaboration && 
            collaboration.objectifs && 
            collaboration.projet.statut === 'termine' &&
@@ -342,6 +462,12 @@ const FicheProjetDetail = () => {
               <span className={`px-3 py-1 text-sm rounded-full ${getStatutColor(collaboration.projet.statut)}`}>
                 {getStatutLabel(collaboration.projet.statut)}
               </span>
+              
+              {isReferent && (
+                <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">
+                  Vous êtes référent
+                </span>
+              )}
             </div>
           </div>
 
@@ -487,6 +613,20 @@ const FicheProjetDetail = () => {
           objectives={collaboration.objectifs.objectifs}
           onClose={() => setShowAutoEvaluationModal(false)}
           onSuccess={handleAutoEvaluationSuccess}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
+        />
+      )}
+
+      {/* Modal de définition d'objectifs */}
+      {showObjectivesForm && (
+        <CustomObjectiveForm
+          collaboration={collaboration}
+          existingObjectives={collaboration.objectifs?.objectifs || null}
+          onClose={() => setShowObjectivesForm(false)}
+          onSuccess={handleObjectivesSuccess}
           onError={(error) => {
             setError(error);
             setTimeout(() => setError(null), 5000);

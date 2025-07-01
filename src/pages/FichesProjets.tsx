@@ -11,7 +11,8 @@ import {
   ArrowRight,
   Users,
   Star,
-  Flag
+  Flag,
+  Filter
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -42,6 +43,8 @@ interface ProjectCollaboration {
     taux_avancement: number;
     referent_nom: string;
     auteur_nom: string;
+    referent_projet_id: string;
+    auteur_id: string;
   };
   objectifs?: {
     id: string;
@@ -61,9 +64,12 @@ const FichesProjets = () => {
   const { userCountry } = useAuth();
   const { t } = useTranslation();
   const [collaborations, setCollaborations] = useState<ProjectCollaboration[]>([]);
+  const [referentCollaborations, setReferentCollaborations] = useState<ProjectCollaboration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'own' | 'referent'>('own');
+  const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserCollaborations();
@@ -93,6 +99,8 @@ const FichesProjets = () => {
             statut,
             priorite,
             taux_avancement,
+            referent_projet_id,
+            auteur_id,
             referent_nom:user_profiles!referent_projet_id(full_name),
             auteur_nom:user_profiles!auteur_id(full_name)
           )
@@ -102,6 +110,64 @@ const FichesProjets = () => {
         .order('created_at', { ascending: false });
 
       if (collaborationsError) throw collaborationsError;
+
+      // Récupérer les collaborations où l'utilisateur est référent ou auteur
+      const { data: referentData, error: referentError } = await supabase
+        .from('projets')
+        .select(`
+          id,
+          nom_client,
+          titre,
+          description,
+          date_debut,
+          date_fin_prevue,
+          statut,
+          priorite,
+          taux_avancement,
+          referent_projet_id,
+          auteur_id,
+          referent_nom:user_profiles!referent_projet_id(full_name),
+          auteur_nom:user_profiles!auteur_id(full_name)
+        `)
+        .or(`referent_projet_id.eq.${user.id},auteur_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (referentError) throw referentError;
+
+      // Pour chaque projet où l'utilisateur est référent, récupérer les collaborations
+      const allReferentCollaborations: ProjectCollaboration[] = [];
+      
+      if (referentData && referentData.length > 0) {
+        for (const projet of referentData) {
+          const { data: projectCollabs, error: projectCollabsError } = await supabase
+            .from('projet_collaborateurs')
+            .select(`
+              *,
+              projet:projets!inner(
+                id,
+                nom_client,
+                titre,
+                description,
+                date_debut,
+                date_fin_prevue,
+                statut,
+                priorite,
+                taux_avancement,
+                referent_projet_id,
+                auteur_id,
+                referent_nom:user_profiles!referent_projet_id(full_name),
+                auteur_nom:user_profiles!auteur_id(full_name)
+              )
+            `)
+            .eq('projet_id', projet.id)
+            .eq('is_active', true)
+            .neq('employe_id', user.id); // Exclure l'utilisateur lui-même
+
+          if (!projectCollabsError && projectCollabs) {
+            allReferentCollaborations.push(...projectCollabs);
+          }
+        }
+      }
 
       // Pour chaque collaboration, récupérer les objectifs et évaluations
       const enrichedCollaborations = await Promise.all(
@@ -137,7 +203,42 @@ const FichesProjets = () => {
         })
       );
 
+      // Enrichir les collaborations référent
+      const enrichedReferentCollaborations = await Promise.all(
+        allReferentCollaborations.map(async (collaboration) => {
+          // Récupérer les objectifs
+          const { data: objectifsData } = await supabase
+            .from('objectifs_collaborateurs')
+            .select('*')
+            .eq('collaboration_id', collaboration.id)
+            .maybeSingle();
+
+          // Récupérer l'évaluation si elle existe
+          let evaluationData = null;
+          if (objectifsData) {
+            const { data: evalData } = await supabase
+              .from('evaluations_objectifs')
+              .select('*')
+              .eq('objectifs_id', objectifsData.id)
+              .maybeSingle();
+            evaluationData = evalData;
+          }
+
+          return {
+            ...collaboration,
+            projet: {
+              ...collaboration.projet,
+              referent_nom: collaboration.projet.referent_nom?.full_name || t('common.undefined'),
+              auteur_nom: collaboration.projet.auteur_nom?.full_name || t('common.undefined')
+            },
+            objectifs: objectifsData,
+            evaluation: evaluationData
+          };
+        })
+      );
+
       setCollaborations(enrichedCollaborations);
+      setReferentCollaborations(enrichedReferentCollaborations);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
@@ -216,7 +317,10 @@ const FichesProjets = () => {
     }
     
     if (!collaboration.evaluation) {
-      return { status: 'to_evaluate', label: t('projectSheets.objectivesStatus.toEvaluate'), color: 'bg-orange-100 text-orange-800', icon: AlertTriangle };
+      if (collaboration.projet.statut === 'termine') {
+        return { status: 'to_evaluate', label: t('projectSheets.objectivesStatus.toEvaluate'), color: 'bg-orange-100 text-orange-800', icon: AlertTriangle };
+      }
+      return { status: 'defined', label: 'Objectifs définis', color: 'bg-blue-100 text-blue-800', icon: CheckCircle };
     }
 
     switch (collaboration.evaluation.statut) {
@@ -236,6 +340,30 @@ const FichesProjets = () => {
         return { status: 'unknown', label: t('projectSheets.objectivesStatus.unknown'), color: 'bg-gray-100 text-gray-800', icon: Clock };
     }
   };
+
+  // Filtrer les collaborations en fonction du statut sélectionné
+  const getFilteredCollaborations = () => {
+    const collabsToFilter = activeTab === 'own' ? collaborations : referentCollaborations;
+    
+    if (!filterStatus) return collabsToFilter;
+    
+    return collabsToFilter.filter(collab => {
+      if (filterStatus === 'en_cours') {
+        return collab.projet.statut === 'en_cours';
+      } else if (filterStatus === 'termine') {
+        return collab.projet.statut === 'termine';
+      } else if (filterStatus === 'to_evaluate') {
+        const status = getObjectifsStatus(collab);
+        return status.status === 'to_evaluate';
+      } else if (filterStatus === 'evaluated') {
+        const status = getObjectifsStatus(collab);
+        return ['evaluated_referent', 'finalized'].includes(status.status);
+      }
+      return true;
+    });
+  };
+
+  const filteredCollaborations = getFilteredCollaborations();
 
   if (loading) {
     return (
@@ -270,6 +398,112 @@ const FichesProjets = () => {
         </div>
       )}
 
+      {/* Onglets */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('own')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'own'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Mes fiches projet
+              <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                {collaborations.length}
+              </span>
+            </div>
+          </button>
+          
+          {referentCollaborations.length > 0 && (
+            <button
+              onClick={() => setActiveTab('referent')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'referent'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5" />
+                Fiches de mes collaborateurs
+                <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">
+                  {referentCollaborations.length}
+                </span>
+              </div>
+            </button>
+          )}
+        </nav>
+      </div>
+
+      {/* Filtres */}
+      <div className="bg-white rounded-lg shadow-sm border p-4">
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">Filtrer par:</span>
+          </div>
+          
+          <button
+            onClick={() => setFilterStatus(null)}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              !filterStatus 
+                ? 'bg-indigo-100 text-indigo-800 border border-indigo-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+            }`}
+          >
+            Tous
+          </button>
+          
+          <button
+            onClick={() => setFilterStatus('en_cours')}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              filterStatus === 'en_cours' 
+                ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+            }`}
+          >
+            En cours
+          </button>
+          
+          <button
+            onClick={() => setFilterStatus('termine')}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              filterStatus === 'termine' 
+                ? 'bg-green-100 text-green-800 border border-green-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+            }`}
+          >
+            Terminés
+          </button>
+          
+          <button
+            onClick={() => setFilterStatus('to_evaluate')}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              filterStatus === 'to_evaluate' 
+                ? 'bg-orange-100 text-orange-800 border border-orange-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+            }`}
+          >
+            À évaluer
+          </button>
+          
+          <button
+            onClick={() => setFilterStatus('evaluated')}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              filterStatus === 'evaluated' 
+                ? 'bg-purple-100 text-purple-800 border border-purple-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+            }`}
+          >
+            Évalués
+          </button>
+        </div>
+      </div>
+
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -279,7 +513,9 @@ const FichesProjets = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('projectSheets.assignedProjects')}</p>
-              <p className="text-2xl font-bold text-gray-900">{collaborations.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {activeTab === 'own' ? collaborations.length : referentCollaborations.length}
+              </p>
             </div>
           </div>
         </div>
@@ -292,7 +528,10 @@ const FichesProjets = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('projectSheets.completedProjects')}</p>
               <p className="text-2xl font-bold text-gray-900">
-                {collaborations.filter(c => c.projet.statut === 'termine').length}
+                {activeTab === 'own' 
+                  ? collaborations.filter(c => c.projet.statut === 'termine').length
+                  : referentCollaborations.filter(c => c.projet.statut === 'termine').length
+                }
               </p>
             </div>
           </div>
@@ -306,7 +545,10 @@ const FichesProjets = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('projectSheets.inProgress')}</p>
               <p className="text-2xl font-bold text-gray-900">
-                {collaborations.filter(c => c.projet.statut === 'en_cours').length}
+                {activeTab === 'own' 
+                  ? collaborations.filter(c => c.projet.statut === 'en_cours').length
+                  : referentCollaborations.filter(c => c.projet.statut === 'en_cours').length
+                }
               </p>
             </div>
           </div>
@@ -320,10 +562,16 @@ const FichesProjets = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('projectSheets.toEvaluate')}</p>
               <p className="text-2xl font-bold text-gray-900">
-                {collaborations.filter(c => {
-                  const status = getObjectifsStatus(c);
-                  return status.status === 'to_evaluate' || status.status === 'not_defined';
-                }).length}
+                {activeTab === 'own' 
+                  ? collaborations.filter(c => {
+                      const status = getObjectifsStatus(c);
+                      return status.status === 'to_evaluate' || status.status === 'not_defined';
+                    }).length
+                  : referentCollaborations.filter(c => {
+                      const status = getObjectifsStatus(c);
+                      return status.status === 'to_evaluate' || status.status === 'not_defined';
+                    }).length
+                }
               </p>
             </div>
           </div>
@@ -332,7 +580,7 @@ const FichesProjets = () => {
 
       {/* Liste des projets */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {collaborations.map((collaboration) => {
+        {filteredCollaborations.map((collaboration) => {
           const objectifsStatus = getObjectifsStatus(collaboration);
           const StatusIcon = objectifsStatus.icon;
           
@@ -388,6 +636,13 @@ const FichesProjets = () => {
                     <span>{t('projectSheets.referent')}: {collaboration.projet.referent_nom}</span>
                   </div>
 
+                  {activeTab === 'referent' && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Users className="w-4 h-4 flex-shrink-0" />
+                      <span>Collaborateur: {collaboration.employe_nom || 'Non défini'}</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Users className="w-4 h-4 flex-shrink-0" />
                     <span>{t('projectSheets.role')}: {collaboration.role_projet}</span>
@@ -434,7 +689,10 @@ const FichesProjets = () => {
                 {/* Call to action */}
                 <div className="mt-4 text-center">
                   <span className="text-xs text-indigo-600 font-medium">
-                    {t('projectSheets.clickToManage')}
+                    {activeTab === 'own' 
+                      ? t('projectSheets.clickToManage')
+                      : 'Cliquez pour consulter et évaluer'
+                    }
                   </span>
                 </div>
               </div>
@@ -442,12 +700,15 @@ const FichesProjets = () => {
           );
         })}
 
-        {collaborations.length === 0 && (
+        {filteredCollaborations.length === 0 && (
           <div className="col-span-full text-center py-12">
             <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">{t('projectSheets.noProjectsAssigned')}</h3>
             <p className="text-gray-600">
-              {t('projectSheets.contactManager')}
+              {activeTab === 'own' 
+                ? t('projectSheets.contactManager')
+                : 'Aucun collaborateur n\'a de fiche projet à évaluer.'
+              }
             </p>
           </div>
         )}
