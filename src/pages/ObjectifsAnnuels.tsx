@@ -41,6 +41,7 @@ interface ObjectiveDetail {
   relevant: string;
   time_bound: string;
   is_custom?: boolean;
+  objective_type?: string; // Type d'objectif personnalisé
 }
 
 const ObjectifsAnnuels = () => {
@@ -77,7 +78,7 @@ const ObjectifsAnnuels = () => {
       setCurrentUser(profile);
       setUserRole(profile.role);
 
-      await fetchObjectives();
+      await fetchObjectives(user.id, profile.role);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
@@ -85,17 +86,26 @@ const ObjectifsAnnuels = () => {
     }
   };
 
-  const fetchObjectives = async () => {
+  const fetchObjectives = async (userId: string, role: string) => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('annual_objectives')
         .select(`
           *,
           employee:user_profiles!employee_id(full_name, role),
           career_pathway:career_areas!career_pathway_id(name, color),
           career_level:career_levels!career_level_id(name, color)
-        `)
-        .order('created_at', { ascending: false });
+        `);
+      
+      // Si l'utilisateur n'est pas admin, ne montrer que ses propres objectifs
+      if (role !== 'admin') {
+        query = query.eq('employee_id', userId);
+      }
+      
+      // Trier par date de création (plus récent en premier)
+      query = query.order('created_at', { ascending: false });
+      
+      const { data, error } = await query;
 
       if (error) throw error;
       setObjectives(data || []);
@@ -111,7 +121,7 @@ const ObjectifsAnnuels = () => {
 
   const handleObjectiveCreated = () => {
     setShowCreateModal(false);
-    fetchObjectives();
+    fetchObjectives(currentUser.id, userRole || '');
     setSuccess(t('annualObjectives.objectivesCreatedSuccess'));
     setTimeout(() => setSuccess(null), 3000);
   };
@@ -130,7 +140,7 @@ const ObjectifsAnnuels = () => {
       if (error) throw error;
 
       setSuccess(t('annualObjectives.objectivesDeletedSuccess'));
-      fetchObjectives();
+      fetchObjectives(currentUser.id, userRole || '');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.deletionError'));
