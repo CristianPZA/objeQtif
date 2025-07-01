@@ -5,7 +5,7 @@ import UserManagement from '../components/administration/UserManagement';
 import DepartmentManagement from '../components/administration/DepartmentManagement';
 
 const Administration = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'evaluations'>('users');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUserCountry, setCurrentUserCountry] = useState<string>('france');
@@ -55,7 +55,7 @@ const Administration = () => {
   };
 
   const triggerAnnualEvaluations = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir déclencher les auto-évaluations annuelles pour tous les utilisateurs ? Cette action enverra une notification à tous les employés.")) {
+    if (!confirm(`Êtes-vous sûr de vouloir déclencher les auto-évaluations annuelles pour tous les utilisateurs en ${currentUserCountry === 'france' ? 'France' : 'Espagne'} ? Cette action enverra une notification à tous les employés.`)) {
       return;
     }
 
@@ -68,7 +68,7 @@ const Administration = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Utilisateur non connecté");
 
-      // Récupérer tous les utilisateurs actifs
+      // Récupérer tous les utilisateurs actifs du pays actuel
       const { data: users, error: usersError } = await supabase
         .from('user_profiles')
         .select('id, full_name')
@@ -77,7 +77,7 @@ const Administration = () => {
 
       if (usersError) throw usersError;
       if (!users || users.length === 0) {
-        throw new Error("Aucun utilisateur actif trouvé");
+        throw new Error(`Aucun utilisateur actif trouvé en ${currentUserCountry === 'france' ? 'France' : 'Espagne'}`);
       }
 
       const currentYear = new Date().getFullYear();
@@ -104,7 +104,7 @@ const Administration = () => {
 
       if (notificationError) throw notificationError;
 
-      handleSuccess(`Auto-évaluations annuelles déclenchées avec succès pour ${users.length} utilisateurs.`);
+      handleSuccess(`Auto-évaluations annuelles déclenchées avec succès pour ${users.length} utilisateurs en ${currentUserCountry === 'france' ? 'France' : 'Espagne'}.`);
     } catch (err) {
       handleError(err instanceof Error ? err.message : "Une erreur est survenue lors du déclenchement des auto-évaluations");
     } finally {
@@ -167,49 +167,6 @@ const Administration = () => {
         </div>
       )}
 
-      {/* Bouton de déclenchement des auto-évaluations annuelles */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Calendar className="w-5 h-5 text-orange-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Auto-évaluations annuelles</h2>
-              <p className="text-sm text-gray-600 mt-1">Déclencher les auto-évaluations annuelles pour tous les utilisateurs</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-medium text-blue-800">Information importante</h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Cette action enverra une notification à tous les employés actifs de {currentUserCountry === 'france' ? 'France' : 'Espagne'} pour leur demander de compléter leur auto-évaluation annuelle.
-                </p>
-                <p className="text-sm text-blue-700 mt-1">
-                  Assurez-vous que les objectifs annuels ont été définis avant de déclencher cette action.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-center">
-            <button
-              onClick={triggerAnnualEvaluations}
-              disabled={triggeringEvaluations}
-              className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 shadow-md"
-            >
-              <Bell className="w-5 h-5" />
-              {triggeringEvaluations ? 'Envoi en cours...' : 'Déclencher les auto-évaluations annuelles'}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
@@ -218,7 +175,7 @@ const Administration = () => {
               setActiveTab('users');
               clearMessages();
             }}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'users'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -234,7 +191,7 @@ const Administration = () => {
               setActiveTab('settings');
               clearMessages();
             }}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'settings'
                 ? 'border-indigo-500 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -243,6 +200,22 @@ const Administration = () => {
             <div className="flex items-center gap-2">
               <Settings className="w-5 h-5" />
               Paramètres
+            </div>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('evaluations');
+              clearMessages();
+            }}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'evaluations'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Auto-évaluations
             </div>
           </button>
         </nav>
@@ -287,6 +260,56 @@ const Administration = () => {
       {activeTab === 'settings' && (
         <div className="space-y-6">
           <DepartmentManagement onError={handleError} onSuccess={handleSuccess} />
+        </div>
+      )}
+
+      {activeTab === 'evaluations' && (
+        <div className="space-y-6">
+          {/* Module de déclenchement des auto-évaluations annuelles */}
+          <div className="bg-white rounded-lg shadow-sm border">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Calendar className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Auto-évaluations annuelles</h2>
+                  <p className="text-sm text-gray-600 mt-1">Déclencher les auto-évaluations annuelles pour tous les utilisateurs</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-medium text-blue-800">Information importante</h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Cette action enverra une notification à tous les employés actifs de {currentUserCountry === 'france' ? 'France' : 'Espagne'} pour leur demander de compléter leur auto-évaluation annuelle.
+                    </p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Assurez-vous que les objectifs annuels ont été définis avant de déclencher cette action.
+                    </p>
+                    <p className="text-sm font-medium text-blue-800 mt-2">
+                      Note: Vous ne pouvez déclencher les auto-évaluations que pour les employés de votre pays ({currentUserCountry === 'france' ? 'France 🇫🇷' : 'Espagne 🇪🇸'}).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  onClick={triggerAnnualEvaluations}
+                  disabled={triggeringEvaluations}
+                  className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 shadow-md"
+                >
+                  <Bell className="w-5 h-5" />
+                  {triggeringEvaluations ? 'Envoi en cours...' : `Déclencher les auto-évaluations annuelles (${currentUserCountry === 'france' ? 'France' : 'Espagne'})`}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
