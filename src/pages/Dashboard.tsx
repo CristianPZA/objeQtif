@@ -155,8 +155,7 @@ const Dashboard = () => {
   const getRoleDisplayName = (role: string) => {
     const roleMap = {
       'employe': t('administration.currentRole.employee'),
-      'admin': t('administration.currentRole.admin'),
-      'referent_projet': 'Référent Projet'
+      'admin': t('administration.currentRole.admin')
     };
     return roleMap[role as keyof typeof roleMap] || role;
   };
@@ -175,8 +174,7 @@ const Dashboard = () => {
 
     const roleMessages = {
       'employe': t('dashboard.employeeMessage'),
-      'admin': t('dashboard.adminMessage'),
-      'referent_projet': 'Gérez vos projets et évaluez vos collaborateurs !'
+      'admin': t('dashboard.adminMessage')
     };
 
     return {

@@ -146,8 +146,8 @@ const FicheProjetDetail = () => {
       // Si la collaboration n'existe pas, vérifier si l'utilisateur est référent ou admin
       if (!collaborationData) {
         // Vérifier si l'utilisateur est référent ou admin
-        if (profile.role === 'admin' || profile.role === 'referent_projet') {
-          // Les admins et référents projet peuvent voir toutes les collaborations
+        if (profile.role === 'admin') {
+          // Les admins peuvent voir toutes les collaborations
           await fetchCollaborationDetail();
         } else {
           // Vérifier si l'utilisateur est référent de ce projet
@@ -194,7 +194,7 @@ const FicheProjetDetail = () => {
         } else {
           // Vérifier si l'utilisateur est référent ou auteur du projet
           const projet = collaborationData.projet;
-          if (projet.referent_projet_id === user.id || projet.auteur_id === user.id || profile.role === 'admin' || profile.role === 'referent_projet') {
+          if (projet.referent_projet_id === user.id || projet.auteur_id === user.id || profile.role === 'admin') {
             setIsReferent(true);
             await fetchCollaborationDetail();
           } else {
