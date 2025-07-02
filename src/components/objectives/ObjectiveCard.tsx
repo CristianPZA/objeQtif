@@ -200,6 +200,19 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           </div>
         </div>
 
+        {/* Bouton d'auto-évaluation */}
+        {canEvaluate() && (
+          <div className="mb-4">
+            <button
+              onClick={() => onStartEvaluation && onStartEvaluation(objective)}
+              className="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <Star className="w-4 h-4" />
+              Commencer l'auto-évaluation
+            </button>
+          </div>
+        )}
+
         {/* Résumé des objectifs */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
@@ -239,19 +252,6 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             )}
           </div>
         </div>
-
-        {/* Bouton d'auto-évaluation */}
-        {canEvaluate() && (
-          <div className="mb-4">
-            <button
-              onClick={() => onStartEvaluation && onStartEvaluation(objective)}
-              className="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
-            >
-              <Star className="w-4 h-4" />
-              Commencer l'auto-évaluation
-            </button>
-          </div>
-        )}
 
         {/* Détails des objectifs */}
         {expanded && (
