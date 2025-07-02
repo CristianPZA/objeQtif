@@ -124,7 +124,7 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
                       {/* Comparaison des scores */}
                       <div className="grid grid-cols-2 gap-2 mt-3">
                         <div className="bg-blue-50 rounded p-2">
-                          <div className="text-xs font-medium text-blue-800 mb-1">{t('evaluation.yourScore')}</div>
+                          <div className="text-xs font-medium text-blue-800 mb-1">{t('evaluation.selfEvaluation')}</div>
                           <div className="flex items-center gap-1">
                             <div className="flex">
                               {getScoreStars(autoEval?.auto_evaluation_score || 0)}

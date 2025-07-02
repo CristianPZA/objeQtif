@@ -15,8 +15,8 @@ import {
   Building,
   Award,
   Flag,
-  Briefcase,
-  Eye
+  Eye,
+  ArrowRight
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -92,18 +92,8 @@ interface ThemeStat {
   theme: string;
   count: number;
   avgScore: number | null;
-  objectives: {
-    objectiveId: string;
-    skillDescription: string;
-    autoScore?: number;
-    referentScore?: number;
-    finalScore?: number;
-    autoComment?: string;
-    referentComment?: string;
-    projectTitle?: string;
-    projectClient?: string;
-    isAnnual: boolean;
-  }[];
+  objectives: any[];
+  expanded: boolean;
 }
 
 const Employees = () => {
@@ -118,16 +108,23 @@ const Employees = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
-  const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [themeStats, setThemeStats] = useState<ThemeStat[]>([]);
 
   useEffect(() => {
     checkUserAccess();
   }, []);
+
+  useEffect(() => {
+    if (selectedEmployee && selectedYear) {
+      calculateThemeStats(selectedYear);
+    }
+  }, [selectedEmployee, selectedYear, employeeData]);
 
   const checkUserAccess = async () => {
     try {
@@ -359,13 +356,10 @@ const Employees = () => {
         if (objectives) {
           // 3. Récupérer l'évaluation si elle existe
           const { data: evaluation, error: evalError } = await supabase
-            .from('v_auto_evaluations_completes')
+            .from('evaluations_objectifs')
             .select(`
-              evaluation_id,
+              id,
               statut,
-              score_moyen,
-              score_referent,
-              note_finale,
               auto_evaluation,
               evaluation_referent
             `)
@@ -378,13 +372,13 @@ const Employees = () => {
             ...objectives,
             projet: collab.projet,
             evaluation: evaluation ? {
-              id: evaluation.evaluation_id,
+              id: evaluation.id,
               statut: evaluation.statut,
-              score_moyen: evaluation.score_moyen,
-              score_referent: evaluation.score_referent,
-              note_finale: evaluation.note_finale,
               auto_evaluation: evaluation.auto_evaluation,
-              evaluation_referent: evaluation.evaluation_referent
+              evaluation_referent: evaluation.evaluation_referent,
+              score_moyen: evaluation.auto_evaluation ? calculateAverageScore(evaluation.auto_evaluation) : 0,
+              score_referent: evaluation.evaluation_referent ? calculateAverageScore(evaluation.evaluation_referent) : 0,
+              note_finale: calculateFinalScore(evaluation.auto_evaluation, evaluation.evaluation_referent)
             } : undefined
           });
         }
@@ -428,6 +422,42 @@ const Employees = () => {
     }
   };
 
+  const calculateAverageScore = (evaluationData: any): number => {
+    if (!evaluationData || !evaluationData.evaluations || evaluationData.evaluations.length === 0) {
+      return 0;
+    }
+    
+    let totalScore = 0;
+    let count = 0;
+    
+    evaluationData.evaluations.forEach((eval: any) => {
+      if (eval.auto_evaluation_score) {
+        totalScore += parseFloat(eval.auto_evaluation_score);
+        count++;
+      } else if (eval.referent_score) {
+        totalScore += parseFloat(eval.referent_score);
+        count++;
+      }
+    });
+    
+    return count > 0 ? parseFloat((totalScore / count).toFixed(1)) : 0;
+  };
+
+  const calculateFinalScore = (autoEval: any, referentEval: any): number => {
+    const autoScore = calculateAverageScore(autoEval);
+    const referentScore = calculateAverageScore(referentEval);
+    
+    if (autoScore > 0 && referentScore > 0) {
+      return parseFloat(((autoScore + referentScore) / 2).toFixed(1));
+    } else if (autoScore > 0) {
+      return autoScore;
+    } else if (referentScore > 0) {
+      return referentScore;
+    }
+    
+    return 0;
+  };
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
@@ -463,20 +493,21 @@ const Employees = () => {
     setExpandedYears(newExpanded);
   };
 
-  const toggleThemeExpansion = (theme: string) => {
-    const newExpanded = new Set(expandedThemes);
-    if (newExpanded.has(theme)) {
-      newExpanded.delete(theme);
+  const toggleProjectExpansion = (projectId: string) => {
+    const newExpanded = new Set(expandedProjects);
+    if (newExpanded.has(projectId)) {
+      newExpanded.delete(projectId);
     } else {
-      newExpanded.add(theme);
+      newExpanded.add(projectId);
     }
-    setExpandedThemes(newExpanded);
+    setExpandedProjects(newExpanded);
   };
 
   const handleYearFilter = (year: number | null) => {
     setSelectedYear(year);
     if (year) {
       setExpandedYears(new Set([year]));
+      calculateThemeStats(year);
     }
   };
 
@@ -607,48 +638,20 @@ const Employees = () => {
     }
   };
 
-  // Fonction pour extraire les thèmes uniques des objectifs
-  const extractThemes = (objectives: any[]) => {
-    const themes = new Set<string>();
-    
-    objectives.forEach(obj => {
-      if (obj.theme_name) {
-        themes.add(obj.theme_name);
-      }
-    });
-    
-    return Array.from(themes);
-  };
-
   // Fonction pour calculer les statistiques des thèmes travaillés
-  const calculateThemeStats = (year: number): ThemeStat[] => {
-    if (!employeeData) return [];
+  const calculateThemeStats = (year: number) => {
+    if (!employeeData) {
+      setThemeStats([]);
+      return;
+    }
     
-    const themeStats: Record<string, ThemeStat> = {};
+    const allObjectives: any[] = [];
     
     // Ajouter les objectifs annuels de l'année sélectionnée
     employeeData.annualObjectives
       .filter(obj => obj.year === year)
       .forEach(obj => {
-        obj.objectives.forEach((objective: any) => {
-          const theme = objective.theme_name || 'Non catégorisé';
-          
-          if (!themeStats[theme]) {
-            themeStats[theme] = {
-              theme,
-              count: 0,
-              avgScore: null,
-              objectives: []
-            };
-          }
-          
-          themeStats[theme].count += 1;
-          themeStats[theme].objectives.push({
-            objectiveId: objective.skill_id,
-            skillDescription: objective.skill_description,
-            isAnnual: true
-          });
-        });
+        allObjectives.push(...obj.objectives);
       });
     
     // Ajouter les objectifs de projet de l'année sélectionnée
@@ -659,74 +662,70 @@ const Employees = () => {
         return projectYear === year;
       })
       .forEach(obj => {
-        obj.objectifs.forEach((objective: any) => {
-          const theme = objective.theme_name || 'Non catégorisé';
-          
-          if (!themeStats[theme]) {
-            themeStats[theme] = {
-              theme,
-              count: 0,
-              avgScore: null,
-              objectives: []
-            };
-          }
-          
-          // Récupérer les scores d'évaluation si disponibles
-          let autoScore, referentScore, finalScore, autoComment, referentComment;
-          
-          if (obj.evaluation && obj.evaluation.auto_evaluation && obj.evaluation.auto_evaluation.evaluations) {
-            const autoEval = obj.evaluation.auto_evaluation.evaluations.find(
-              (e: any) => e.skill_id === objective.skill_id
-            );
-            if (autoEval) {
-              autoScore = autoEval.auto_evaluation_score;
-              autoComment = autoEval.auto_evaluation_comment;
-            }
-          }
-          
-          if (obj.evaluation && obj.evaluation.evaluation_referent && obj.evaluation.evaluation_referent.evaluations) {
-            const refEval = obj.evaluation.evaluation_referent.evaluations.find(
-              (e: any) => e.skill_id === objective.skill_id
-            );
-            if (refEval) {
-              referentScore = refEval.referent_score;
-              referentComment = refEval.referent_comment;
-            }
-          }
-          
-          if (autoScore && referentScore) {
-            finalScore = (autoScore + referentScore) / 2;
-          }
-          
-          themeStats[theme].count += 1;
-          themeStats[theme].objectives.push({
-            objectiveId: objective.skill_id,
-            skillDescription: objective.skill_description,
-            autoScore,
-            referentScore,
-            finalScore,
-            autoComment,
-            referentComment,
-            projectTitle: obj.projet.titre,
-            projectClient: obj.projet.nom_client,
-            isAnnual: false
-          });
-        });
+        if (obj.objectifs) {
+          allObjectives.push(...obj.objectifs);
+        }
       });
     
-    // Calculer le score moyen pour chaque thème
-    Object.values(themeStats).forEach(stat => {
-      const scores = stat.objectives
-        .filter(obj => obj.finalScore !== undefined)
-        .map(obj => obj.finalScore as number);
-      
-      if (scores.length > 0) {
-        stat.avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    // Regrouper par thème
+    const themeMap: Record<string, ThemeStat> = {};
+    
+    allObjectives.forEach(obj => {
+      if (obj.theme_name) {
+        if (!themeMap[obj.theme_name]) {
+          themeMap[obj.theme_name] = {
+            theme: obj.theme_name,
+            count: 0,
+            avgScore: null,
+            objectives: [],
+            expanded: false
+          };
+        }
+        
+        themeMap[obj.theme_name].count += 1;
+        themeMap[obj.theme_name].objectives.push(obj);
       }
     });
     
-    // Trier par nombre d'occurrences décroissant
-    return Object.values(themeStats).sort((a, b) => b.count - a.count);
+    // Calculer les scores moyens pour chaque thème
+    Object.values(themeMap).forEach(themeStat => {
+      let totalScore = 0;
+      let scoreCount = 0;
+      
+      // Parcourir les objectifs du thème pour trouver les évaluations
+      themeStat.objectives.forEach(obj => {
+        // Chercher l'évaluation correspondante dans les projets
+        employeeData.projectObjectives.forEach(projObj => {
+          if (projObj.evaluation && projObj.objectifs) {
+            const objIndex = projObj.objectifs.findIndex((o: any) => 
+              o.skill_id === obj.skill_id && o.skill_description === obj.skill_description
+            );
+            
+            if (objIndex >= 0 && projObj.evaluation.auto_evaluation?.evaluations?.[objIndex]) {
+              const score = parseFloat(projObj.evaluation.auto_evaluation.evaluations[objIndex].auto_evaluation_score);
+              if (!isNaN(score)) {
+                totalScore += score;
+                scoreCount++;
+              }
+            }
+          }
+        });
+      });
+      
+      if (scoreCount > 0) {
+        themeStat.avgScore = parseFloat((totalScore / scoreCount).toFixed(1));
+      }
+    });
+    
+    // Convertir en tableau et trier par nombre d'occurrences
+    const sortedStats = Object.values(themeMap).sort((a, b) => b.count - a.count);
+    setThemeStats(sortedStats);
+  };
+
+  const toggleThemeExpansion = (index: number) => {
+    const newThemeStats = [...themeStats];
+    newThemeStats[index].expanded = !newThemeStats[index].expanded;
+    setThemeStats(newThemeStats);
   };
 
   // Filtrer les objectifs par année
@@ -746,25 +745,17 @@ const Employees = () => {
 
   // Vérifier si l'utilisateur a accès à cette page
   const hasAccess = () => {
-    return currentUserRole === 'admin' || 
-           currentUserRole === 'referent_projet' ||
+    return currentUserRole === 'admin' || currentUserRole === 'referent_projet' || 
            (currentUserRole === 'employe' && employees.some(emp => emp.coach_id === currentUserId));
   };
 
-  // Générer les étoiles pour un score
-  const getScoreStars = (score: number | undefined) => {
-    if (score === undefined) return null;
-    
-    return (
-      <div className="flex">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Star 
-            key={i} 
-            className={`w-4 h-4 ${i < Math.round(score) ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
-          />
-        ))}
-      </div>
-    );
+  const getScoreStars = (score: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star 
+        key={i} 
+        className={`w-4 h-4 ${i < score ? 'fill-current text-yellow-400' : 'text-gray-300'}`} 
+      />
+    ));
   };
 
   if (loading) {
@@ -925,6 +916,18 @@ const Employees = () => {
                   </div>
                   
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {employeeData.profile.department && (
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <Building className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Département</p>
+                          <p className="font-medium">{employeeData.profile.department}</p>
+                        </div>
+                      </div>
+                    )}
+                    
                     {employeeData.profile.career_level && (
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-orange-100 rounded-lg">
@@ -1003,108 +1006,114 @@ const Employees = () => {
                     Synthèse des thèmes travaillés en {selectedYear}
                   </h3>
                   
-                  {calculateThemeStats(selectedYear).length > 0 ? (
+                  {themeStats.length > 0 ? (
                     <div className="space-y-3">
-                      {calculateThemeStats(selectedYear).map((stat, index) => {
-                        const isExpanded = expandedThemes.has(stat.theme);
-                        
-                        return (
-                          <div key={index} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-                            <div 
-                              className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100"
-                              onClick={() => toggleThemeExpansion(stat.theme)}
-                            >
+                      {themeStats.map((stat, index) => (
+                        <div key={index} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                          <div 
+                            className="p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => toggleThemeExpansion(index)}
+                          >
+                            <div className="flex justify-between items-center">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <h4 className="font-medium text-gray-900">{stat.theme}</h4>
-                                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">
-                                    {stat.count} objectif{stat.count > 1 ? 's' : ''}
-                                  </span>
+                                  {stat.expanded ? (
+                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                                  )}
                                 </div>
-                                
-                                {stat.avgScore !== null && (
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <div className="flex">
-                                      {getScoreStars(stat.avgScore)}
-                                    </div>
-                                    <span className="text-sm text-gray-600">
-                                      Score moyen: {stat.avgScore.toFixed(1)}/5
-                                    </span>
-                                  </div>
-                                )}
+                                <p className="text-sm text-gray-600">
+                                  {stat.count} objectif{stat.count > 1 ? 's' : ''}
+                                </p>
                               </div>
                               
-                              <div className="text-gray-400">
-                                {isExpanded ? (
-                                  <ChevronDown className="w-5 h-5" />
-                                ) : (
-                                  <ChevronRight className="w-5 h-5" />
-                                )}
-                              </div>
+                              {stat.avgScore !== null && (
+                                <div className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+                                  <div className="flex">
+                                    {getScoreStars(Math.round(stat.avgScore))}
+                                  </div>
+                                  <span>{stat.avgScore}/5</span>
+                                </div>
+                              )}
                             </div>
-                            
-                            {isExpanded && (
-                              <div className="border-t border-gray-200 p-4 space-y-3">
-                                <h5 className="font-medium text-gray-700 text-sm mb-2">Objectifs dans ce thème:</h5>
+                          </div>
+                          
+                          {stat.expanded && (
+                            <div className="border-t border-gray-200 p-4 space-y-3 bg-white">
+                              <h5 className="font-medium text-gray-700 text-sm">Objectifs dans ce thème:</h5>
+                              {stat.objectives.map((obj, objIndex) => {
+                                // Chercher l'évaluation correspondante
+                                let evaluation = null;
+                                let referentEvaluation = null;
                                 
-                                {stat.objectives.map((obj, objIndex) => (
-                                  <div key={objIndex} className="bg-white p-3 rounded-lg border border-gray-200">
-                                    <div className="flex justify-between items-start mb-2">
-                                      <div>
-                                        <h6 className="font-medium text-gray-900">{obj.skillDescription}</h6>
-                                        {obj.projectTitle && (
-                                          <p className="text-xs text-gray-500">
-                                            Projet: {obj.projectTitle} ({obj.projectClient})
-                                          </p>
-                                        )}
-                                        {obj.isAnnual && (
-                                          <p className="text-xs text-gray-500">
-                                            Objectif annuel {selectedYear}
-                                          </p>
-                                        )}
-                                      </div>
-                                      
-                                      {obj.finalScore !== undefined && (
-                                        <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs font-medium">
-                                          Note: {obj.finalScore.toFixed(1)}/5
-                                        </span>
-                                      )}
-                                    </div>
+                                employeeData.projectObjectives.forEach(projObj => {
+                                  if (projObj.evaluation && projObj.objectifs) {
+                                    const matchingObjIndex = projObj.objectifs.findIndex((o: any) => 
+                                      o.skill_id === obj.skill_id && o.skill_description === obj.skill_description
+                                    );
                                     
-                                    {(obj.autoScore !== undefined || obj.referentScore !== undefined) && (
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                                        {obj.autoScore !== undefined && (
+                                    if (matchingObjIndex >= 0) {
+                                      if (projObj.evaluation.auto_evaluation?.evaluations?.[matchingObjIndex]) {
+                                        evaluation = projObj.evaluation.auto_evaluation.evaluations[matchingObjIndex];
+                                      }
+                                      if (projObj.evaluation.evaluation_referent?.evaluations?.[matchingObjIndex]) {
+                                        referentEvaluation = projObj.evaluation.evaluation_referent.evaluations[matchingObjIndex];
+                                      }
+                                    }
+                                  }
+                                });
+                                
+                                return (
+                                  <div key={objIndex} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <p className="font-medium text-gray-800 mb-2">{obj.skill_description}</p>
+                                    <p className="text-sm text-gray-600 mb-3">{obj.smart_objective}</p>
+                                    
+                                    {(evaluation || referentEvaluation) && (
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                        {evaluation && (
                                           <div className="bg-blue-50 p-2 rounded">
                                             <div className="flex items-center justify-between mb-1">
-                                              <span className="text-xs font-medium text-blue-700">Auto-évaluation</span>
-                                              <span className="text-xs text-blue-700">{obj.autoScore}/5</span>
+                                              <span className="text-xs font-medium text-blue-800">Auto-évaluation</span>
+                                              <div className="flex items-center gap-1">
+                                                <div className="flex">
+                                                  {getScoreStars(evaluation.auto_evaluation_score)}
+                                                </div>
+                                                <span className="text-xs text-blue-700">({evaluation.auto_evaluation_score}/5)</span>
+                                              </div>
                                             </div>
-                                            {obj.autoComment && (
-                                              <p className="text-xs text-blue-600 mt-1">{obj.autoComment}</p>
+                                            {evaluation.auto_evaluation_comment && (
+                                              <p className="text-xs text-blue-700 mt-1">{evaluation.auto_evaluation_comment}</p>
                                             )}
                                           </div>
                                         )}
                                         
-                                        {obj.referentScore !== undefined && (
+                                        {referentEvaluation && (
                                           <div className="bg-purple-50 p-2 rounded">
                                             <div className="flex items-center justify-between mb-1">
-                                              <span className="text-xs font-medium text-purple-700">Évaluation référent</span>
-                                              <span className="text-xs text-purple-700">{obj.referentScore}/5</span>
+                                              <span className="text-xs font-medium text-purple-800">Évaluation référent</span>
+                                              <div className="flex items-center gap-1">
+                                                <div className="flex">
+                                                  {getScoreStars(referentEvaluation.referent_score)}
+                                                </div>
+                                                <span className="text-xs text-purple-700">({referentEvaluation.referent_score}/5)</span>
+                                              </div>
                                             </div>
-                                            {obj.referentComment && (
-                                              <p className="text-xs text-purple-600 mt-1">{obj.referentComment}</p>
+                                            {referentEvaluation.referent_comment && (
+                                              <p className="text-xs text-purple-700 mt-1">{referentEvaluation.referent_comment}</p>
                                             )}
                                           </div>
                                         )}
                                       </div>
                                     )}
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
@@ -1199,131 +1208,163 @@ const Employees = () => {
                                 Objectifs de projet
                               </h4>
                               
-                              <div className="space-y-3">
-                                {project.map(obj => (
-                                  <div key={obj.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                    <div className="flex justify-between items-center mb-3">
-                                      <div>
-                                        <h5 className="font-medium text-gray-900">
-                                          {obj.projet.titre}
-                                        </h5>
-                                        <p className="text-sm text-gray-600">
-                                          Client: {obj.projet.nom_client}
-                                        </p>
-                                      </div>
-                                      <div className="flex flex-col items-end gap-1">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProjectStatusColor(obj.projet.statut)}`}>
-                                          {getProjectStatusLabel(obj.projet.statut)}
-                                        </span>
-                                        
-                                        {obj.evaluation && (
-                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEvaluationStatusColor(obj.evaluation.statut)}`}>
-                                            {getEvaluationStatusLabel(obj.evaluation.statut)}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    
-                                    <div className="space-y-2">
-                                      {obj.objectifs.map((objective: any, index: number) => (
-                                        <div key={index} className="text-sm">
-                                          <div className="flex items-center gap-2">
-                                            <span className="w-5 h-5 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-medium text-indigo-800">
-                                              {index + 1}
-                                            </span>
-                                            <span className="font-medium text-gray-900">{objective.skill_description}</span>
+                              <div className="space-y-4">
+                                {project.map(obj => {
+                                  const isProjectExpanded = expandedProjects.has(obj.id);
+                                  
+                                  return (
+                                    <div key={obj.id} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                                      <div 
+                                        className="p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                                        onClick={() => toggleProjectExpansion(obj.id)}
+                                      >
+                                        <div className="flex justify-between items-center">
+                                          <div>
+                                            <h5 className="font-medium text-gray-900">
+                                              {obj.projet.titre}
+                                            </h5>
+                                            <p className="text-sm text-gray-600">
+                                              Client: {obj.projet.nom_client}
+                                            </p>
                                           </div>
-                                          <p className="text-gray-600 ml-7 mt-1">{objective.smart_objective}</p>
+                                          <div className="flex flex-col items-end gap-1">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getProjectStatusColor(obj.projet.statut)}`}>
+                                              {getProjectStatusLabel(obj.projet.statut)}
+                                            </span>
+                                            
+                                            {obj.evaluation && (
+                                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEvaluationStatusColor(obj.evaluation.statut)}`}>
+                                                {getEvaluationStatusLabel(obj.evaluation.statut)}
+                                              </span>
+                                            )}
+                                            
+                                            {isProjectExpanded ? (
+                                              <ChevronDown className="w-4 h-4 text-gray-400 mt-1" />
+                                            ) : (
+                                              <ChevronRight className="w-4 h-4 text-gray-400 mt-1" />
+                                            )}
+                                          </div>
                                         </div>
-                                      ))}
-                                    </div>
-                                    
-                                    {/* Évaluations */}
-                                    {obj.evaluation && (obj.evaluation.auto_evaluation || obj.evaluation.evaluation_referent) && (
-                                      <div className="mt-4 border-t border-gray-200 pt-3">
-                                        <h6 className="text-sm font-medium text-gray-700 mb-2">Évaluations:</h6>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                          {/* Auto-évaluation */}
-                                          {obj.evaluation.auto_evaluation && obj.evaluation.auto_evaluation.evaluations && (
-                                            <div className="bg-blue-50 p-3 rounded-lg">
-                                              <div className="flex justify-between items-center mb-2">
-                                                <h6 className="text-sm font-medium text-blue-700">Auto-évaluation</h6>
-                                                {obj.evaluation.score_moyen !== undefined && (
-                                                  <span className="text-sm font-medium text-blue-700">
-                                                    {obj.evaluation.score_moyen.toFixed(1)}/5
+                                      </div>
+                                      
+                                      {isProjectExpanded && (
+                                        <div className="border-t border-gray-200 p-4 bg-white">
+                                          {/* Objectifs */}
+                                          <div className="space-y-3 mb-4">
+                                            <h6 className="font-medium text-gray-700 text-sm">Objectifs:</h6>
+                                            {obj.objectifs.map((objective: any, index: number) => (
+                                              <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
+                                                    {objective.theme_name || `Thème ${index + 1}`}
                                                   </span>
-                                                )}
+                                                </div>
+                                                <p className="font-medium text-gray-800 mb-1">{objective.skill_description}</p>
+                                                <p className="text-sm text-gray-600 mb-2">{objective.smart_objective}</p>
                                               </div>
+                                            ))}
+                                          </div>
+                                          
+                                          {/* Évaluations */}
+                                          {obj.evaluation && (obj.evaluation.auto_evaluation || obj.evaluation.evaluation_referent) && (
+                                            <div className="mt-4 border-t border-gray-200 pt-4">
+                                              <h6 className="font-medium text-gray-700 text-sm mb-3">Évaluations:</h6>
                                               
-                                              {obj.evaluation.score_moyen !== undefined && (
-                                                <div className="flex mb-2">
-                                                  {getScoreStars(obj.evaluation.score_moyen)}
+                                              {obj.objectifs.map((objective: any, index: number) => {
+                                                const autoEval = obj.evaluation?.auto_evaluation?.evaluations?.[index];
+                                                const referentEval = obj.evaluation?.evaluation_referent?.evaluations?.[index];
+                                                
+                                                if (!autoEval && !referentEval) return null;
+                                                
+                                                return (
+                                                  <div key={index} className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                    <p className="font-medium text-gray-800 mb-2">{index + 1}. {objective.skill_description}</p>
+                                                    
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                      {/* Auto-évaluation */}
+                                                      {autoEval && (
+                                                        <div className="bg-blue-50 p-3 rounded">
+                                                          <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-xs font-medium text-blue-800">Auto-évaluation</span>
+                                                            <div className="flex items-center gap-1">
+                                                              <div className="flex">
+                                                                {getScoreStars(autoEval.auto_evaluation_score)}
+                                                              </div>
+                                                              <span className="text-xs text-blue-700">({autoEval.auto_evaluation_score}/5)</span>
+                                                            </div>
+                                                          </div>
+                                                          {autoEval.auto_evaluation_comment && (
+                                                            <p className="text-xs text-blue-700 mt-1">{autoEval.auto_evaluation_comment}</p>
+                                                          )}
+                                                          {autoEval.achievements && (
+                                                            <p className="text-xs text-blue-700 mt-1">
+                                                              <strong>Réalisations:</strong> {autoEval.achievements}
+                                                            </p>
+                                                          )}
+                                                        </div>
+                                                      )}
+                                                      
+                                                      {/* Évaluation référent */}
+                                                      {referentEval && (
+                                                        <div className="bg-purple-50 p-3 rounded">
+                                                          <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-xs font-medium text-purple-800">Évaluation référent</span>
+                                                            <div className="flex items-center gap-1">
+                                                              <div className="flex">
+                                                                {getScoreStars(referentEval.referent_score)}
+                                                              </div>
+                                                              <span className="text-xs text-purple-700">({referentEval.referent_score}/5)</span>
+                                                            </div>
+                                                          </div>
+                                                          {referentEval.referent_comment && (
+                                                            <p className="text-xs text-purple-700 mt-1">{referentEval.referent_comment}</p>
+                                                          )}
+                                                          {referentEval.development_recommendations && (
+                                                            <p className="text-xs text-purple-700 mt-1">
+                                                              <strong>Recommandations:</strong> {referentEval.development_recommendations}
+                                                            </p>
+                                                          )}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                              
+                                              {obj.evaluation.note_finale > 0 && (
+                                                <div className="mt-3 flex items-center justify-between bg-green-50 p-3 rounded-lg border border-green-200">
+                                                  <span className="font-medium text-green-800">Note finale:</span>
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="flex">
+                                                      {getScoreStars(Math.round(obj.evaluation.note_finale))}
+                                                    </div>
+                                                    <span className="text-green-800 font-medium">{obj.evaluation.note_finale.toFixed(1)}/5</span>
+                                                  </div>
                                                 </div>
                                               )}
                                               
-                                              <button
-                                                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-1"
-                                                onClick={() => navigate(`/fiche-projet/${obj.collaboration_id}`)}
-                                              >
-                                                <Eye className="w-3 h-3" />
-                                                Voir les détails
-                                              </button>
+                                              <div className="mt-3 flex justify-end">
+                                                <button
+                                                  onClick={() => navigate(`/fiche-projet/${obj.collaboration_id}`)}
+                                                  className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm"
+                                                >
+                                                  <Eye className="w-4 h-4" />
+                                                  Voir la fiche complète
+                                                  <ArrowRight className="w-3 h-3 ml-1" />
+                                                </button>
+                                              </div>
                                             </div>
                                           )}
                                           
-                                          {/* Évaluation référent */}
-                                          {obj.evaluation.evaluation_referent && obj.evaluation.evaluation_referent.evaluations && (
-                                            <div className="bg-purple-50 p-3 rounded-lg">
-                                              <div className="flex justify-between items-center mb-2">
-                                                <h6 className="text-sm font-medium text-purple-700">Évaluation référent</h6>
-                                                {obj.evaluation.score_referent !== undefined && (
-                                                  <span className="text-sm font-medium text-purple-700">
-                                                    {obj.evaluation.score_referent.toFixed(1)}/5
-                                                  </span>
-                                                )}
-                                              </div>
-                                              
-                                              {obj.evaluation.score_referent !== undefined && (
-                                                <div className="flex mb-2">
-                                                  {getScoreStars(obj.evaluation.score_referent)}
-                                                </div>
-                                              )}
-                                              
-                                              <button
-                                                className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 mt-1"
-                                                onClick={() => navigate(`/fiche-projet/${obj.collaboration_id}`)}
-                                              >
-                                                <Eye className="w-3 h-3" />
-                                                Voir les détails
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-                                        
-                                        {/* Note finale */}
-                                        {obj.evaluation.note_finale !== undefined && (
-                                          <div className="mt-3 bg-green-50 p-3 rounded-lg">
-                                            <div className="flex justify-between items-center">
-                                              <h6 className="text-sm font-medium text-green-700">Note finale</h6>
-                                              <span className="text-sm font-medium text-green-700">
-                                                {obj.evaluation.note_finale.toFixed(1)}/5
-                                              </span>
-                                            </div>
-                                            <div className="flex mt-1">
-                                              {getScoreStars(obj.evaluation.note_finale)}
-                                            </div>
+                                          <div className="mt-3 text-xs text-gray-500">
+                                            Projet du {format(new Date(obj.projet.date_debut), 'dd/MM/yyyy', { locale: fr })}
+                                            {obj.projet.date_fin_prevue && ` au ${format(new Date(obj.projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}`}
                                           </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    
-                                    <div className="mt-3 text-xs text-gray-500">
-                                      Projet du {format(new Date(obj.projet.date_debut), 'dd/MM/yyyy', { locale: fr })}
-                                      {obj.projet.date_fin_prevue && ` au ${format(new Date(obj.projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}`}
+                                        </div>
+                                      )}
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
