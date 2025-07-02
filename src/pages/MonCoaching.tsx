@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
-import AnnualEvaluationCoachModal from '../components/objectives/AnnualEvaluationCoachModal';
 
 interface CoachingEvaluation {
   evaluation_id: string;
@@ -57,22 +56,10 @@ interface AnnualObjective {
   };
 }
 
-interface AnnualEvaluation {
-  id: string;
-  objective_id: string;
-  year: number;
-  employee_id: string;
-  evaluations: any[];
-  status: string;
-  submitted_at: string;
-  created_at: string;
-}
-
 const MonCoaching = () => {
   const { t } = useTranslation();
   const [evaluations, setEvaluations] = useState<CoachingEvaluation[]>([]);
   const [annualObjectives, setAnnualObjectives] = useState<AnnualObjective[]>([]);
-  const [annualEvaluations, setAnnualEvaluations] = useState<AnnualEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -81,9 +68,6 @@ const MonCoaching = () => {
   const [expandedObjectives, setExpandedObjectives] = useState<Set<string>>(new Set());
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'evaluations' | 'objectives'>('evaluations');
-  const [showCoachEvaluationModal, setShowCoachEvaluationModal] = useState(false);
-  const [selectedObjective, setSelectedObjective] = useState<AnnualObjective | null>(null);
-  const [selectedEvaluation, setSelectedEvaluation] = useState<AnnualEvaluation | null>(null);
 
   useEffect(() => {
     checkUserAndFetchData();
@@ -107,7 +91,6 @@ const MonCoaching = () => {
       setCurrentUser(profile);
       await fetchCoachingEvaluations(user.id);
       await fetchAnnualObjectives(user.id);
-      await fetchAnnualEvaluations(user.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
@@ -165,48 +148,6 @@ const MonCoaching = () => {
     } catch (err) {
       console.error('Error fetching annual objectives:', err);
       setError('Erreur lors du chargement des objectifs annuels');
-    }
-  };
-
-  const fetchAnnualEvaluations = async (coachId: string) => {
-    try {
-      // Récupérer les IDs des coachés
-      const { data: coachees, error: coacheesError } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('coach_id', coachId);
-
-      if (coacheesError) throw coacheesError;
-      
-      if (!coachees || coachees.length === 0) {
-        setAnnualEvaluations([]);
-        return;
-      }
-
-      const coacheeIds = coachees.map(coachee => coachee.id);
-
-      // Récupérer les évaluations annuelles des coachés
-      // Note: Cette table n'existe pas encore, donc on simule un succès
-      try {
-        const { data: evaluations, error: evaluationsError } = await supabase
-          .from('annual_evaluations')
-          .select('*')
-          .in('employee_id', coacheeIds)
-          .order('submitted_at', { ascending: false });
-
-        if (!evaluationsError) {
-          setAnnualEvaluations(evaluations || []);
-        } else {
-          console.warn('Table annual_evaluations might not exist yet:', evaluationsError);
-          setAnnualEvaluations([]);
-        }
-      } catch (err) {
-        console.warn('Error fetching annual evaluations, table might not exist yet:', err);
-        setAnnualEvaluations([]);
-      }
-    } catch (err) {
-      console.error('Error in fetchAnnualEvaluations:', err);
-      // Ne pas afficher d'erreur à l'utilisateur car cette table peut ne pas exister encore
     }
   };
 
@@ -368,38 +309,6 @@ const MonCoaching = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleStartCoachEvaluation = (objective: AnnualObjective) => {
-    // Trouver l'évaluation correspondante
-    const evaluation = annualEvaluations.find(eval => eval.objective_id === objective.id);
-    
-    if (evaluation) {
-      setSelectedObjective(objective);
-      setSelectedEvaluation(evaluation);
-      setShowCoachEvaluationModal(true);
-    } else {
-      setError("L'employé n'a pas encore soumis son auto-évaluation pour ces objectifs");
-      setTimeout(() => setError(null), 5000);
-    }
-  };
-
-  const handleCoachEvaluationCompleted = () => {
-    setShowCoachEvaluationModal(false);
-    setSelectedObjective(null);
-    setSelectedEvaluation(null);
-    setSuccess("Évaluation coach soumise avec succès");
-    
-    // Rafraîchir les données
-    fetchAnnualEvaluations(currentUser.id);
-    
-    setTimeout(() => setSuccess(null), 3000);
-  };
-
-  const canCoachEvaluate = (objective: AnnualObjective) => {
-    // Vérifier si l'objectif a une évaluation associée
-    const evaluation = annualEvaluations.find(eval => eval.objective_id === objective.id);
-    return evaluation && evaluation.status === 'submitted';
   };
 
   const filteredEvaluations = selectedEmployee 
@@ -839,8 +748,6 @@ const MonCoaching = () => {
               const isPending = objective.status === 'submitted';
               const isApproved = objective.status === 'approved';
               const isRejected = objective.status === 'rejected';
-              const hasEvaluation = annualEvaluations.some(eval => eval.objective_id === objective.id);
-              const canEvaluate = canCoachEvaluate(objective);
               
               return (
                 <div key={objective.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
@@ -858,11 +765,6 @@ const MonCoaching = () => {
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(objective.status)}`}>
                             {getStatusLabel(objective.status)}
                           </span>
-                          {hasEvaluation && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                              Auto-évalué
-                            </span>
-                          )}
                         </div>
 
                         <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -919,19 +821,6 @@ const MonCoaching = () => {
                         >
                           <X className="w-4 h-4" />
                           Rejeter
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Bouton d'évaluation coach */}
-                    {canEvaluate && (
-                      <div className="mb-4 flex justify-end">
-                        <button
-                          onClick={() => handleStartCoachEvaluation(objective)}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-                        >
-                          <Star className="w-4 h-4" />
-                          Évaluer en tant que coach
                         </button>
                       </div>
                     )}
@@ -1087,24 +976,6 @@ const MonCoaching = () => {
             </div>
           )}
         </div>
-      )}
-
-      {/* Modal d'évaluation coach */}
-      {showCoachEvaluationModal && selectedObjective && selectedEvaluation && (
-        <AnnualEvaluationCoachModal
-          objective={selectedObjective}
-          employeeEvaluation={selectedEvaluation}
-          onClose={() => {
-            setShowCoachEvaluationModal(false);
-            setSelectedObjective(null);
-            setSelectedEvaluation(null);
-          }}
-          onSuccess={handleCoachEvaluationCompleted}
-          onError={(error) => {
-            setError(error);
-            setTimeout(() => setError(null), 5000);
-          }}
-        />
       )}
     </div>
   );
