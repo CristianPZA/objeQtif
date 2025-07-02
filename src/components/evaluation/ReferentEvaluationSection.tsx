@@ -163,6 +163,17 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
               </p>
             </div>
           </div>
+          {isReferent && (
+            <div className="mt-4">
+              <button
+                onClick={onStartReferentEvaluation}
+                className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <UserCheck className="w-4 h-4" />
+                Commencer l'évaluation
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
