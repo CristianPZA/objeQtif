@@ -430,12 +430,12 @@ const Employees = () => {
     let totalScore = 0;
     let count = 0;
     
-    evaluationData.evaluations.forEach((eval: any) => {
-      if (eval.auto_evaluation_score) {
-        totalScore += parseFloat(eval.auto_evaluation_score);
+    evaluationData.evaluations.forEach((evaluationItem: any) => {
+      if (evaluationItem.auto_evaluation_score) {
+        totalScore += parseFloat(evaluationItem.auto_evaluation_score);
         count++;
-      } else if (eval.referent_score) {
-        totalScore += parseFloat(eval.referent_score);
+      } else if (evaluationItem.referent_score) {
+        totalScore += parseFloat(evaluationItem.referent_score);
         count++;
       }
     });
