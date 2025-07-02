@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Award, ChevronDown, ChevronRight, Star, ExternalLink, Eye, EyeOff, Tag, BarChart2, PieChart, TrendingUp, Lightbulb } from 'lucide-react';
+import { Award, ChevronDown, ChevronRight, Star, Eye, EyeOff, Tag, BarChart2, TrendingUp, Lightbulb, AlertCircle, CheckCircle, User } from 'lucide-react';
 import { Evaluation } from './types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -28,6 +28,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
   const [detailedView, setDetailedView] = useState<Set<string>>(new Set());
   const [themeStats, setThemeStats] = useState<Record<string, { count: number, totalScore: number, objectives: any[] }>>({});
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
+  const [objectiveDetails, setObjectiveDetails] = useState<Record<string, boolean>>({});
 
   // Calculer les statistiques des thèmes travaillés
   useEffect(() => {
@@ -55,7 +56,8 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
           const objectiveWithEvaluation = {
             ...objective,
             evaluation: evaluation,
-            evaluationIndex: index
+            evaluationIndex: index,
+            objectiveId: `${evaluation.evaluation_id}-${index}`
           };
           stats[themeName].objectives.push(objectiveWithEvaluation);
           
@@ -87,6 +89,13 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
 
   const handleThemeClick = (theme: string) => {
     setSelectedTheme(selectedTheme === theme ? null : theme);
+  };
+
+  const toggleObjectiveDetail = (objectiveId: string) => {
+    setObjectiveDetails(prev => ({
+      ...prev,
+      [objectiveId]: !prev[objectiveId]
+    }));
   };
 
   if (evaluations.length === 0) {
@@ -152,14 +161,16 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
             </div>
             
             <div className="space-y-3">
-              {themeStats[selectedTheme].objectives.map((objective, index) => {
+              {themeStats[selectedTheme].objectives.map((objective) => {
                 const evaluation = objective.evaluation;
                 const evalIndex = objective.evaluationIndex;
+                const objectiveId = objective.objectiveId;
                 const autoEval = evaluation.auto_evaluation?.evaluations?.[evalIndex];
                 const referentEval = evaluation.evaluation_referent?.evaluations?.[evalIndex];
+                const isDetailExpanded = objectiveDetails[objectiveId] || false;
                 
                 return (
-                  <div key={index} className="bg-gray-50 rounded-lg p-4 border">
+                  <div key={objectiveId} className="bg-white rounded-lg p-4 border">
                     <div className="mb-3">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
@@ -189,7 +200,8 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                           </h5>
                           <p className="text-sm text-gray-700 mt-1">{objective.smart_objective}</p>
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <Briefcase className="w-3 h-3" />
                           Projet: {evaluation.projet_titre}
                         </div>
                       </div>
@@ -207,6 +219,31 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                             <span className="text-sm text-blue-700">({autoEval.auto_evaluation_score}/5)</span>
                           </div>
                           <p className="text-sm text-blue-700">{autoEval.auto_evaluation_comment}</p>
+                          
+                          {isDetailExpanded && (
+                            <div className="mt-2 pt-2 border-t border-blue-200">
+                              {autoEval.achievements && (
+                                <p className="text-sm text-blue-700 mt-1">
+                                  <strong>Réalisations:</strong> {autoEval.achievements}
+                                </p>
+                              )}
+                              {autoEval.learnings && (
+                                <p className="text-sm text-blue-700 mt-1">
+                                  <strong>Apprentissages:</strong> {autoEval.learnings}
+                                </p>
+                              )}
+                              {autoEval.difficulties && (
+                                <p className="text-sm text-blue-700 mt-1">
+                                  <strong>Difficultés:</strong> {autoEval.difficulties}
+                                </p>
+                              )}
+                              {autoEval.next_steps && (
+                                <p className="text-sm text-blue-700 mt-1">
+                                  <strong>Prochaines étapes:</strong> {autoEval.next_steps}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                       
@@ -221,8 +258,55 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                             <span className="text-sm text-green-700">({referentEval.referent_score}/5)</span>
                           </div>
                           <p className="text-sm text-green-700">{referentEval.referent_comment}</p>
+                          
+                          {isDetailExpanded && (
+                            <div className="mt-2 pt-2 border-t border-green-200">
+                              {referentEval.observed_achievements && (
+                                <p className="text-sm text-green-700 mt-1">
+                                  <strong>Observations:</strong> {referentEval.observed_achievements}
+                                </p>
+                              )}
+                              {referentEval.development_recommendations && (
+                                <p className="text-sm text-green-700 mt-1">
+                                  <strong>Recommandations:</strong> {referentEval.development_recommendations}
+                                </p>
+                              )}
+                              {referentEval.areas_for_improvement && (
+                                <p className="text-sm text-green-700 mt-1">
+                                  <strong>Axes d'amélioration:</strong> {referentEval.areas_for_improvement}
+                                </p>
+                              )}
+                              {referentEval.overall_performance && (
+                                <p className="text-sm text-green-700 mt-1">
+                                  <strong>Performance globale:</strong> {referentEval.overall_performance}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
+                    </div>
+                    
+                    <div className="mt-2 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleObjectiveDetail(objectiveId);
+                        }}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
+                      >
+                        {isDetailExpanded ? (
+                          <>
+                            <EyeOff className="w-3 h-3" />
+                            Masquer les détails
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3 h-3" />
+                            Voir plus de détails
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 );
@@ -244,8 +328,14 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
         const isExpanded = expandedEvaluations.has(evaluation.evaluation_id);
         const isDetailed = detailedView.has(evaluation.evaluation_id);
         
+        // Calculer l'écart entre auto-évaluation et évaluation référent
+        const scoreDifference = evaluation.score_referent - evaluation.score_auto_evaluation;
+        const hasSignificantGap = Math.abs(scoreDifference) > 1;
+        const isOverestimation = scoreDifference < 0;
+        const isUnderestimation = scoreDifference > 0;
+        
         return (
-          <div key={evaluation.evaluation_id} className="bg-gray-50 rounded-lg border p-4">
+          <div key={evaluation.evaluation_id} className="bg-white rounded-lg border shadow-sm p-4">
             <div className="flex justify-between items-start mb-2">
               <div>
                 <div className="flex items-center gap-2">
@@ -284,10 +374,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                   )}
                 </button>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleEvaluationExpansion(evaluation.evaluation_id);
-                  }}
+                  onClick={() => toggleEvaluationExpansion(evaluation.evaluation_id)}
                   className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200"
                 >
                   {isExpanded ? (
@@ -300,7 +387,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
             </div>
             
             {isExpanded && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-4">
                 {/* Résumé des scores */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-blue-50 rounded-lg p-3">
@@ -335,34 +422,60 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                 </div>
                 
                 {/* Analyse des écarts */}
-                <div className="bg-white rounded-lg p-4 border">
-                  <h4 className="font-medium text-gray-900 mb-2">Analyse de l'évaluation</h4>
+                <div className="bg-gray-50 rounded-lg p-4 border">
+                  <h4 className="font-medium text-gray-900 mb-3">Analyse de l'évaluation</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-700">Écart auto-évaluation / référent:</p>
                       <div className="flex items-center gap-2 mt-1">
                         <TrendingUp className="w-4 h-4 text-gray-500" />
                         <span className={`text-sm ${
-                          Math.abs(evaluation.score_auto_evaluation - evaluation.score_referent) > 1 
+                          hasSignificantGap 
                             ? 'text-red-600 font-medium' 
                             : 'text-green-600 font-medium'
                         }`}>
-                          {(evaluation.score_referent - evaluation.score_auto_evaluation).toFixed(1)} points
+                          {scoreDifference.toFixed(1)} points
                         </span>
                         <span className="text-xs text-gray-500">
-                          {evaluation.score_auto_evaluation > evaluation.score_referent 
+                          {isOverestimation 
                             ? '(surestimation)' 
-                            : evaluation.score_auto_evaluation < evaluation.score_referent 
+                            : isUnderestimation 
                               ? '(sous-estimation)' 
                               : '(aligné)'}
                         </span>
                       </div>
+                      
+                      {hasSignificantGap && (
+                        <div className="mt-2 text-xs">
+                          {isOverestimation ? (
+                            <div className="flex items-start gap-1 text-orange-700">
+                              <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>L'employé a tendance à surestimer ses compétences par rapport à l'évaluation du référent.</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-1 text-blue-700">
+                              <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>L'employé a tendance à sous-estimer ses compétences par rapport à l'évaluation du référent.</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     
                     <div>
                       <p className="text-sm font-medium text-gray-700">Référent:</p>
                       <div className="flex items-center gap-2 mt-1">
+                        <User className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-900">{evaluation.referent_nom || 'Non spécifié'}</span>
+                      </div>
+                      
+                      <div className="mt-2 text-xs">
+                        {!hasSignificantGap ? (
+                          <div className="flex items-start gap-1 text-green-700">
+                            <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <span>Bonne cohérence entre l'auto-évaluation et l'évaluation du référent.</span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -376,9 +489,11 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                     {evaluation.objectifs.map((objective: any, index: number) => {
                       const autoEval = evaluation.auto_evaluation?.evaluations?.[index];
                       const referentEval = evaluation.evaluation_referent?.evaluations?.[index];
+                      const objectiveId = `${evaluation.evaluation_id}-${index}`;
+                      const isDetailExpanded = objectiveDetails[objectiveId] || false;
                       
                       return (
-                        <div key={index} className="bg-white rounded-lg p-4 border">
+                        <div key={objectiveId} className="bg-gray-50 rounded-lg p-4 border">
                           <div className="mb-3">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
@@ -419,20 +534,30 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                   <span className="text-sm text-blue-700">({autoEval.auto_evaluation_score}/5)</span>
                                 </div>
                                 <p className="text-sm text-blue-700">{autoEval.auto_evaluation_comment}</p>
-                                {autoEval.achievements && (
-                                  <p className="text-sm text-blue-700 mt-1">
-                                    <strong>Réalisations:</strong> {autoEval.achievements}
-                                  </p>
-                                )}
-                                {autoEval.learnings && (
-                                  <p className="text-sm text-blue-700 mt-1">
-                                    <strong>Apprentissages:</strong> {autoEval.learnings}
-                                  </p>
-                                )}
-                                {autoEval.difficulties && (
-                                  <p className="text-sm text-blue-700 mt-1">
-                                    <strong>Difficultés:</strong> {autoEval.difficulties}
-                                  </p>
+                                
+                                {isDetailExpanded && (
+                                  <div className="mt-2 pt-2 border-t border-blue-200">
+                                    {autoEval.achievements && (
+                                      <p className="text-sm text-blue-700 mt-1">
+                                        <strong>Réalisations:</strong> {autoEval.achievements}
+                                      </p>
+                                    )}
+                                    {autoEval.learnings && (
+                                      <p className="text-sm text-blue-700 mt-1">
+                                        <strong>Apprentissages:</strong> {autoEval.learnings}
+                                      </p>
+                                    )}
+                                    {autoEval.difficulties && (
+                                      <p className="text-sm text-blue-700 mt-1">
+                                        <strong>Difficultés:</strong> {autoEval.difficulties}
+                                      </p>
+                                    )}
+                                    {autoEval.next_steps && (
+                                      <p className="text-sm text-blue-700 mt-1">
+                                        <strong>Prochaines étapes:</strong> {autoEval.next_steps}
+                                      </p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             )}
@@ -448,28 +573,52 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                   <span className="text-sm text-green-700">({referentEval.referent_score}/5)</span>
                                 </div>
                                 <p className="text-sm text-green-700">{referentEval.referent_comment}</p>
-                                {referentEval.observed_achievements && (
-                                  <p className="text-sm text-green-700 mt-1">
-                                    <strong>Observations:</strong> {referentEval.observed_achievements}
-                                  </p>
-                                )}
-                                {referentEval.development_recommendations && (
-                                  <p className="text-sm text-green-700 mt-1">
-                                    <strong>Recommandations:</strong> {referentEval.development_recommendations}
-                                  </p>
-                                )}
-                                {referentEval.areas_for_improvement && (
-                                  <p className="text-sm text-green-700 mt-1">
-                                    <strong>Axes d'amélioration:</strong> {referentEval.areas_for_improvement}
-                                  </p>
-                                )}
-                                {referentEval.overall_performance && (
-                                  <p className="text-sm text-green-700 mt-1">
-                                    <strong>Performance globale:</strong> {referentEval.overall_performance}
-                                  </p>
+                                
+                                {isDetailExpanded && (
+                                  <div className="mt-2 pt-2 border-t border-green-200">
+                                    {referentEval.observed_achievements && (
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>Observations:</strong> {referentEval.observed_achievements}
+                                      </p>
+                                    )}
+                                    {referentEval.development_recommendations && (
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>Recommandations:</strong> {referentEval.development_recommendations}
+                                      </p>
+                                    )}
+                                    {referentEval.areas_for_improvement && (
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>Axes d'amélioration:</strong> {referentEval.areas_for_improvement}
+                                      </p>
+                                    )}
+                                    {referentEval.overall_performance && (
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>Performance globale:</strong> {referentEval.overall_performance}
+                                      </p>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             )}
+                          </div>
+                          
+                          <div className="mt-2 text-center">
+                            <button
+                              onClick={() => toggleObjectiveDetail(objectiveId)}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
+                            >
+                              {isDetailExpanded ? (
+                                <>
+                                  <EyeOff className="w-3 h-3" />
+                                  Masquer les détails
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="w-3 h-3" />
+                                  Voir plus de détails
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
                       );
