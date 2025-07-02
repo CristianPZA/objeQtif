@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Award, ChevronDown, ChevronRight, Star, ExternalLink, Eye, EyeOff, Tag, BarChart2 } from 'lucide-react';
+import { Award, ChevronDown, ChevronRight, Star, ExternalLink, Eye, EyeOff, Tag, BarChart2, PieChart, TrendingUp, Lightbulb, Target, BookOpen, Users } from 'lucide-react';
 import { Evaluation } from './types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -26,26 +26,43 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
   handleViewEvaluation
 }) => {
   const [detailedView, setDetailedView] = useState<Set<string>>(new Set());
-  const [themeStats, setThemeStats] = useState<Record<string, { count: number, totalScore: number }>>({});
+  const [themeStats, setThemeStats] = useState<Record<string, { count: number, totalScore: number, objectives: any[] }>>({});
+  const [yearStats, setYearStats] = useState<Record<string, { count: number, totalScore: number }>>({});
 
   // Calculer les statistiques des thèmes travaillés
   useEffect(() => {
-    const stats: Record<string, { count: number, totalScore: number }> = {};
+    const stats: Record<string, { count: number, totalScore: number, objectives: any[] }> = {};
+    const years: Record<string, { count: number, totalScore: number }> = {};
     
     evaluations.forEach(evaluation => {
+      // Extraire l'année de la date de soumission
+      const year = new Date(evaluation.date_soumission).getFullYear().toString();
+      if (!years[year]) {
+        years[year] = { count: 0, totalScore: 0 };
+      }
+      years[year].count += 1;
+      years[year].totalScore += evaluation.note_finale || 0;
+      
       if (evaluation.objectifs) {
-        evaluation.objectifs.forEach((objective: any) => {
-          const themeName = objective.theme_name || 'Non catégorisé';
+        evaluation.objectifs.forEach((objective: any, index: number) => {
+          // Normaliser le nom du thème pour regrouper les thèmes similaires
+          let themeName = objective.theme_name || 'Non catégorisé';
+          
+          // Simplifier les noms de thèmes pour regrouper les thèmes similaires
+          // Par exemple "Consulting & Customer Relationship - Teamwork" devient "Consulting & Customer Relationship"
+          if (themeName.includes(' - ')) {
+            themeName = themeName.split(' - ')[0].trim();
+          }
           
           if (!stats[themeName]) {
-            stats[themeName] = { count: 0, totalScore: 0 };
+            stats[themeName] = { count: 0, totalScore: 0, objectives: [] };
           }
           
           stats[themeName].count += 1;
+          stats[themeName].objectives.push(objective);
           
           // Ajouter le score si disponible
-          const evalIndex = evaluation.objectifs.indexOf(objective);
-          const referentEval = evaluation.evaluation_referent?.evaluations?.[evalIndex];
+          const referentEval = evaluation.evaluation_referent?.evaluations?.[index];
           
           if (referentEval && referentEval.referent_score) {
             stats[themeName].totalScore += referentEval.referent_score;
@@ -55,6 +72,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
     });
     
     setThemeStats(stats);
+    setYearStats(years);
   }, [evaluations]);
 
   const toggleDetailedView = (id: string, e: React.MouseEvent) => {
@@ -68,6 +86,29 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
       }
       return newSet;
     });
+  };
+
+  // Obtenir l'icône appropriée pour un thème
+  const getThemeIcon = (themeName: string) => {
+    const themeIcons: Record<string, React.ReactNode> = {
+      'Consulting Techniques': <Target className="w-4 h-4 text-indigo-600" />,
+      'Consulting & Customer Relationship': <Users className="w-4 h-4 text-blue-600" />,
+      'Human Development': <Users className="w-4 h-4 text-green-600" />,
+      'Business Development': <TrendingUp className="w-4 h-4 text-purple-600" />,
+      'Sectoral/functional skills': <BookOpen className="w-4 h-4 text-orange-600" />,
+      'Innovation': <Lightbulb className="w-4 h-4 text-yellow-600" />,
+      'Architecture': <Target className="w-4 h-4 text-red-600" />,
+      'Techniques d\'Analyse Quantitative': <PieChart className="w-4 h-4 text-teal-600" />
+    };
+    
+    // Recherche partielle pour trouver l'icône la plus appropriée
+    for (const [key, icon] of Object.entries(themeIcons)) {
+      if (themeName.includes(key)) {
+        return icon;
+      }
+    }
+    
+    return <Tag className="w-4 h-4 text-indigo-600" />;
   };
 
   if (evaluations.length === 0) {
@@ -86,6 +127,13 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
   const renderThemesSummary = () => {
     if (Object.keys(themeStats).length === 0) return null;
     
+    // Trier les thèmes par score moyen décroissant
+    const sortedThemes = Object.entries(themeStats).sort((a, b) => {
+      const avgScoreA = a[1].count > 0 ? a[1].totalScore / a[1].count : 0;
+      const avgScoreB = b[1].count > 0 ? b[1].totalScore / b[1].count : 0;
+      return avgScoreB - avgScoreA;
+    });
+    
     return (
       <div className="bg-white rounded-lg border p-4 mb-6">
         <div className="flex items-center gap-2 mb-4">
@@ -93,23 +141,75 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
           <h3 className="text-lg font-semibold text-gray-900">Synthèse des thématiques travaillées</h3>
         </div>
         
+        {/* Statistiques par année */}
+        {Object.keys(yearStats).length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Progression annuelle</h4>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(yearStats).sort((a, b) => b[0].localeCompare(a[0])).map(([year, stats]) => {
+                const avgScore = stats.count > 0 ? stats.totalScore / stats.count : 0;
+                return (
+                  <div key={year} className="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-indigo-900">{year}</span>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${getScoreBadgeColor(avgScore)}`}>
+                        {avgScore.toFixed(1)}/5
+                      </span>
+                    </div>
+                    <div className="text-sm text-indigo-700">
+                      {stats.count} évaluation{stats.count > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {Object.entries(themeStats).map(([theme, stats]) => {
+          {sortedThemes.map(([theme, stats]) => {
             const avgScore = stats.count > 0 ? stats.totalScore / stats.count : 0;
+            
+            // Compter les types d'objectifs
+            const objectiveTypes: Record<string, number> = {};
+            stats.objectives.forEach(obj => {
+              const type = obj.objective_type || 'standard';
+              objectiveTypes[type] = (objectiveTypes[type] || 0) + 1;
+            });
+            
             return (
               <div key={theme} className="bg-gray-50 rounded-lg p-3 border">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-indigo-600" />
+                    {getThemeIcon(theme)}
                     <span className="font-medium text-gray-900">{theme}</span>
                   </div>
                   <span className={`px-2 py-0.5 text-xs rounded-full ${getScoreBadgeColor(avgScore)}`}>
                     {avgScore.toFixed(1)}/5
                   </span>
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 mb-2">
                   {stats.count} objectif{stats.count > 1 ? 's' : ''} évalué{stats.count > 1 ? 's' : ''}
                 </div>
+                
+                {/* Types d'objectifs */}
+                {Object.keys(objectiveTypes).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(objectiveTypes).map(([type, count]) => (
+                      <span key={type} className={`text-xs px-2 py-0.5 rounded-full ${
+                        type === 'smart' ? 'bg-green-100 text-green-800' : 
+                        type === 'formation' ? 'bg-orange-100 text-orange-800' : 
+                        type === 'custom' ? 'bg-indigo-100 text-indigo-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {type === 'smart' ? 'SMART' : 
+                         type === 'formation' ? 'Formation' : 
+                         type === 'custom' ? 'Personnalisé' : 
+                         'Standard'}: {count}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -149,6 +249,9 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                   <span className={`px-2 py-1 text-xs rounded-full ${getScoreBadgeColor(evaluation.note_finale)}`}>
                     Note finale: {evaluation.note_finale.toFixed(1)}/5
                   </span>
+                  <span className="text-xs text-gray-500">
+                    Référent: {evaluation.referent_nom || 'Non défini'}
+                  </span>
                 </div>
               </div>
               
@@ -165,7 +268,10 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                   )}
                 </button>
                 <button
-                  onClick={() => toggleEvaluationExpansion(evaluation.evaluation_id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleEvaluationExpansion(evaluation.evaluation_id);
+                  }}
                   className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200"
                 >
                   {isExpanded ? (
@@ -183,7 +289,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                   <div className="bg-blue-50 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium text-blue-800">Auto-évaluation</span>
-                      <span className="text-sm font-bold text-blue-800">{evaluation.score_auto_evaluation}/5</span>
+                      <span className="text-sm font-bold text-blue-800">{evaluation.score_auto_evaluation.toFixed(1)}/5</span>
                     </div>
                     <div className="flex">
                       {getScoreStars(evaluation.score_auto_evaluation)}
@@ -193,10 +299,55 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                   <div className="bg-green-50 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-medium text-green-800">Évaluation référent</span>
-                      <span className="text-sm font-bold text-green-800">{evaluation.score_referent}/5</span>
+                      <span className="text-sm font-bold text-green-800">{evaluation.score_referent.toFixed(1)}/5</span>
                     </div>
                     <div className="flex">
                       {getScoreStars(evaluation.score_referent)}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Analyse de l'écart d'évaluation */}
+                <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                  <h4 className="text-sm font-medium text-purple-800 mb-2">Analyse de l'évaluation</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-sm text-purple-700">
+                        <span className="font-medium">Écart auto/référent:</span>{' '}
+                        <span className={
+                          Math.abs(evaluation.score_auto_evaluation - evaluation.score_referent) > 1 
+                            ? 'text-red-600 font-medium' 
+                            : 'text-green-600 font-medium'
+                        }>
+                          {(evaluation.score_referent - evaluation.score_auto_evaluation).toFixed(1)} points
+                        </span>
+                      </p>
+                      <p className="text-sm text-purple-700">
+                        <span className="font-medium">Tendance:</span>{' '}
+                        <span className={
+                          evaluation.score_auto_evaluation > evaluation.score_referent 
+                            ? 'text-orange-600 font-medium' 
+                            : evaluation.score_auto_evaluation < evaluation.score_referent 
+                              ? 'text-blue-600 font-medium' 
+                              : 'text-green-600 font-medium'
+                        }>
+                          {evaluation.score_auto_evaluation > evaluation.score_referent 
+                            ? 'Surévaluation' 
+                            : evaluation.score_auto_evaluation < evaluation.score_referent 
+                              ? 'Sous-évaluation' 
+                              : 'Alignée'}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-purple-700">
+                        <span className="font-medium">Date d'évaluation:</span>{' '}
+                        {format(new Date(evaluation.date_soumission), 'dd/MM/yyyy', { locale: fr })}
+                      </p>
+                      <p className="text-sm text-purple-700">
+                        <span className="font-medium">Statut du projet:</span>{' '}
+                        {evaluation.projet_statut === 'termine' ? 'Terminé' : 'En cours'}
+                      </p>
                     </div>
                   </div>
                 </div>
