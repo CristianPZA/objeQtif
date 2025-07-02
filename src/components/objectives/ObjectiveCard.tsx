@@ -33,9 +33,8 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   };
 
   const canEvaluate = () => {
-    // Check if the objective is for the current user and has a status that allows evaluation
+    // Vérifier si l'objectif appartient à l'utilisateur actuel et si la fonction onStartEvaluation est disponible
     return objective.employee_id === currentUserId && 
-           objective.status !== 'rejected' && 
            onStartEvaluation !== undefined;
   };
 
