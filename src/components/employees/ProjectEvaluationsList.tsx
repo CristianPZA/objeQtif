@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Award, ChevronDown, ChevronRight, Star, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Award, ChevronDown, ChevronRight, Star, ExternalLink, Eye, EyeOff, Tag, BarChart2 } from 'lucide-react';
 import { Evaluation } from './types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -26,6 +26,36 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
   handleViewEvaluation
 }) => {
   const [detailedView, setDetailedView] = useState<Set<string>>(new Set());
+  const [themeStats, setThemeStats] = useState<Record<string, { count: number, totalScore: number }>>({});
+
+  // Calculer les statistiques des thèmes travaillés
+  useEffect(() => {
+    const stats: Record<string, { count: number, totalScore: number }> = {};
+    
+    evaluations.forEach(evaluation => {
+      if (evaluation.objectifs) {
+        evaluation.objectifs.forEach((objective: any) => {
+          const themeName = objective.theme_name || 'Non catégorisé';
+          
+          if (!stats[themeName]) {
+            stats[themeName] = { count: 0, totalScore: 0 };
+          }
+          
+          stats[themeName].count += 1;
+          
+          // Ajouter le score si disponible
+          const evalIndex = evaluation.objectifs.indexOf(objective);
+          const referentEval = evaluation.evaluation_referent?.evaluations?.[evalIndex];
+          
+          if (referentEval && referentEval.referent_score) {
+            stats[themeName].totalScore += referentEval.referent_score;
+          }
+        });
+      }
+    });
+    
+    setThemeStats(stats);
+  }, [evaluations]);
 
   const toggleDetailedView = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -52,8 +82,48 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
     );
   }
 
+  // Synthèse des thématiques travaillées
+  const renderThemesSummary = () => {
+    if (Object.keys(themeStats).length === 0) return null;
+    
+    return (
+      <div className="bg-white rounded-lg border p-4 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart2 className="w-5 h-5 text-indigo-600" />
+          <h3 className="text-lg font-semibold text-gray-900">Synthèse des thématiques travaillées</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Object.entries(themeStats).map(([theme, stats]) => {
+            const avgScore = stats.count > 0 ? stats.totalScore / stats.count : 0;
+            return (
+              <div key={theme} className="bg-gray-50 rounded-lg p-3 border">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-indigo-600" />
+                    <span className="font-medium text-gray-900">{theme}</span>
+                  </div>
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${getScoreBadgeColor(avgScore)}`}>
+                    {avgScore.toFixed(1)}/5
+                  </span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  {stats.count} objectif{stats.count > 1 ? 's' : ''} évalué{stats.count > 1 ? 's' : ''}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
+      {/* Synthèse des thématiques */}
+      {renderThemesSummary()}
+      
+      {/* Liste des évaluations */}
       {evaluations.map(evaluation => {
         const isExpanded = expandedEvaluations.has(evaluation.evaluation_id);
         const isDetailed = detailedView.has(evaluation.evaluation_id);
@@ -146,6 +216,22 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                               <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
                                 {objective.theme_name}
                               </span>
+                              {objective.is_custom && (
+                                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                  Personnalisé
+                                </span>
+                              )}
+                              {objective.objective_type && (
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  objective.objective_type === 'smart' ? 'bg-green-100 text-green-800' : 
+                                  objective.objective_type === 'formation' ? 'bg-orange-100 text-orange-800' : 
+                                  'bg-indigo-100 text-indigo-800'
+                                }`}>
+                                  {objective.objective_type === 'smart' ? 'SMART' : 
+                                   objective.objective_type === 'formation' ? 'Formation' : 
+                                   'Personnalisé'}
+                                </span>
+                              )}
                             </div>
                             <h5 className="font-medium text-gray-900">
                               {index + 1}. {objective.skill_description}
@@ -170,6 +256,11 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                     <strong>Réalisations:</strong> {autoEval.achievements}
                                   </p>
                                 )}
+                                {autoEval.learnings && (
+                                  <p className="text-sm text-blue-700 mt-1">
+                                    <strong>Apprentissages:</strong> {autoEval.learnings}
+                                  </p>
+                                )}
                               </div>
                             )}
                             
@@ -192,6 +283,11 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                 {referentEval.development_recommendations && (
                                   <p className="text-sm text-green-700 mt-1">
                                     <strong>Recommandations:</strong> {referentEval.development_recommendations}
+                                  </p>
+                                )}
+                                {referentEval.overall_performance && (
+                                  <p className="text-sm text-green-700 mt-1">
+                                    <strong>Performance globale:</strong> {referentEval.overall_performance}
                                   </p>
                                 )}
                               </div>
