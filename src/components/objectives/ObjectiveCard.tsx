@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, User, BookOpen, Target, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calendar, User, BookOpen, Target, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
@@ -9,13 +9,15 @@ interface ObjectiveCardProps {
   onDelete: (id: string) => void;
   currentUserId: string;
   userRole: string | null;
+  onStartEvaluation?: (objective: any) => void;
 }
 
 const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   objective,
   onDelete,
   currentUserId,
-  userRole
+  userRole,
+  onStartEvaluation
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -28,6 +30,13 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const canDelete = () => {
     return objective.status === 'draft' && canEdit();
+  };
+
+  const canEvaluate = () => {
+    // Check if the objective is for the current user and has a status that allows evaluation
+    return objective.employee_id === currentUserId && 
+           objective.status !== 'rejected' && 
+           onStartEvaluation !== undefined;
   };
 
   const getStatusIcon = (status: string) => {
@@ -230,6 +239,19 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             )}
           </div>
         </div>
+
+        {/* Bouton d'auto-évaluation */}
+        {canEvaluate() && (
+          <div className="mb-4">
+            <button
+              onClick={() => onStartEvaluation && onStartEvaluation(objective)}
+              className="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+            >
+              <Star className="w-4 h-4" />
+              Commencer l'auto-évaluation
+            </button>
+          </div>
+        )}
 
         {/* Détails des objectifs */}
         {expanded && (

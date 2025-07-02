@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Target, Calendar, User, BookOpen, CheckCircle, Clock, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { Plus, Target, Calendar, User, BookOpen, CheckCircle, Clock, AlertCircle, Edit, Trash2, Star } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import CreateObjectiveModal from '../components/objectives/CreateObjectiveModal';
 import ObjectiveCard from '../components/objectives/ObjectiveCard';
 import { useTranslation } from 'react-i18next';
+import AnnualEvaluationModal from '../components/objectives/AnnualEvaluationModal';
 
 interface AnnualObjective {
   id: string;
@@ -44,15 +45,33 @@ interface ObjectiveDetail {
   objective_type?: string; // Type d'objectif personnalisé
 }
 
+interface Notification {
+  id: string;
+  destinataire_id: string;
+  expediteur_id: string;
+  titre: string;
+  message: string;
+  type: string;
+  priority: number;
+  is_read: boolean;
+  is_archived: boolean;
+  action_url: string;
+  metadata: any;
+  created_at: string;
+}
+
 const ObjectifsAnnuels = () => {
   const { t } = useTranslation();
   const [objectives, setObjectives] = useState<AnnualObjective[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [selectedObjective, setSelectedObjective] = useState<AnnualObjective | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [evaluationNotifications, setEvaluationNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     checkUserAndFetchObjectives();
@@ -79,6 +98,7 @@ const ObjectifsAnnuels = () => {
       setUserRole(profile.role);
 
       await fetchObjectives(user.id, profile.role);
+      await fetchEvaluationNotifications(user.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.loadingError'));
     } finally {
@@ -115,6 +135,28 @@ const ObjectifsAnnuels = () => {
     }
   };
 
+  const fetchEvaluationNotifications = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('destinataire_id', userId)
+        .eq('is_archived', false)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Filtrer les notifications liées aux auto-évaluations annuelles
+      const evaluationNotifs = (data || []).filter(notif => 
+        notif.metadata?.action_type === 'annual_evaluation_required'
+      );
+
+      setEvaluationNotifications(evaluationNotifs);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
+
   const handleCreateObjective = () => {
     setShowCreateModal(true);
   };
@@ -146,6 +188,25 @@ const ObjectifsAnnuels = () => {
       setError(err instanceof Error ? err.message : t('common.deletionError'));
       setTimeout(() => setError(null), 5000);
     }
+  };
+
+  const handleStartEvaluation = (objective: AnnualObjective) => {
+    setSelectedObjective(objective);
+    setShowEvaluationModal(true);
+  };
+
+  const handleEvaluationCompleted = () => {
+    setShowEvaluationModal(false);
+    setSelectedObjective(null);
+    setSuccess('Auto-évaluation soumise avec succès');
+    
+    // Rafraîchir les notifications et les objectifs
+    if (currentUser) {
+      fetchEvaluationNotifications(currentUser.id);
+      fetchObjectives(currentUser.id, userRole || '');
+    }
+    
+    setTimeout(() => setSuccess(null), 3000);
   };
 
   const getStatusIcon = (status: string) => {
@@ -197,6 +258,12 @@ const ObjectifsAnnuels = () => {
     return currentUser && currentUser.career_pathway_id && currentUser.career_level_id;
   };
 
+  const hasEvaluationNotification = (objective: AnnualObjective) => {
+    return evaluationNotifications.some(notif => 
+      notif.metadata?.year === objective.year
+    );
+  };
+
   const currentYear = new Date().getFullYear();
 
   if (loading) {
@@ -236,6 +303,22 @@ const ObjectifsAnnuels = () => {
       {success && (
         <div className="bg-green-50 text-green-700 p-4 rounded-lg">
           {success}
+        </div>
+      )}
+
+      {/* Notifications d'auto-évaluation */}
+      {evaluationNotifications.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Star className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-orange-800">Auto-évaluation annuelle requise</h3>
+              <p className="text-sm text-orange-700 mt-1">
+                Vous avez {evaluationNotifications.length} auto-évaluation{evaluationNotifications.length > 1 ? 's' : ''} à compléter. 
+                Utilisez le bouton "Commencer l'auto-évaluation" sur vos objectifs annuels.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -325,6 +408,7 @@ const ObjectifsAnnuels = () => {
               onDelete={handleDeleteObjective}
               currentUserId={currentUser?.id}
               userRole={userRole}
+              onStartEvaluation={hasEvaluationNotification(objective) ? handleStartEvaluation : undefined}
             />
           ))
         ) : (
@@ -353,6 +437,22 @@ const ObjectifsAnnuels = () => {
           user={currentUser}
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleObjectiveCreated}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
+        />
+      )}
+
+      {/* Modal d'auto-évaluation */}
+      {showEvaluationModal && selectedObjective && (
+        <AnnualEvaluationModal
+          objective={selectedObjective}
+          onClose={() => {
+            setShowEvaluationModal(false);
+            setSelectedObjective(null);
+          }}
+          onSuccess={handleEvaluationCompleted}
           onError={(error) => {
             setError(error);
             setTimeout(() => setError(null), 5000);
