@@ -14,7 +14,8 @@ import {
   Filter,
   Building,
   Award,
-  Flag
+  Flag,
+  Briefcase
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
