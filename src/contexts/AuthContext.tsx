@@ -7,13 +7,15 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   userCountry: string | null;
+  userRole: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   loading: true,
   signOut: async () => {},
-  userCountry: null
+  userCountry: null,
+  userRole: null
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -22,12 +24,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userCountry, setUserCountry] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
       setUser(null);
       setUserCountry(null);
+      setUserRole(null);
+      localStorage.removeItem('userRole');
     } catch (error) {
       console.error('Sign out error:', error);
     }
@@ -37,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('country')
+        .select('country, role')
         .eq('id', userId)
         .single();
       
@@ -47,6 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       setUserCountry(data?.country || 'france');
+      setUserRole(data?.role || null);
+      
+      // Stocker le rôle dans localStorage pour y accéder facilement
+      if (data?.role) {
+        localStorage.setItem('userRole', data.role);
+      }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
     }
@@ -75,9 +86,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           supabase.auth.signOut();
           setUser(null);
           setUserCountry(null);
+          setUserRole(null);
+          localStorage.removeItem('userRole');
         } else {
           setUser(null);
           setUserCountry(null);
+          setUserRole(null);
+          localStorage.removeItem('userRole');
         }
       } else {
         setUser(user);
@@ -98,6 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         fetchUserProfile(session.user.id);
       } else {
         setUserCountry(null);
+        setUserRole(null);
+        localStorage.removeItem('userRole');
       }
       setLoading(false);
     });
@@ -151,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, userCountry }}>
+    <AuthContext.Provider value={{ user, loading, signOut, userCountry, userRole }}>
       {children}
     </AuthContext.Provider>
   );

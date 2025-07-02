@@ -2,7 +2,12 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface PrivateRouteProps {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}
+
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -15,6 +20,17 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   if (!user) {
     return <Navigate to="/login" />;
+  }
+
+  // Si la route est réservée aux admins, vérifier le rôle de l'utilisateur
+  if (adminOnly) {
+    // Récupérer le rôle depuis le contexte d'authentification
+    const userRole = localStorage.getItem('userRole');
+    
+    if (userRole !== 'admin') {
+      // Rediriger vers le dashboard si l'utilisateur n'est pas admin
+      return <Navigate to="/dashboard" />;
+    }
   }
 
   return <>{children}</>;

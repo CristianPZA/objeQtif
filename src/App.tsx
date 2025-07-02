@@ -47,12 +47,16 @@ function App() {
               <Route path="objectifs-definition/:collaborationId" element={<ObjectiveDefinition />} />
               <Route path="projets" element={<Projets />} />
               <Route path="projet/:id" element={<ProjetDetail />} />
-              <Route path="administration" element={<Administration />} />
+              <Route path="administration" element={
+                <PrivateRoute adminOnly={true}>
+                  <Administration />
+                </PrivateRoute>
+              } />
               <Route path="settings" element={<Settings />} />
               <Route path="career-pathways" element={<CareerPathways />} />
               <Route path="career-pathway/:areaId" element={<CareerPathwayDetail />} />
               <Route path="mon-coaching" element={<MonCoaching />} />
-              <Route path="employees" element={<Employees />} /> {/* Nouvelle route pour Employees */}
+              <Route path="employees" element={<Employees />} />
             </Route>
           </Routes>
         </AuthProvider>

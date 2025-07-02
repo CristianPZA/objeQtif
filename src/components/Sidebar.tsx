@@ -18,9 +18,8 @@ import { useTranslation } from 'react-i18next';
 
 const Sidebar = () => {
   const navigate = useNavigate();
-  const { userCountry } = useAuth();
+  const { userCountry, userRole } = useAuth();
   const { t } = useTranslation();
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [isCoach, setIsCoach] = useState(false);
 
   useEffect(() => {
@@ -35,8 +34,6 @@ const Sidebar = () => {
         .limit(1);
 
       if (data && data.length > 0) {
-        setUserRole(data[0].role);
-        
         // Vérifier si l'utilisateur est coach (a des coachés)
         const { data: coachees } = await supabase
           .from('user_profiles')
@@ -91,8 +88,10 @@ const Sidebar = () => {
       icon: <Users className="w-5 h-5" />,
       label: t('common.myCoaching'),
     });
-    
-    // Ajouter le lien vers la page Employees pour les coaches
+  }
+  
+  // Add employees page for coaches and admins
+  if (isCoach || userRole === 'admin') {
     menuItems.push({
       to: '/employees',
       icon: <Archive className="w-5 h-5" />,
@@ -107,15 +106,6 @@ const Sidebar = () => {
       icon: <Settings className="w-5 h-5" />,
       label: t('common.administration'),
     });
-    
-    // Ajouter le lien vers la page Employees pour les admins
-    if (!menuItems.some(item => item.to === '/employees')) {
-      menuItems.push({
-        to: '/employees',
-        icon: <Archive className="w-5 h-5" />,
-        label: 'Dossiers Employés',
-      });
-    }
   }
 
   return (
