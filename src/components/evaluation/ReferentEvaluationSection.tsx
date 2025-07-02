@@ -69,7 +69,7 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
             </p>
           </div>
         </div>
-        {canEvaluate() && (
+        {canReferentEvaluate && (
           <button
             onClick={onStartReferentEvaluation}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -162,6 +162,18 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
               })}
             </div>
           )}
+          
+          {isReferent && canReferentEvaluate && (
+            <div className="mt-4">
+              <button
+                onClick={onStartReferentEvaluation}
+                className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors"
+              >
+                <UserCheck className="w-4 h-4" />
+                Commencer l'évaluation
+              </button>
+            </div>
+          )}
         </div>
       ) : collaboration.evaluation.statut === 'soumise' || collaboration.evaluation.statut === 'en_attente_referent' ? (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -177,7 +189,8 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
               </p>
             </div>
           </div>
-          {isReferent && (
+          
+          {isReferent && canReferentEvaluate && (
             <div className="mt-4">
               <button
                 onClick={onStartReferentEvaluation}
