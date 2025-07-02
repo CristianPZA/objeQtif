@@ -19,7 +19,10 @@ import {
   BookOpen,
   Award,
   Target,
-  Flag
+  Flag,
+  ChevronLeft,
+  Eye,
+  Briefcase
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
@@ -1008,15 +1011,15 @@ const Employees = () => {
                     
                     {Object.keys(evaluationThemes).length > 0 ? (
                       <div className="space-y-4">
-                        {Object.entries(evaluationThemes).map(([theme, evals]) => {
+                        {Object.entries(evaluationThemes).map(([theme, evaluationItems]) => {
                           const isExpanded = expandedEvaluations.has(theme);
                           
                           // Calculer le score moyen pour ce thème
                           let totalScore = 0;
                           let count = 0;
-                          evals.forEach(eval => {
-                            if (eval.note_finale) {
-                              totalScore += eval.note_finale;
+                          evaluationItems.forEach(evaluationItem => {
+                            if (evaluationItem.note_finale) {
+                              totalScore += evaluationItem.note_finale;
                               count++;
                             }
                           });
@@ -1046,7 +1049,7 @@ const Employees = () => {
                               
                               {isExpanded && (
                                 <div className="mt-4 space-y-3">
-                                  {evals.map(evaluation => (
+                                  {evaluationItems.map(evaluation => (
                                     <div key={evaluation.evaluation_id} className="p-3 rounded-lg border border-gray-200 bg-white">
                                       <div className="flex justify-between items-start">
                                         <div>
