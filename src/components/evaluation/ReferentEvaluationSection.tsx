@@ -35,10 +35,24 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
     if (!collaboration.evaluation || !collaboration.evaluation.auto_evaluation) return false;
     
     // If the evaluation is already completed by the referent, they can't evaluate again
-    if (collaboration.evaluation.evaluation_referent) return false;
+    if (collaboration.evaluation.evaluation_referent && 
+        Object.keys(collaboration.evaluation.evaluation_referent).length > 0 && 
+        collaboration.evaluation.evaluation_referent.evaluations && 
+        collaboration.evaluation.evaluation_referent.evaluations.length > 0) {
+      return false;
+    }
     
     // If the evaluation status is appropriate for referent evaluation
     return ['soumise', 'en_attente_referent'].includes(collaboration.evaluation.statut);
+  };
+
+  // Check if the referent has already evaluated
+  const hasReferentEvaluated = () => {
+    return collaboration.evaluation && 
+           collaboration.evaluation.evaluation_referent && 
+           Object.keys(collaboration.evaluation.evaluation_referent).length > 0 && 
+           collaboration.evaluation.evaluation_referent.evaluations && 
+           collaboration.evaluation.evaluation_referent.evaluations.length > 0;
   };
 
   return (
@@ -78,7 +92,7 @@ const ReferentEvaluationSection: React.FC<ReferentEvaluationSectionProps> = ({
             </div>
           </div>
         </div>
-      ) : collaboration.evaluation.evaluation_referent ? (
+      ) : hasReferentEvaluated() ? (
         <div className="space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center gap-3">

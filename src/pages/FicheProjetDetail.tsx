@@ -383,7 +383,9 @@ const FicheProjetDetail = () => {
            collaboration.evaluation && 
            (collaboration.evaluation.statut === 'en_attente_referent' || 
             collaboration.evaluation.statut === 'soumise') &&
-           !collaboration.evaluation.evaluation_referent;
+           (!collaboration.evaluation.evaluation_referent || 
+            !collaboration.evaluation.evaluation_referent.evaluations || 
+            collaboration.evaluation.evaluation_referent.evaluations.length === 0);
   };
 
   const getEvaluationStatusBadge = () => {
