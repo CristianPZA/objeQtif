@@ -252,9 +252,9 @@ const Employees = () => {
     console.log('View evaluation:', evaluationId);
   };
 
-  const handleViewProject = (collaborationId: string) => {
-    // Naviguer vers la page de détail de la fiche projet
-    navigate(`/fiche-projet/${collaborationId}`);
+  const handleViewProject = (projetId: string) => {
+    // Naviguer vers la page de détail du projet
+    navigate(`/projet/${projetId}`);
   };
 
   const filteredEmployees = employees.filter(employee => {

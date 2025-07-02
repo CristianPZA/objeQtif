@@ -42,7 +42,7 @@ const ProjectCollaborationsList: React.FC<ProjectCollaborationsListProps> = ({
           <div 
             key={collab.id} 
             className="bg-gray-50 rounded-lg border p-4 cursor-pointer"
-            onClick={() => handleViewProject(collab.id)}
+            onClick={() => handleViewProject(collab.projet_id)}
           >
             <div className="flex justify-between items-start mb-2">
               <div>
