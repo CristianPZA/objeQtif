@@ -71,7 +71,6 @@ const ObjectifsAnnuels = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [selectedObjective, setSelectedObjective] = useState<AnnualObjective | null>(null);
   const [evaluationNotifications, setEvaluationNotifications] = useState<Notification[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
