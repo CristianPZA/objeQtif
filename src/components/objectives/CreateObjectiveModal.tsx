@@ -29,6 +29,7 @@ interface ObjectiveForm {
 
 interface CreateObjectiveModalProps {
   user: any;
+  selectedObjective?: AnnualObjective | null;
   onClose: () => void;
   onSuccess: () => void;
   onError: (error: string) => void;
@@ -36,6 +37,7 @@ interface CreateObjectiveModalProps {
 
 const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
   user,
+  selectedObjective,
   onClose,
   onSuccess,
   onError
@@ -56,7 +58,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
 
   useEffect(() => {
     checkUserPermissions();
-  }, [user]);
+  }, [user, selectedObjective]);
 
   useEffect(() => {
     if (selectedEmployee) {
@@ -73,15 +75,42 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
   const checkUserPermissions = async () => {
     // Vérifier si l'utilisateur peut sélectionner d'autres employés
     const canSelect = ['admin', 'direction', 'coach'].includes(user.role);
+    const isEditing = !!selectedObjective;
     setCanSelectEmployee(canSelect);
 
     if (canSelect) {
       await fetchEmployees();
-      setStep('employee');
+      
+      // Si on est en mode édition, passer directement à l'étape des objectifs
+      if (isEditing && selectedObjective) {
+        // Sélectionner l'employé correspondant à l'objectif
+        const employee = {
+          id: selectedObjective.employee_id,
+          full_name: selectedObjective.employee.full_name,
+          career_pathway_id: selectedObjective.career_pathway_id,
+          career_level_id: selectedObjective.career_level_id,
+          career_pathway: selectedObjective.career_pathway,
+          career_level: selectedObjective.career_level
+        };
+        setSelectedEmployee(employee);
+        setSelectedSkills(selectedObjective.selected_themes);
+        setObjectives(selectedObjective.objectives);
+        setStep('objectives');
+      } else {
+        setStep('employee');
+      }
     } else {
       // L'utilisateur ne peut créer que ses propres objectifs
       setSelectedEmployee(user);
-      setStep('skills');
+      
+      // Si on est en mode édition, passer directement à l'étape des objectifs
+      if (isEditing && selectedObjective) {
+        setSelectedSkills(selectedObjective.selected_themes);
+        setObjectives(selectedObjective.objectives);
+        setStep('objectives');
+      } else {
+        setStep('skills');
+      }
     }
   };
 
@@ -286,23 +315,41 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
 
     try {
       setSubmitting(true);
+      
+      // Déterminer si c'est une création ou une mise à jour
+      const isUpdate = !!selectedObjective;
 
       // Combiner les objectifs du career pathway et les objectifs personnalisés
       const allObjectives = [...objectives, ...customObjectives];
 
       const objectiveData = {
         employee_id: selectedEmployee.id,
-        year: currentYear,
+        year: selectedObjective?.year || currentYear,
         career_pathway_id: selectedEmployee.career_pathway_id,
         career_level_id: selectedEmployee.career_level_id,
         selected_themes: selectedSkills, // On stocke les IDs des compétences sélectionnées
         objectives: allObjectives,
-        status: 'draft'
+        status: selectedObjective?.status || 'draft'
       };
 
-      const { error } = await supabase
-        .from('annual_objectives')
-        .insert([objectiveData]);
+      let error;
+      
+      if (isUpdate) {
+        // Mise à jour d'un objectif existant
+        const { error: updateError } = await supabase
+          .from('annual_objectives')
+          .update(objectiveData)
+          .eq('id', selectedObjective.id);
+        
+        error = updateError;
+      } else {
+        // Création d'un nouvel objectif
+        const { error: insertError } = await supabase
+          .from('annual_objectives')
+          .insert([objectiveData]);
+        
+        error = insertError;
+      }
 
       if (error) throw error;
 
@@ -791,7 +838,9 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Créer des objectifs annuels {currentYear}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {selectedObjective ? 'Modifier' : 'Créer'} des objectifs annuels {selectedObjective?.year || currentYear}
+            </h2>
             <p className="text-sm text-gray-600 mt-1">
               Définissez des objectifs SMART basés sur les compétences de votre niveau et vos objectifs personnels
             </p>
