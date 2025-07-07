@@ -25,17 +25,17 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const canEdit = () => {
     // Seuls les admins peuvent modifier les objectifs
-    return userRole === 'admin' && objective.status !== 'approved';
+    return userRole === 'admin';
   };
 
   const canDelete = () => {
     // Seuls les admins peuvent supprimer les objectifs
-    return userRole === 'admin' && objective.status !== 'approved';
+    return userRole === 'admin' && objective.status === 'draft';
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Empêcher la propagation de l'événement
-    if (onStartEvaluation) {
+    if (canEdit() && onStartEvaluation) {
       onStartEvaluation(objective);
     }
   };
@@ -189,7 +189,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             {canEdit() && (
               <button
                 onClick={handleEditClick}
-                className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 cursor-pointer"
+                className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 cursor-pointer z-10"
                 title={t('common.edit')}
               >
                 <Edit className="w-4 h-4" />

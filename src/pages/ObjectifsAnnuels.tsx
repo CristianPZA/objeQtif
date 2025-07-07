@@ -203,11 +203,13 @@ const ObjectifsAnnuels = () => {
   const handleStartEvaluation = (objective: AnnualObjective) => {
     // Si l'utilisateur est admin, rediriger vers la page de modification
     if (isAdmin) {
+      // Pour les admins, on utilise le modal de création pour éditer
       setSelectedObjective(objective);
       setShowCreateModal(true);
       return;
     }
     
+    // Pour les employés, on utilise le modal d'évaluation
     setSelectedObjective(objective);
     setShowEvaluationModal(true);
   };
@@ -294,7 +296,7 @@ const ObjectifsAnnuels = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{t('annualObjectives.title')}</h1>
           <p className="text-gray-600 mt-1">{t('annualObjectives.subtitle')}</p>
@@ -423,9 +425,9 @@ const ObjectifsAnnuels = () => {
               key={objective.id}
               objective={objective}
               onDelete={handleDeleteObjective}
-              currentUserId={currentUser?.id}
+              currentUserId={currentUser?.id || ''}
               userRole={userRole}
-              onStartEvaluation={hasEvaluationNotification(objective) ? handleStartEvaluation : undefined}
+              onStartEvaluation={isAdmin || hasEvaluationNotification(objective) ? handleStartEvaluation : undefined}
             />
           ))
         ) : (
