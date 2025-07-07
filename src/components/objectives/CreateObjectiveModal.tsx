@@ -63,6 +63,11 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
   useEffect(() => {
     if (selectedEmployee) {
       fetchAvailableSkills();
+      
+      // Si on est en mode édition et qu'on a des objectifs, initialiser les objectifs
+      if (selectedObjective && selectedObjective.objectives) {
+        setObjectives(selectedObjective.objectives);
+      }
     }
   }, [selectedEmployee]);
 

@@ -204,9 +204,8 @@ const ObjectifsAnnuels = () => {
   const handleStartEvaluation = (objective: AnnualObjective) => {
     // Si l'utilisateur est admin, rediriger vers la page de modification
     if (isAdmin) {
-      setShowCreateModal(true);
-      // Passer l'objectif sélectionné à CreateObjectiveModal
       setSelectedObjective(objective);
+      setShowCreateModal(true);
       return;
     }
     

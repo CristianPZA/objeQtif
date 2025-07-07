@@ -33,6 +33,13 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
     return userRole === 'admin' && objective.status !== 'approved';
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêcher la propagation de l'événement
+    if (onStartEvaluation) {
+      onStartEvaluation(objective);
+    }
+  };
+
   const canEvaluate = () => {
     // Vérifier si l'objectif appartient à l'utilisateur actuel et si la fonction onStartEvaluation est disponible
     return objective.employee_id === currentUserId && 
@@ -181,7 +188,8 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
             {canEdit() && (
               <button
-                className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50"
+                onClick={handleEditClick}
+                className="text-indigo-600 hover:text-indigo-900 p-2 rounded-lg hover:bg-indigo-50 cursor-pointer"
                 title={t('common.edit')}
               >
                 <Edit className="w-4 h-4" />
