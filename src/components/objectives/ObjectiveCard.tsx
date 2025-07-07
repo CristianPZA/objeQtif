@@ -20,7 +20,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   currentUserId,
   userRole,
   onStartEvaluation
-  onSuccess
+ onSuccess
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
