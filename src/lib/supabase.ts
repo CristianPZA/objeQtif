@@ -31,16 +31,3 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     }
   }
 });
-
-// Test connection
-supabase.from('user_profiles').select('count', { count: 'exact', head: true })
-  .then(({ error }) => {
-    if (error) {
-      console.error('Supabase connection test failed:', error);
-    } else {
-      console.log('Supabase connection successful');
-    }
-  })
-  .catch((error) => {
-    console.error('Supabase connection error:', error);
-  });

@@ -67,16 +67,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check active sessions and sets the user
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (error) {
-        // Provide more detailed error logging
-        console.error('Auth error details:', {
-          message: error.message,
-          status: error.status,
-          statusText: error.statusText,
-          url: import.meta.env.VITE_SUPABASE_URL
-        });
-        
         // Don't log "Auth session missing!" as an error since it's a normal state
         if (error.message !== 'Auth session missing!') {
+          // Provide more detailed error logging
+          console.error('Auth error details:', {
+            message: error.message,
+            status: error.status,
+            statusText: error.statusText,
+            url: import.meta.env.VITE_SUPABASE_URL
+          });
           console.error('Auth error:', error);
         }
         
