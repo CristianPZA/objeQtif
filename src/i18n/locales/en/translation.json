@@ -343,8 +343,13 @@
     "createFirstObjectives": "Create my first objectives",
     "confirmDelete": "Are you sure you want to delete these annual objectives?",
     "objectivesCreatedSuccess": "Annual objectives created successfully",
+    "objectivesUpdatedSuccess": "Objectives updated successfully",
     "objectivesDeletedSuccess": "Objectives deleted successfully",
     "errorFetchingObjectives": "Error fetching objectives",
+    "validateObjectives": "I acknowledge my objectives and accept them",
+    "validating": "Validating...",
+    "confirmValidation": "Are you sure you want to validate these objectives? This action cannot be undone.",
+    "validationError": "Error validating objectives",
     "objectiveStatuses": {
       "draft": "Draft",
       "submitted": "Submitted",

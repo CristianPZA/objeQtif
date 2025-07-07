@@ -3,6 +3,7 @@ import { Calendar, User, BookOpen, Target, Edit, Trash2, Eye, EyeOff, ChevronDow
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
+import { supabase } from '../../lib/supabase';
 
 interface ObjectiveCardProps {
   objective: any;
@@ -10,6 +11,7 @@ interface ObjectiveCardProps {
   currentUserId: string;
   userRole: string | null;
   onStartEvaluation?: (objective: any) => void;
+  onSuccess?: () => void;
 }
 
 const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
@@ -18,10 +20,12 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   currentUserId,
   userRole,
   onStartEvaluation
+  onSuccess
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [validating, setValidating] = useState(false);
 
   const canEdit = () => {
     // Seuls les admins peuvent modifier les objectifs
@@ -33,10 +37,45 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
     return userRole === 'admin' && objective.status === 'draft';
   };
 
+  const canValidate = () => {
+    // Seul le propriétaire des objectifs peut les valider, et seulement s'ils sont en brouillon
+    return objective.employee_id === currentUserId && objective.status === 'draft';
+  };
+
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Empêcher la propagation de l'événement
     if (canEdit() && onStartEvaluation) {
       onStartEvaluation(objective);
+    }
+  };
+
+  const handleValidateObjectives = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêcher la propagation de l'événement
+    
+    if (!canValidate()) return;
+    
+    if (!confirm(t('annualObjectives.confirmValidation'))) {
+      return;
+    }
+    
+    setValidating(true);
+    
+    try {
+      const { error } = await supabase
+        .from('annual_objectives')
+        .update({ status: 'submitted' })
+        .eq('id', objective.id);
+
+      if (error) throw error;
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (err) {
+      console.error('Error validating objectives:', err);
+      alert(t('annualObjectives.validationError'));
+    } finally {
+      setValidating(false);
     }
   };
 
@@ -207,6 +246,20 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
             )}
           </div>
         </div>
+
+        {/* Bouton de validation des objectifs */}
+        {canValidate() && (
+          <div className="mb-4">
+            <button
+              onClick={handleValidateObjectives}
+              disabled={validating}
+              className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <CheckCircle className="w-4 h-4" />
+              {validating ? t('annualObjectives.validating') : t('annualObjectives.validateObjectives')}
+            </button>
+          </div>
+        )}
 
         {/* Bouton d'auto-évaluation */}
         {canEvaluate() && (

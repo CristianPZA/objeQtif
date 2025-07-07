@@ -166,8 +166,15 @@ const ObjectifsAnnuels = () => {
 
   const handleObjectiveCreated = () => {
     setShowCreateModal(false);
+    setSelectedObjective(null);
     fetchObjectives(currentUser.id, userRole || '');
     setSuccess(t('annualObjectives.objectivesCreatedSuccess'));
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleObjectiveUpdated = () => {
+    fetchObjectives(currentUser.id, isAdmin);
+    setSuccess(t('annualObjectives.objectivesUpdatedSuccess'));
     setTimeout(() => setSuccess(null), 3000);
   };
 
@@ -428,6 +435,7 @@ const ObjectifsAnnuels = () => {
               currentUserId={currentUser?.id || ''}
               userRole={userRole}
               onStartEvaluation={isAdmin || hasEvaluationNotification(objective) ? handleStartEvaluation : undefined}
+              onSuccess={handleObjectiveUpdated}
             />
           ))
         ) : (
@@ -457,6 +465,10 @@ const ObjectifsAnnuels = () => {
           selectedObjective={selectedObjective}
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleObjectiveCreated}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
           onError={(error) => {
             setError(error);
             setTimeout(() => setError(null), 5000);

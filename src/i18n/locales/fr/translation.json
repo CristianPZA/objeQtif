@@ -343,8 +343,13 @@
     "createFirstObjectives": "Créer mes premiers objectifs",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer ces objectifs annuels ?",
     "objectivesCreatedSuccess": "Objectifs annuels créés avec succès",
+    "objectivesUpdatedSuccess": "Objectifs mis à jour avec succès",
     "objectivesDeletedSuccess": "Objectifs supprimés avec succès",
     "errorFetchingObjectives": "Erreur lors du chargement des objectifs",
+    "validateObjectives": "J'ai pris connaissance de mes objectifs et je les accepte",
+    "validating": "Validation en cours...",
+    "confirmValidation": "Êtes-vous sûr de vouloir valider ces objectifs ? Cette action ne pourra pas être annulée.",
+    "validationError": "Erreur lors de la validation des objectifs",
     "objectiveStatuses": {
       "draft": "Brouillon",
       "submitted": "Soumis",
