@@ -25,12 +25,12 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const canEdit = () => {
     // Seuls les admins peuvent modifier les objectifs
-    return userRole === 'admin';
+    return userRole === 'admin' && objective.status !== 'approved';
   };
 
   const canDelete = () => {
     // Seuls les admins peuvent supprimer les objectifs
-    return userRole === 'admin';
+    return userRole === 'admin' && objective.status !== 'approved';
   };
 
   const canEvaluate = () => {

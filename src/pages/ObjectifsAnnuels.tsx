@@ -71,6 +71,7 @@ const ObjectifsAnnuels = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [selectedObjective, setSelectedObjective] = useState<AnnualObjective | null>(null);
   const [evaluationNotifications, setEvaluationNotifications] = useState<Notification[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
@@ -201,6 +202,14 @@ const ObjectifsAnnuels = () => {
   };
 
   const handleStartEvaluation = (objective: AnnualObjective) => {
+    // Si l'utilisateur est admin, rediriger vers la page de modification
+    if (isAdmin) {
+      setShowCreateModal(true);
+      // Passer l'objectif sélectionné à CreateObjectiveModal
+      setSelectedObjective(objective);
+      return;
+    }
+    
     setSelectedObjective(objective);
     setShowEvaluationModal(true);
   };
@@ -445,6 +454,7 @@ const ObjectifsAnnuels = () => {
       {showCreateModal && currentUser && (
         <CreateObjectiveModal
           user={currentUser}
+          selectedObjective={selectedObjective}
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleObjectiveCreated}
           onError={(error) => {
