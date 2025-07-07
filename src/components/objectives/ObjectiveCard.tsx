@@ -12,6 +12,7 @@ interface ObjectiveCardProps {
   userRole: string | null;
   onStartEvaluation?: (objective: any) => void;
   onSuccess?: () => void;
+  onSuccess?: () => void;
 }
 
 const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
@@ -19,8 +20,8 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   onDelete,
   currentUserId,
   userRole,
-  onStartEvaluation
- onSuccess
+  onStartEvaluation,
+  onSuccess
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
