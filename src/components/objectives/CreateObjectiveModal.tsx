@@ -80,7 +80,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
   const checkUserPermissions = async () => {
     // Vérifier si l'utilisateur peut sélectionner d'autres employés
     const canSelect = ['admin', 'direction', 'coach'].includes(user.role);
-    const isEditing = !!selectedObjective;
+    const isEditing = selectedObjective !== null && selectedObjective !== undefined;
     setCanSelectEmployee(canSelect);
 
     if (canSelect) {
@@ -829,10 +829,10 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         <button
           onClick={handleSubmit}
           disabled={submitting || !validateObjectives()}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
         >
           <Save className="w-4 h-4" />
-          {submitting ? 'Création...' : 'Créer les objectifs'}
+          {submitting ? (selectedObjective ? 'Modification...' : 'Création...') : (selectedObjective ? 'Enregistrer les modifications' : 'Créer les objectifs')}
         </button>
       </div>
     </div>
@@ -843,8 +843,13 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center">
               {selectedObjective ? 'Modifier' : 'Créer'} des objectifs annuels {selectedObjective?.year || currentYear}
+              {selectedObjective && (
+                <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  {selectedObjective.employee?.full_name}
+                </span>
+              )}
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               Définissez des objectifs SMART basés sur les compétences de votre niveau et vos objectifs personnels
