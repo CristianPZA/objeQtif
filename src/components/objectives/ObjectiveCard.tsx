@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, User, BookOpen, Target, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight, Star } from 'lucide-react';
+import { Calendar, User, BookOpen, Target, Edit, Trash2, Eye, EyeOff, ChevronDown, ChevronRight, Star, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
