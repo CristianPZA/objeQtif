@@ -103,6 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     }).catch((error) => {
       console.error('Failed to get user:', error);
+      // Explicitly sign out on any authentication error
+      signOut();
       setLoading(false);
     });
 
@@ -126,7 +128,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const handleSupabaseError = (error: any) => {
       if (error?.message === 'User from sub claim in JWT does not exist' ||
-          error?.message?.includes('User from sub claim in JWT does not exist')) {
+          error?.message?.includes('User from sub claim in JWT does not exist') ||
+          error?.message?.includes('Invalid Refresh Token') ||
+          error?.message?.includes('refresh_token_not_found')) {
         console.log('Detected invalid JWT, signing out user');
         signOut();
       }
@@ -145,7 +149,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             statusText: response.statusText,
             errorText
           });
-          if (errorText.includes('User from sub claim in JWT does not exist')) {
+          
+          // Handle 401 Unauthorized or specific error messages
+          if (response.status === 401 || 
+              errorText.includes('User from sub claim in JWT does not exist') ||
+              errorText.includes('Invalid Refresh Token') ||
+              errorText.includes('refresh_token_not_found')) {
             handleSupabaseError({ message: 'User from sub claim in JWT does not exist' });
           }
         }
