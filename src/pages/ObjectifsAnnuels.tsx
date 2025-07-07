@@ -72,6 +72,7 @@ const ObjectifsAnnuels = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [evaluationNotifications, setEvaluationNotifications] = useState<Notification[]>([]);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
   useEffect(() => {
     checkUserAndFetchObjectives();
@@ -94,10 +95,12 @@ const ObjectifsAnnuels = () => {
 
       if (!profile) throw new Error(t('common.profileNotFound'));
 
+      const isUserAdmin = profile.role === 'admin';
+      setIsAdmin(isUserAdmin);
       setCurrentUser(profile);
       setUserRole(profile.role);
 
-      await fetchObjectives(user.id, profile.role);
+      await fetchObjectives(user.id, isUserAdmin);
       await fetchEvaluationNotifications(user.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.loadingError'));
@@ -106,7 +109,7 @@ const ObjectifsAnnuels = () => {
     }
   };
 
-  const fetchObjectives = async (userId: string, role: string) => {
+  const fetchObjectives = async (userId: string, isAdmin: boolean) => {
     try {
       let query = supabase
         .from('annual_objectives')
@@ -118,7 +121,7 @@ const ObjectifsAnnuels = () => {
         `);
       
       // Si l'utilisateur n'est pas admin, ne montrer que ses propres objectifs
-      if (role !== 'admin') {
+      if (!isAdmin) {
         query = query.eq('employee_id', userId);
       }
       
@@ -169,6 +172,13 @@ const ObjectifsAnnuels = () => {
   };
 
   const handleDeleteObjective = async (objectiveId: string) => {
+    // Vérifier si l'utilisateur est admin
+    if (!isAdmin) {
+      setError(t('common.permissionDenied'));
+      setTimeout(() => setError(null), 5000);
+      return;
+    }
+    
     if (!confirm(t('annualObjectives.confirmDelete'))) {
       return;
     }
