@@ -334,7 +334,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         career_level_id: selectedEmployee.career_level_id,
         selected_themes: selectedSkills, // On stocke les IDs des compétences sélectionnées
         objectives: allObjectives,
-        status: selectedObjective?.status || 'draft'
+        status: selectedObjective?.status || 'submitted'
       };
 
       let error;
