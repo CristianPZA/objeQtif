@@ -1,5 +1,5 @@
 import React from 'react';
-import { Target, ChevronDown, ChevronRight } from 'lucide-react';
+import { Target, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { AnnualObjective } from './types';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
@@ -8,7 +8,9 @@ import { fr } from 'date-fns/locale';
 interface AnnualObjectivesListProps {
   objectives: AnnualObjective[];
   expandedObjectives: Set<string>;
+  expandedObjectiveDetails: Set<string>;
   toggleObjectiveExpansion: (id: string) => void;
+  toggleObjectiveDetails: (id: string) => void;
   getStatusColor: (status: string) => string;
   getStatusLabel: (status: string) => string;
   getCareerLevelBadge: (level: { name: string, color: string }) => string;
@@ -18,7 +20,9 @@ interface AnnualObjectivesListProps {
 const AnnualObjectivesList: React.FC<AnnualObjectivesListProps> = ({
   objectives,
   expandedObjectives,
+  expandedObjectiveDetails,
   toggleObjectiveExpansion,
+  toggleObjectiveDetails,
   getStatusColor,
   getStatusLabel,
   getCareerLevelBadge,
@@ -86,7 +90,30 @@ const AnnualObjectivesList: React.FC<AnnualObjectivesListProps> = ({
             </div>
             
             {isExpanded && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-4">
+                {/* Bouton pour afficher/masquer les détails */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleObjectiveDetails(objective.id);
+                    }}
+                    className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                  >
+                    {expandedObjectiveDetails.has(objective.id) ? (
+                      <>
+                        <EyeOff className="w-4 h-4" />
+                        Masquer les détails
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        Voir les détails
+                      </>
+                    )}
+                  </button>
+                </div>
+                
                 {objective.objectives.map((obj, index) => (
                   <div key={index} className="bg-white p-3 rounded-lg border">
                     <div className="flex items-center gap-2 mb-1">
@@ -95,12 +122,43 @@ const AnnualObjectivesList: React.FC<AnnualObjectivesListProps> = ({
                       </span>
                       {obj.is_custom && (
                         <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                          Personnalisé
+                          {obj.objective_type === 'formation' ? 'Formation' : 
+                           obj.objective_type === 'custom' ? 'Personnalisé' : 
+                           'SMART personnalisé'}
                         </span>
                       )}
                     </div>
                     <h4 className="font-medium text-gray-900">{obj.skill_description}</h4>
                     <p className="text-sm text-gray-700 mt-1">{obj.smart_objective}</p>
+                    
+                    {/* Détails SMART si disponibles et si les détails sont affichés */}
+                    {expandedObjectiveDetails.has(objective.id) && 
+                     (!obj.is_custom || (obj.is_custom && obj.objective_type === 'smart')) && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <strong className="text-gray-600">Spécifique:</strong>
+                            <p className="text-gray-700 mt-1">{obj.specific}</p>
+                          </div>
+                          <div>
+                            <strong className="text-gray-600">Mesurable:</strong>
+                            <p className="text-gray-700 mt-1">{obj.measurable}</p>
+                          </div>
+                          <div>
+                            <strong className="text-gray-600">Atteignable:</strong>
+                            <p className="text-gray-700 mt-1">{obj.achievable}</p>
+                          </div>
+                          <div>
+                            <strong className="text-gray-600">Pertinent:</strong>
+                            <p className="text-gray-700 mt-1">{obj.relevant}</p>
+                          </div>
+                          <div className="md:col-span-2">
+                            <strong className="text-gray-600">Temporellement défini:</strong>
+                            <p className="text-gray-700 mt-1">{obj.time_bound}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 
