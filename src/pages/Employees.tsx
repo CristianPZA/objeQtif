@@ -49,6 +49,7 @@ const Employees = () => {
   const [filterDepartment, setFilterDepartment] = useState<string | null>(null);
   const [expandedObjectives, setExpandedObjectives] = useState<Set<string>>(new Set());
   const [expandedEvaluations, setExpandedEvaluations] = useState<Set<string>>(new Set());
+  const [expandedObjectiveDetails, setExpandedObjectiveDetails] = useState<Set<string>>(new Set());
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [departments, setDepartments] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
@@ -220,6 +221,16 @@ const Employees = () => {
     setExpandedObjectives(newExpanded);
   };
 
+  const toggleObjectiveDetails = (objectiveId: string) => {
+    const newExpanded = new Set(expandedObjectiveDetails);
+    if (newExpanded.has(objectiveId)) {
+      newExpanded.delete(objectiveId);
+    } else {
+      newExpanded.add(objectiveId);
+    }
+    setExpandedObjectiveDetails(newExpanded);
+  };
+
   const toggleEvaluationExpansion = (evaluationId: string) => {
     const newExpanded = new Set(expandedEvaluations);
     if (newExpanded.has(evaluationId)) {
@@ -345,7 +356,9 @@ const Employees = () => {
               <AnnualObjectivesList 
                 objectives={annualObjectives}
                 expandedObjectives={expandedObjectives}
+                expandedObjectiveDetails={expandedObjectiveDetails}
                 toggleObjectiveExpansion={toggleObjectiveExpansion}
+                toggleObjectiveDetails={toggleObjectiveDetails}
                 getStatusColor={getStatusColor}
                 getStatusLabel={(status) => getStatusLabel(status, t)}
                 getCareerLevelBadge={getCareerLevelBadge}
