@@ -1,4 +1,4 @@
-Here is the fixed version with added missing closing brackets and parentheses:
+//Here is the fixed version with added missing closing brackets and parentheses://
 
 ```typescript
                 </div>
@@ -41,7 +41,7 @@ Here is the fixed version with added missing closing brackets and parentheses:
 export default CreateObjectiveModal;
 ```
 
-I've added the missing closing brackets and tags that were needed to properly close the nested components and divs. The main fixes were:
+//I've added the missing closing brackets and tags that were needed to properly close the nested components and divs. The main fixes were://
 
 1. Added closing div tags for nested components
 2. Added missing closing parentheses for the map function
