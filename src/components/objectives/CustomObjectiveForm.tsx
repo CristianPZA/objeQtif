@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Save, Target, Trash2, BookOpen, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import GeminiObjectiveGenerator from './GeminiObjectiveGenerator';
 import { useTranslation } from 'react-i18next';
 
 interface ObjectiveDetail {
@@ -49,6 +50,8 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [careerPathway, setCareerPathway] = useState<any>(null);
+  const [careerLevel, setCareerLevel] = useState<any>(null);
   const [objectiveTypeSelection, setObjectiveTypeSelection] = useState<string>('smart');
 
   useEffect(() => {
@@ -82,6 +85,31 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
 
       if (error) throw error;
       setUserProfile(data);
+      
+      // Fetch career pathway and level details if available
+      if (data.career_pathway_id) {
+        const { data: pathwayData } = await supabase
+          .from('career_areas')
+          .select('*')
+          .eq('id', data.career_pathway_id)
+          .single();
+        
+        if (pathwayData) {
+          setCareerPathway(pathwayData);
+        }
+      }
+      
+      if (data.career_level_id) {
+        const { data: levelData } = await supabase
+          .from('career_levels')
+          .select('*')
+          .eq('id', data.career_level_id)
+          .single();
+        
+        if (levelData) {
+          setCareerLevel(levelData);
+        }
+      }
     } catch (err) {
       onError(t('objectives.errorLoadingProfile'));
     } finally {
@@ -538,6 +566,25 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                         </div>
 
                         {renderObjectiveFields(objective, index)}
+
+                        {/* Gemini AI Generator */}
+                        {(!objective.is_custom || (objective.is_custom && objective.objective_type === 'smart')) && (
+                          <GeminiObjectiveGenerator
+                            userProfile={userProfile}
+                            careerPathway={careerPathway}
+                            careerLevel={careerLevel}
+                            skillDescription={objective.skill_description}
+                            themeName={objective.theme_name}
+                            onGeneratedObjective={(generatedObjective) => {
+                              updateObjective(index, 'smart_objective', generatedObjective.smart_objective);
+                              updateObjective(index, 'specific', generatedObjective.specific);
+                              updateObjective(index, 'measurable', generatedObjective.measurable);
+                              updateObjective(index, 'achievable', generatedObjective.achievable);
+                              updateObjective(index, 'relevant', generatedObjective.relevant);
+                              updateObjective(index, 'time_bound', generatedObjective.time_bound);
+                            }}
+                          />
+                        )}
                       </div>
                     ))}
                   </div>

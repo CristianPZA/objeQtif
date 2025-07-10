@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
+import GeminiObjectiveGenerator from '../components/objectives/GeminiObjectiveGenerator';
 
 interface PathwaySkill {
   id: string;
@@ -924,6 +925,27 @@ const ObjectiveDefinition = () => {
                 
                 {/* Champs d'objectif selon le type */}
                 {renderObjectiveFields()}
+                
+                {/* Gemini AI Generator */}
+                {(!currentObjective?.is_custom || (currentObjective?.is_custom && currentObjective?.objective_type === 'smart')) && (
+                  <GeminiObjectiveGenerator
+                    userProfile={userProfile}
+                    careerPathway={userProfile?.career_pathway}
+                    careerLevel={userProfile?.career_level}
+                    skillDescription={currentObjective?.skill_description || ''}
+                    themeName={currentObjective?.theme_name || ''}
+                    onGeneratedObjective={(generatedObjective) => {
+                      if (!currentObjective) return;
+                      
+                      handleObjectiveChange('smart_objective', generatedObjective.smart_objective);
+                      handleObjectiveChange('specific', generatedObjective.specific);
+                      handleObjectiveChange('measurable', generatedObjective.measurable);
+                      handleObjectiveChange('achievable', generatedObjective.achievable);
+                      handleObjectiveChange('relevant', generatedObjective.relevant);
+                      handleObjectiveChange('time_bound', generatedObjective.time_bound);
+                    }}
+                  />
+                )}
                 
                 <div className="flex justify-end gap-3 pt-4 border-t">
                   <button

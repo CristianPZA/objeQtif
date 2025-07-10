@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Target, BookOpen, User, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import GeminiObjectiveGenerator from './GeminiObjectiveGenerator';
 
 interface PathwaySkill {
   id: string;
@@ -593,6 +594,26 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
                   </div>
                 </div>
               </div>
+                {/* Gemini AI Generator */}
+                <GeminiObjectiveGenerator
+                  userProfile={user}
+                  careerPathway={selectedEmployee?.career_pathway}
+                  careerLevel={selectedEmployee?.career_level}
+                  skillDescription={currentObjective.skill_description}
+                  themeName={currentObjective.theme_name}
+                  onGeneratedObjective={(generatedObjective) => {
+                    setCurrentObjective({
+                      ...currentObjective,
+                      smart_objective: generatedObjective.smart_objective,
+                      specific: generatedObjective.specific,
+                      measurable: generatedObjective.measurable,
+                      achievable: generatedObjective.achievable,
+                      relevant: generatedObjective.relevant,
+                      time_bound: generatedObjective.time_bound
+                    });
+                  }}
+                />
+
             );
           })}
         </div>
