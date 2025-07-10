@@ -543,63 +543,43 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         </p>
         <p className="text-xs text-gray-500 mt-1">
           Sélectionnez les compétences que vous souhaitez développer ({selectedSkills.length} sélectionnées)
-                key={skill.id}
-                onClick={() => handleSkillToggle(skill.id)}
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  isSelected
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                        {skill.development_theme.name}
-                      </span>
-                      {isSelected && (
-                        <CheckCircle className="w-4 h-4 text-indigo-600" />
-                      )}
-                    </div>
-                    <h4 className="font-medium text-gray-900 mb-2">{skill.skill_description}</h4>
-                    {skill.examples && (
-                      <p className="text-sm text-gray-600 mb-1">
-                        <strong>Exemples:</strong> {skill.examples}
-                      </p>
-                    )}
-                    {skill.requirements && (
-                      <p className="text-sm text-gray-600">
-                        <strong>Prérequis:</strong> {skill.requirements}
-                      </p>
+        </p>
+      </div>
+
+      <div className="max-h-96 overflow-y-auto space-y-3">
+        {availableSkills.map((skill) => {
+          const isSelected = selectedSkills.includes(skill.id);
+          return (
+            <div
+              key={skill.id}
+              onClick={() => handleSkillToggle(skill.id)}
+              className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                isSelected
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      {skill.development_theme.name}
+                    </span>
+                    {isSelected && (
+                      <CheckCircle className="w-4 h-4 text-indigo-600" />
                     )}
                   </div>
-                </div>
-              </div>
-                {/* Gemini AI Generator */}
-                <GeminiObjectiveGenerator
-                  userProfile={user}
-                  careerPathway={selectedEmployee?.career_pathway}
-                  careerLevel={selectedEmployee?.career_level}
-                  skillDescription={currentObjective.skill_description}
-                  themeName={currentObjective.theme_name}
-                  onGeneratedObjective={(generatedObjective) => {
-                    setCurrentObjective({
-                      ...currentObjective,
-                      smart_objective: generatedObjective.smart_objective,
-                      specific: generatedObjective.specific,
-                      measurable: generatedObjective.measurable,
-                      achievable: generatedObjective.achievable,
-                      relevant: generatedObjective.relevant,
-                      time_bound: generatedObjective.time_bound
-                    });
-                  }}
-                />
-
-            );
-          })}
-        </div>
-      )}
-
+                  <h4 className="font-medium text-gray-900 mb-2">{skill.skill_description}</h4>
+                  {skill.examples && (
+                    <p className="text-sm text-gray-600 mb-1">
+                      <strong>Exemples:</strong> {skill.examples}
+                    </p>
+                  )}
+                  {skill.requirements && (
+                    <p className="text-sm text-gray-600">
+                      <strong>Prérequis:</strong> {skill.requirements}
+                    </p>
+                  )}
       <div className="flex justify-between pt-4">
         {canSelectEmployee && (
           <button
