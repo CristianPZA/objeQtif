@@ -680,6 +680,22 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
                 />
               </div>
 
+              {/* Gemini AI Generator */}
+              <GeminiObjectiveGenerator
+                userProfile={selectedEmployee || user}
+                careerPathway={selectedEmployee?.career_pathway}
+                careerLevel={selectedEmployee?.career_level}
+                skillDescription={objective.skill_description}
+                themeName={objective.theme_name}
+                onGeneratedObjective={(generatedObjective) => {
+                  handleObjectiveChange(index, 'smart_objective', generatedObjective.smart_objective);
+                  handleObjectiveChange(index, 'specific', generatedObjective.specific);
+                  handleObjectiveChange(index, 'measurable', generatedObjective.measurable);
+                  handleObjectiveChange(index, 'achievable', generatedObjective.achievable);
+                  handleObjectiveChange(index, 'relevant', generatedObjective.relevant);
+                  handleObjectiveChange(index, 'time_bound', generatedObjective.time_bound);
+                }}
+              />
               {/* Critères SMART */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -749,28 +765,8 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
               </div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Objectifs personnalisés */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="font-semibold text-gray-800 border-b pb-2">Objectifs personnalisés</h4>
-          <div className="flex items-center gap-2">
-            {/* Sélection du type d'objectif personnalisé */}
-            <select
-              value={objectiveTypeSelection}
-              onChange={(e) => setObjectiveTypeSelection(e.target.value)}
-              className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-            >
-              <option value="smart">Objectif SMART</option>
-              <option value="formation">Objectif de formation</option>
-              <option value="custom">Objectif personnalisable</option>
-            </select>
-            <button
               type="button"
-              onClick={addCustomObjective}
-              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+         ))}
             >
               Ajouter un objectif personnalisé
             </button>
