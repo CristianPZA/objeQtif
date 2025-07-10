@@ -543,25 +543,6 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         </p>
         <p className="text-xs text-gray-500 mt-1">
           Sélectionnez les compétences que vous souhaitez développer ({selectedSkills.length} sélectionnées)
-        </p>
-      </div>
-
-      {availableSkills.length === 0 ? (
-        <div className="text-center py-8">
-          <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune compétence disponible</h3>
-          <p className="text-gray-600">
-            Aucune compétence n'est définie pour ce niveau et ce parcours de carrière.
-            Contactez votre administrateur pour configurer les compétences.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {availableSkills.map((skill) => {
-            const isSelected = selectedSkills.includes(skill.id);
-            
-            return (
-              <div
                 key={skill.id}
                 onClick={() => handleSkillToggle(skill.id)}
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
