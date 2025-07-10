@@ -1,4 +1,4 @@
-Here's the fixed version with added missing closing brackets and parentheses:
+Here is the fixed version with added missing closing brackets and parentheses:
 
 ```typescript
                 </div>
