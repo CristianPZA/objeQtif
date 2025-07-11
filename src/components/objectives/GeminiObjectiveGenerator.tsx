@@ -99,7 +99,21 @@ const GeminiObjectiveGenerator: React.FC<GeminiObjectiveGeneratorProps> = ({
       onGeneratedObjective(objective);
     } catch (err) {
       console.error('Error generating objective with Gemini:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate objective');
+      
+      // Handle specific API errors
+      if (err instanceof Error) {
+        if (err.message.includes('429') || err.message.includes('quota')) {
+          setError('Le quota de l\'API Gemini a été dépassé. Veuillez réessayer plus tard ou créer l\'objectif manuellement.');
+        } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
+          setError('Clé API Gemini invalide. Veuillez vérifier la configuration.');
+        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+          setError('Erreur de connexion. Vérifiez votre connexion internet et réessayez.');
+        } else {
+          setError('Erreur lors de la génération de l\'objectif. Vous pouvez créer l\'objectif manuellement.');
+        }
+      } else {
+        setError('Erreur inattendue lors de la génération de l\'objectif.');
+      }
     } finally {
       setLoading(false);
     }
@@ -108,8 +122,12 @@ const GeminiObjectiveGenerator: React.FC<GeminiObjectiveGeneratorProps> = ({
   return (
     <div className="mt-4">
       {error && (
-        <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm mb-3">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm mb-3">
+          <div className="font-medium mb-1">Génération automatique indisponible</div>
           {error}
+          <div className="mt-2 text-xs text-red-600">
+            💡 Conseil : Vous pouvez toujours créer votre objectif manuellement en utilisant le formulaire ci-dessus.
+          </div>
         </div>
       )}
       
@@ -117,7 +135,7 @@ const GeminiObjectiveGenerator: React.FC<GeminiObjectiveGeneratorProps> = ({
         type="button"
         onClick={generateObjective}
         disabled={loading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
           <>
@@ -135,6 +153,12 @@ const GeminiObjectiveGenerator: React.FC<GeminiObjectiveGeneratorProps> = ({
       {loading && (
         <p className="text-xs text-gray-500 mt-2 text-center">
           Gemini analyse votre profil et génère un objectif SMART personnalisé...
+        </p>
+      )}
+      
+      {!loading && !error && (
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          L'IA peut vous aider à créer un objectif SMART personnalisé basé sur votre profil
         </p>
       )}
     </div>
