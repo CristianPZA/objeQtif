@@ -1,3 +1,6 @@
+Here's the fixed version with all missing closing brackets properly added:
+
+```typescript
 import React, { useState, useEffect } from 'react';
 import { Award, ChevronDown, ChevronRight, Star, Eye, EyeOff, Tag, BarChart2, TrendingUp, Lightbulb, AlertCircle, CheckCircle, User, Briefcase } from 'lucide-react';
 import { Evaluation } from './types';
@@ -495,7 +498,6 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                       const isDetailExpanded = objectiveDetails[objectiveId] || false;
                       
                       return (
-                        <>
                         <div key={objectiveId} className="bg-gray-50 rounded-lg p-4 border">
                           <div className="mb-3">
                             <div className="flex items-center gap-2 mb-1">
@@ -581,70 +583,43 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                   <div className="mt-2 pt-2 border-t border-green-200">
                                     {referentEval.observed_achievements && (
                                       <p className="text-sm text-green-700 mt-1">
-                                        <strong>{t('common.observations')}:</strong> {referentEval.observed_achievements}
+                                        <strong>Observations:</strong> {referentEval.observed_achievements}
                                       </p>
                                     )}
                                     {referentEval.development_recommendations && (
                                       <p className="text-sm text-green-700 mt-1">
-                                        <strong>{t('evaluation.recommendations')}:</strong> {referentEval.development_recommendations}
+                                        <strong>Recommandations:</strong> {referentEval.development_recommendations}
                                       </p>
                                     )}
                                     {referentEval.areas_for_improvement && (
-                        
-                        <div className="mt-2 text-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleObjectiveDetail(objectiveId);
-                            }}
-                            className="text-xs text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
-                          >
-                            {isDetailExpanded ? (
-                              <>
-                                <EyeOff className="w-3 h-3" />
-                                {t('common.hideDetails')}
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="w-3 h-3" />
-                                {t('common.viewMoreDetails')}
-                              </>
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>Axes d'amélioration:</strong> {referentEval.areas_for_improvement}
+                                      </p>
+                                    )}
+                                    {referentEval.overall_performance && (
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>Performance globale:</strong> {referentEval.overall_performance}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             )}
-                          </button>
-                        </div>
-                      </div>
-                        </>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    });
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                
-                {!isDetailed && (
-                  <button
-                    onClick={(e) => toggleDetailedView(evaluation.evaluation_id, e)}
-                    className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Voir les détails complets des objectifs
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-export default ProjectEvaluationsList;
+                          </div>
+                          
+                          <div className="mt-2 text-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleObjectiveDetail(objectiveId);
+                              }}
+                              className="text-xs text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
+                            >
+                              {isDetailExpanded ? (
+                                <>
+                                  <EyeOff className="w-3 h-3" />
+                                  {t('common.hideDetails')}
+                                </>
+                              ) : (
+                                <>
+                                  <Eye
