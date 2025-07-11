@@ -67,7 +67,6 @@ const ObjectifsAnnuels = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   const [selectedObjective, setSelectedObjective] = useState<AnnualObjective | null>(null);
-  const [currentYear] = useState<number>(new Date().getFullYear());
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -162,10 +161,6 @@ const ObjectifsAnnuels = () => {
   };
 
   const handleCreateObjective = () => {
-    if (!canCreateObjectives()) {
-      setError(t('annualObjectives.configurationRequired'));
-      return;
-    }
     setShowCreateModal(true);
   };
 
@@ -294,6 +289,8 @@ const ObjectifsAnnuels = () => {
       notif.metadata?.year === objective.year
     );
   };
+
+  const currentYear = new Date().getFullYear();
 
   if (loading) {
     return (
@@ -464,12 +461,14 @@ const ObjectifsAnnuels = () => {
       {/* Modal de création */}
       {showCreateModal && currentUser && (
         <CreateObjectiveModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSave={handleObjectiveCreated}
-          selectedObjective={selectedObjective}
           user={currentUser}
-          year={currentYear}
+          selectedObjective={selectedObjective}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={handleObjectiveCreated}
+          onError={(error) => {
+            setError(error);
+            setTimeout(() => setError(null), 5000);
+          }}
           onError={(error) => {
             setError(error);
             setTimeout(() => setError(null), 5000);

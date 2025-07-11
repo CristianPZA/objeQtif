@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.39.7",
     "date-fns": "^3.3.1",
     "i18next": "^23.10.0",
