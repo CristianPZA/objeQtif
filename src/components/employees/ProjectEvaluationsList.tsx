@@ -589,35 +589,38 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                       </p>
                                     )}
                                     {referentEval.areas_for_improvement && (
-                                      <p className="text-sm text-green-700 mt-1">
-                                        <strong>{t('coaching.areasForImprovement')}:</strong> {referentEval.areas_for_improvement}
-                                      </p>
-                                    )}
-                                    {referentEval.overall_performance && (
-                                      <p className="text-sm text-green-700 mt-1">
-                                        <strong>{t('coaching.overallPerformance')}:</strong> {referentEval.overall_performance}
-                                      </p>
-                                    )}
-                                  </div>
-                          
-                          <div className="mt-2 text-center">
-                            <button
-                              onClick={() => toggleObjectiveDetail(objectiveId)}
-                              className="text-xs text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
-                            >
-                              {isDetailExpanded ? (
-                                <>
-                                  <EyeOff className="w-3 h-3" />
-                                  {t('common.hideDetails')}
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="w-3 h-3" />
-                                  {t('common.viewMoreDetails')}
-                                </>
-                              )}
-                            </button>
-                          </div>
+                        
+                        <div className="mt-2 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleObjectiveDetail(objectiveId);
+                            }}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
+                          >
+                            {isDetailExpanded ? (
+                              <>
+                                <EyeOff className="w-3 h-3" />
+                                {t('common.hideDetails')}
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-3 h-3" />
+                                {t('common.viewMoreDetails')}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    });
                         </div>
                       );
                     })}
