@@ -584,30 +584,21 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                       </p>
                                     )}
                                     {referentEval.development_recommendations && (
-                                        <strong>{t('common.observations')}:</strong> {referentEval.observed_achievements}
-                                      </p>
-                                    )}
-                                    {referentEval.development_recommendations && (
-                                      <p className="text-sm text-green-700 mt-1">
                                       <p className="text-sm text-green-700 mt-1">
                                         <strong>{t('evaluation.recommendations')}:</strong> {referentEval.development_recommendations}
                                       </p>
                                     )}
                                     {referentEval.areas_for_improvement && (
                                       <p className="text-sm text-green-700 mt-1">
-                                      <p className="text-sm text-green-700 mt-1">
                                         <strong>{t('coaching.areasForImprovement')}:</strong> {referentEval.areas_for_improvement}
                                       </p>
                                     )}
                                     {referentEval.overall_performance && (
                                       <p className="text-sm text-green-700 mt-1">
-                                      <p className="text-sm text-green-700 mt-1">
                                         <strong>{t('coaching.overallPerformance')}:</strong> {referentEval.overall_performance}
                                       </p>
                                     )}
                                   </div>
-                            )}
-                          </div>
                           
                           <div className="mt-2 text-center">
                             <button
