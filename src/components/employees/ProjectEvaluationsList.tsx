@@ -580,27 +580,32 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                   <div className="mt-2 pt-2 border-t border-green-200">
                                     {referentEval.observed_achievements && (
                                       <p className="text-sm text-green-700 mt-1">
-                                        <strong>Observations:</strong> {referentEval.observed_achievements}
+                                        <strong>{t('common.observations')}:</strong> {referentEval.observed_achievements}
                                       </p>
                                     )}
                                     {referentEval.development_recommendations && (
-                                <strong>{t('common.observations')}:</strong> {referentEval.observed_achievements}
-                                        <strong>Recommandations:</strong> {referentEval.development_recommendations}
+                                        <strong>{t('common.observations')}:</strong> {referentEval.observed_achievements}
+                                      </p>
+                                    )}
+                                    {referentEval.development_recommendations && (
+                                      <p className="text-sm text-green-700 mt-1">
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>{t('evaluation.recommendations')}:</strong> {referentEval.development_recommendations}
                                       </p>
                                     )}
                                     {referentEval.areas_for_improvement && (
-                                <strong>{t('evaluation.recommendations')}:</strong> {referentEval.development_recommendations}
-                                        <strong>Axes d'amélioration:</strong> {referentEval.areas_for_improvement}
+                                      <p className="text-sm text-green-700 mt-1">
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>{t('coaching.areasForImprovement')}:</strong> {referentEval.areas_for_improvement}
                                       </p>
                                     )}
                                     {referentEval.overall_performance && (
-                                <strong>{t('coaching.areasForImprovement')}:</strong> {referentEval.areas_for_improvement}
-                                        <strong>Performance globale:</strong> {referentEval.overall_performance}
+                                      <p className="text-sm text-green-700 mt-1">
+                                      <p className="text-sm text-green-700 mt-1">
+                                        <strong>{t('coaching.overallPerformance')}:</strong> {referentEval.overall_performance}
                                       </p>
                                     )}
                                   </div>
-                                <strong>{t('coaching.overallPerformance')}:</strong> {referentEval.overall_performance}
-                              </div>
                             )}
                           </div>
                           
@@ -612,12 +617,12 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                               {isDetailExpanded ? (
                                 <>
                                   <EyeOff className="w-3 h-3" />
-                                  Masquer les détails
+                                  {t('common.hideDetails')}
                                 </>
                               ) : (
                                 <>
                                   <Eye className="w-3 h-3" />
-                                  Voir plus de détails
+                                  {t('common.viewMoreDetails')}
                                 </>
                               )}
                             </button>
