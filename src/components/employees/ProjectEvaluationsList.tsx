@@ -1,6 +1,3 @@
-Here's the fixed version with all missing closing brackets properly added:
-
-```typescript
 import React, { useState, useEffect } from 'react';
 import { Award, ChevronDown, ChevronRight, Star, Eye, EyeOff, Tag, BarChart2, TrendingUp, Lightbulb, AlertCircle, CheckCircle, User, Briefcase } from 'lucide-react';
 import { Evaluation } from './types';
