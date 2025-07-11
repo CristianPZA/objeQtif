@@ -3,6 +3,7 @@ import { Award, ChevronDown, ChevronRight, Star, Eye, EyeOff, Tag, BarChart2, Tr
 import { Evaluation } from './types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface ProjectEvaluationsListProps {
   evaluations: Evaluation[];
@@ -25,6 +26,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
   getEvaluationStatusLabel,
   handleViewEvaluation
 }) => {
+  const { t } = useTranslation();
   const [detailedView, setDetailedView] = useState<Set<string>>(new Set());
   const [themeStats, setThemeStats] = useState<Record<string, { count: number, totalScore: number, objectives: any[] }>>({});
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -102,9 +104,9 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
     return (
       <div className="text-center py-8">
         <Award className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune évaluation</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{t('coaching.noEvaluationsAvailable')}</h3>
         <p className="text-gray-600">
-          Cet employé n'a pas encore d'évaluations de projet finalisées.
+          {t('coaching.noEvaluationsForCoachee')}
         </p>
       </div>
     );
@@ -121,7 +123,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
       <div className="bg-white rounded-lg border p-4 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <BarChart2 className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-semibold text-gray-900">Synthèse des thématiques travaillées</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('coaching.thematicSummary')}</h3>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -145,7 +147,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                   </span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {stats.count} objectif{stats.count > 1 ? 's' : ''} évalué{stats.count > 1 ? 's' : ''}
+                  {stats.count} {t('common.skill', { count: stats.count })} {t('coaching.evaluated')}
                 </div>
               </div>
             );
@@ -157,7 +159,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
           <div className="mt-4 border-t pt-4">
             <div className="flex items-center gap-2 mb-3">
               <Lightbulb className="w-5 h-5 text-indigo-600" />
-              <h4 className="text-lg font-semibold text-gray-900">Objectifs du thème: {selectedTheme}</h4>
+              <h4 className="text-lg font-semibold text-gray-900">{t('coaching.themeObjectives')}: {selectedTheme}</h4>
             </div>
             
             <div className="space-y-3">
@@ -298,12 +300,12 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                         {isDetailExpanded ? (
                           <>
                             <EyeOff className="w-3 h-3" />
-                            Masquer les détails
+                            {t('common.hideDetails')}
                           </>
                         ) : (
                           <>
                             <Eye className="w-3 h-3" />
-                            Voir plus de détails
+                            {t('common.viewMoreDetails')}
                           </>
                         )}
                       </button>
@@ -582,22 +584,22 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                                       </p>
                                     )}
                                     {referentEval.development_recommendations && (
-                                      <p className="text-sm text-green-700 mt-1">
+                                <strong>{t('common.observations')}:</strong> {referentEval.observed_achievements}
                                         <strong>Recommandations:</strong> {referentEval.development_recommendations}
                                       </p>
                                     )}
                                     {referentEval.areas_for_improvement && (
-                                      <p className="text-sm text-green-700 mt-1">
+                                <strong>{t('evaluation.recommendations')}:</strong> {referentEval.development_recommendations}
                                         <strong>Axes d'amélioration:</strong> {referentEval.areas_for_improvement}
                                       </p>
                                     )}
                                     {referentEval.overall_performance && (
-                                      <p className="text-sm text-green-700 mt-1">
+                                <strong>{t('coaching.areasForImprovement')}:</strong> {referentEval.areas_for_improvement}
                                         <strong>Performance globale:</strong> {referentEval.overall_performance}
                                       </p>
                                     )}
                                   </div>
-                                )}
+                                <strong>{t('coaching.overallPerformance')}:</strong> {referentEval.overall_performance}
                               </div>
                             )}
                           </div>

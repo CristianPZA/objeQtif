@@ -3,6 +3,7 @@ import { Briefcase, ChevronDown, ChevronRight } from 'lucide-react';
 import { ProjectCollaboration } from './types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
 
 interface ProjectCollaborationsListProps {
   collaborations: ProjectCollaboration[];
@@ -21,13 +22,15 @@ const ProjectCollaborationsList: React.FC<ProjectCollaborationsListProps> = ({
   getProjectStatusLabel,
   handleViewProject
 }) => {
+  const { t } = useTranslation();
+  
   if (collaborations.length === 0) {
     return (
       <div className="text-center py-8">
         <Briefcase className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun projet</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{t('projects.noProjects')}</h3>
         <p className="text-gray-600">
-          Cet employé n'est assigné à aucun projet actuellement.
+          {t('projectSheets.noProjectsAssignedForEmployee')}
         </p>
       </div>
     );
@@ -60,7 +63,7 @@ const ProjectCollaborationsList: React.FC<ProjectCollaborationsListProps> = ({
                 </p>
                 
                 <p className="text-sm text-gray-600 mt-1">
-                  Rôle: {collab.role_projet}
+                  {t('projectSheets.role')}: {collab.role_projet}
                 </p>
               </div>
               
@@ -85,31 +88,31 @@ const ProjectCollaborationsList: React.FC<ProjectCollaborationsListProps> = ({
               <div className="mt-4 space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-white p-3 rounded-lg border">
-                    <h4 className="font-medium text-gray-900 mb-2">Informations du projet</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">{t('projects.projectInfo')}</h4>
                     <div className="space-y-1 text-sm">
-                      <p><span className="text-gray-500">Référent:</span> {collab.projet.referent_nom}</p>
-                      <p><span className="text-gray-500">Date début:</span> {format(new Date(collab.projet.date_debut), 'dd/MM/yyyy', { locale: fr })}</p>
+                      <p><span className="text-gray-500">{t('projectSheets.referent')}:</span> {collab.projet.referent_nom}</p>
+                      <p><span className="text-gray-500">{t('projects.startDate')}:</span> {format(new Date(collab.projet.date_debut), 'dd/MM/yyyy', { locale: fr })}</p>
                       {collab.projet.date_fin_prevue && (
-                        <p><span className="text-gray-500">Date fin prévue:</span> {format(new Date(collab.projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}</p>
+                        <p><span className="text-gray-500">{t('projects.endDate')}:</span> {format(new Date(collab.projet.date_fin_prevue), 'dd/MM/yyyy', { locale: fr })}</p>
                       )}
                     </div>
                   </div>
                   
                   <div className="bg-white p-3 rounded-lg border">
-                    <h4 className="font-medium text-gray-900 mb-2">Objectifs et évaluations</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">{t('objectives.objectivesAndEvaluations')}</h4>
                     <div className="space-y-1 text-sm">
                       <p>
-                        <span className="text-gray-500">Objectifs:</span> {collab.objectifs ? 'Définis' : 'Non définis'}
+                        <span className="text-gray-500">{t('objectives.myDevelopmentObjectives')}:</span> {collab.objectifs ? t('common.defined') : t('objectives.notDefined')}
                       </p>
                       <p>
-                        <span className="text-gray-500">Évaluation:</span> {collab.evaluation ? getProjectStatusLabel(collab.evaluation.statut) : 'Non évaluée'}
+                        <span className="text-gray-500">{t('evaluation.evaluation')}:</span> {collab.evaluation ? getProjectStatusLabel(collab.evaluation.statut) : t('evaluation.notEvaluated')}
                       </p>
                     </div>
                   </div>
                 </div>
                 
                 <div className="text-xs text-gray-500 mt-2">
-                  <span>Assigné le {format(new Date(collab.created_at), 'dd/MM/yyyy', { locale: fr })}</span>
+                  <span>{t('projects.assignedOn')} {format(new Date(collab.created_at), 'dd/MM/yyyy', { locale: fr })}</span>
                 </div>
               </div>
             )}
