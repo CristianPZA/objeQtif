@@ -295,8 +295,6 @@ const ObjectifsAnnuels = () => {
     );
   };
 
-  const currentYear = new Date().getFullYear();
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
