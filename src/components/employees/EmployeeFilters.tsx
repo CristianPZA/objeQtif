@@ -1,6 +1,5 @@
 import React from 'react';
 import { Search } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 interface EmployeeFiltersProps {
   searchTerm: string;
@@ -23,8 +22,6 @@ const EmployeeFilters: React.FC<EmployeeFiltersProps> = ({
   roles,
   departments
 }) => {
-  const { t } = useTranslation();
-  
   return (
     <div className="bg-white rounded-lg shadow-sm border p-4">
       <div className="flex flex-wrap gap-4 items-center">
@@ -34,7 +31,7 @@ const EmployeeFilters: React.FC<EmployeeFiltersProps> = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder={t('administration.searchEmployee')}
+              placeholder="Rechercher un employé..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -49,7 +46,7 @@ const EmployeeFilters: React.FC<EmployeeFiltersProps> = ({
             onChange={(e) => setFilterRole(e.target.value || null)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <option value="">{t('administration.allRoles')}</option>
+            <option value="">Tous les rôles</option>
             {roles.map(role => (
               <option key={role} value={role}>
                 {role === 'admin' ? 'Administrateur' : 
@@ -67,7 +64,7 @@ const EmployeeFilters: React.FC<EmployeeFiltersProps> = ({
             onChange={(e) => setFilterDepartment(e.target.value || null)}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <option value="">{t('administration.allDepartments')}</option>
+            <option value="">Tous les départements</option>
             {departments.map(dept => (
               <option key={dept} value={dept}>{dept}</option>
             ))}
@@ -82,9 +79,9 @@ const EmployeeFilters: React.FC<EmployeeFiltersProps> = ({
               setFilterRole(null);
               setFilterDepartment(null);
             }}
-            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors flex items-center gap-1"
+            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
           >
-            {t('administration.resetFilters')}
+            Réinitialiser les filtres
           </button>
         )}
       </div>

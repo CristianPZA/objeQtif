@@ -89,11 +89,6 @@
     "points": "points",
     "observations": "Observations",
     "profile": "Profil",
-    "phone": "Téléphone",
-    "backToList": "Retour à la liste",
-    "viewMoreDetails": "Voir plus de détails",
-    "hideDetails": "Masquer les détails",
-    "profile": "Profil",
     "phone": "Téléphone"
   },
   "profile": {
@@ -155,8 +150,6 @@
     "createManageProjects": "Créez et gérez vos projets clients",
     "newProject": "Nouveau projet",
     "projectCreation": "Création de projets",
-    "projectInfo": "Informations du projet",
-    "assignedOn": "Assigné le",
     "allUsersCanCreate": "Tous les utilisateurs peuvent créer des projets. Vous devenez automatiquement le référent du projet que vous créez. Cliquez sur un projet pour voir ses détails.",
     "countryNote": "Vous ne voyez que les utilisateurs de votre pays pour les collaborateurs.",
     "searchPlaceholder": "Rechercher par titre, client, description ou référent...",
@@ -219,7 +212,6 @@
     "contactManager": "Vous n'êtes actuellement assigné à aucun projet. Contactez votre manager pour être ajouté à des projets.",
     "client": "Client",
     "referent": "Référent",
-    "noProjectsAssignedForEmployee": "Cet employé n'est assigné à aucun projet actuellement.",
     "role": "Rôle",
     "objectives": "Objectifs",
     "progress": "Avancement",
@@ -277,9 +269,7 @@
     "errorSavingObjectives": "Erreur lors de la sauvegarde des objectifs",
     "objectivesSaved": "Objectifs sauvegardés avec succès",
     "objectivesForYear": "Objectifs {{year}}",
-    "evaluatedObjectives": "Objectifs évalués",
-    "objectivesAndEvaluations": "Objectifs et évaluations",
-    "notDefined": "Non définis"
+    "evaluatedObjectives": "Objectifs évalués"
   },
   "evaluation": {
     "evaluation": "Evaluation",
@@ -326,7 +316,6 @@
     "submitEvaluation": "Soumettre l'auto-évaluation",
     "fillRequiredFields": "Veuillez remplir tous les champs requis",
     "errorSubmitting": "Erreur lors de la soumission de l'évaluation",
-    "notEvaluated": "Non évaluée",
     "scores": {
       "notAchieved": "Non atteint",
       "partiallyAchieved": "Partiellement atteint",
@@ -471,12 +460,7 @@
     "suggestedCoachingPoints": "Points de coaching suggérés",
     "discussGap": "Discuter de l'écart important entre auto-évaluation et évaluation référent. Explorer les perceptions et attentes.",
     "congratulateAlignment": "Féliciter pour l'alignement des perceptions. Identifier les prochaines étapes de développement.",
-    "errorFetchingEvaluations": "Erreur lors du chargement des évaluations",
-    "thematicSummary": "Synthèse des thématiques travaillées",
-    "themeObjectives": "Objectifs du thème",
-    "evaluated": "évalué(s)",
-    "areasForImprovement": "Axes d'amélioration",
-    "overallPerformance": "Performance globale"
+    "errorFetchingEvaluations": "Erreur lors du chargement des évaluations"
   },
   "administration": {
     "title": "Administration",
@@ -522,16 +506,7 @@
     "currentPathway": "Career Pathway actuel",
     "currentCountry": "Pays actuel",
     "none": "Aucun",
-    "never": "Jamais",
-    "positionNotDefined": "Poste non défini",
-    "noEmployeesMatchingCriteria": "Aucun employé ne correspond à vos critères de recherche.",
-    "searchEmployee": "Rechercher un employé...",
-    "allRoles": "Tous les rôles",
-    "allDepartments": "Tous les départements",
-    "resetFilters": "Réinitialiser les filtres",
-    "professionalInfo": "Informations professionnelles",
-    "noEmployeesMatchingCriteria": "Aucun employé ne correspond à vos critères de recherche.",
-    "searchEmployee": "Rechercher un employé..."
+    "never": "Jamais"
   },
   "settings": {
     "title": "Paramètres",

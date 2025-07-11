@@ -89,11 +89,6 @@
     "points": "points",
     "observations": "Observations",
     "profile": "Profile",
-    "phone": "Phone",
-    "backToList": "Back to list",
-    "viewMoreDetails": "View more details",
-    "hideDetails": "Hide details",
-    "profile": "Profile",
     "phone": "Phone"
   },
   "profile": {
@@ -155,8 +150,6 @@
     "createManageProjects": "Create and manage your client projects",
     "newProject": "New project",
     "projectCreation": "Project creation",
-    "projectInfo": "Project information",
-    "assignedOn": "Assigned on",
     "allUsersCanCreate": "All users can create projects. You automatically become the project referent. Click on a project to see its details.",
     "countryNote": "You can only see users from your country for collaborators.",
     "searchPlaceholder": "Search by title, client, description or referent...",
@@ -219,7 +212,6 @@
     "contactManager": "You are not currently assigned to any project. Contact your manager to be added to projects.",
     "client": "Client",
     "referent": "Referent",
-    "noProjectsAssignedForEmployee": "This employee is not currently assigned to any project.",
     "role": "Role",
     "objectives": "Objectives",
     "progress": "Progress",
@@ -277,9 +269,7 @@
     "errorSavingObjectives": "Error saving objectives",
     "objectivesSaved": "Objectives saved successfully",
     "objectivesForYear": "Objectives {{year}}",
-    "evaluatedObjectives": "Evaluated objectives",
-    "objectivesAndEvaluations": "Objectives and evaluations",
-    "notDefined": "Not defined"
+    "evaluatedObjectives": "Evaluated objectives"
   },
   "evaluation": {
     "evaluation": "Evaluation",
@@ -326,7 +316,6 @@
     "submitEvaluation": "Submit self-evaluation",
     "fillRequiredFields": "Please fill in all required fields",
     "errorSubmitting": "Error submitting evaluation",
-    "notEvaluated": "Not evaluated",
     "scores": {
       "notAchieved": "Not achieved",
       "partiallyAchieved": "Partially achieved",
@@ -471,12 +460,7 @@
     "suggestedCoachingPoints": "Suggested coaching points",
     "discussGap": "Discuss the significant gap between self-evaluation and referent evaluation. Explore perceptions and expectations.",
     "congratulateAlignment": "Congratulate for the alignment of perceptions. Identify next development steps.",
-    "errorFetchingEvaluations": "Error fetching evaluations",
-    "thematicSummary": "Thematic summary",
-    "themeObjectives": "Theme objectives",
-    "evaluated": "evaluated",
-    "areasForImprovement": "Areas for improvement",
-    "overallPerformance": "Overall performance"
+    "errorFetchingEvaluations": "Error fetching evaluations"
   },
   "administration": {
     "title": "Administration",
@@ -522,16 +506,7 @@
     "currentPathway": "Current Career Pathway",
     "currentCountry": "Current country",
     "none": "None",
-    "never": "Never",
-    "positionNotDefined": "Position not defined",
-    "noEmployeesMatchingCriteria": "No employees match your search criteria.",
-    "searchEmployee": "Search for an employee...",
-    "allRoles": "All roles",
-    "allDepartments": "All departments",
-    "resetFilters": "Reset filters",
-    "professionalInfo": "Professional information",
-    "noEmployeesMatchingCriteria": "No employees match your search criteria.",
-    "searchEmployee": "Search for an employee..."
+    "never": "Never"
   },
   "settings": {
     "title": "Settings",

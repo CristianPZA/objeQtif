@@ -3,7 +3,6 @@ import { Award, ChevronDown, ChevronRight, Star, Eye, EyeOff, Tag, BarChart2, Tr
 import { Evaluation } from './types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useTranslation } from 'react-i18next';
 
 interface ProjectEvaluationsListProps {
   evaluations: Evaluation[];
@@ -26,7 +25,6 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
   getEvaluationStatusLabel,
   handleViewEvaluation
 }) => {
-  const { t } = useTranslation();
   const [detailedView, setDetailedView] = useState<Set<string>>(new Set());
   const [themeStats, setThemeStats] = useState<Record<string, { count: number, totalScore: number, objectives: any[] }>>({});
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
@@ -104,9 +102,9 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
     return (
       <div className="text-center py-8">
         <Award className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">{t('coaching.noEvaluationsAvailable')}</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune évaluation</h3>
         <p className="text-gray-600">
-          {t('coaching.noEvaluationsForCoachee')}
+          Cet employé n'a pas encore d'évaluations de projet finalisées.
         </p>
       </div>
     );
@@ -123,7 +121,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
       <div className="bg-white rounded-lg border p-4 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <BarChart2 className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-lg font-semibold text-gray-900">{t('coaching.thematicSummary')}</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Synthèse des thématiques travaillées</h3>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -147,7 +145,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                   </span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {stats.count} {t('common.skill', { count: stats.count })} {t('coaching.evaluated')}
+                  {stats.count} objectif{stats.count > 1 ? 's' : ''} évalué{stats.count > 1 ? 's' : ''}
                 </div>
               </div>
             );
@@ -159,7 +157,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
           <div className="mt-4 border-t pt-4">
             <div className="flex items-center gap-2 mb-3">
               <Lightbulb className="w-5 h-5 text-indigo-600" />
-              <h4 className="text-lg font-semibold text-gray-900">{t('coaching.themeObjectives')}: {selectedTheme}</h4>
+              <h4 className="text-lg font-semibold text-gray-900">Objectifs du thème: {selectedTheme}</h4>
             </div>
             
             <div className="space-y-3">
@@ -300,12 +298,12 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                         {isDetailExpanded ? (
                           <>
                             <EyeOff className="w-3 h-3" />
-                            {t('common.hideDetails')}
+                            Masquer les détails
                           </>
                         ) : (
                           <>
                             <Eye className="w-3 h-3" />
-                            {t('common.viewMoreDetails')}
+                            Voir plus de détails
                           </>
                         )}
                       </button>
@@ -606,17 +604,44 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                           
                           <div className="mt-2 text-center">
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleObjectiveDetail(objectiveId);
-                              }}
+                              onClick={() => toggleObjectiveDetail(objectiveId)}
                               className="text-xs text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1"
                             >
                               {isDetailExpanded ? (
                                 <>
                                   <EyeOff className="w-3 h-3" />
-                                  {t('common.hideDetails')}
+                                  Masquer les détails
                                 </>
                               ) : (
                                 <>
-                                  <Eye
+                                  <Eye className="w-3 h-3" />
+                                  Voir plus de détails
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {!isDetailed && (
+                  <button
+                    onClick={(e) => toggleDetailedView(evaluation.evaluation_id, e)}
+                    className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Voir les détails complets des objectifs
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default ProjectEvaluationsList;
