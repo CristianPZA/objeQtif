@@ -100,13 +100,17 @@ const GeminiObjectiveGenerator: React.FC<GeminiObjectiveGeneratorProps> = ({
     } catch (err) {
       console.error('Error generating objective with Gemini:', err);
       
-      // Handle specific API errors
-      if (err instanceof Error) {
-        if (err.message.includes('429') || err.message.includes('quota')) {
+      // Handle specific API errors with better detection
+      let errorMessage = '';
+      
+      if (err instanceof Error || (err && typeof err === 'object' && 'message' in err)) {
+        const errorStr = err.toString().toLowerCase();
+        
+        if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.includes('exceeded')) {
           setError('Le quota de l\'API Gemini a été dépassé. Veuillez réessayer plus tard ou créer l\'objectif manuellement.');
-        } else if (err.message.includes('401') || err.message.includes('unauthorized')) {
+        } else if (errorStr.includes('401') || errorStr.includes('unauthorized') || errorStr.includes('api key')) {
           setError('Clé API Gemini invalide. Veuillez vérifier la configuration.');
-        } else if (err.message.includes('network') || err.message.includes('fetch')) {
+        } else if (errorStr.includes('network') || errorStr.includes('fetch') || errorStr.includes('connection')) {
           setError('Erreur de connexion. Vérifiez votre connexion internet et réessayez.');
         } else {
           setError('Erreur lors de la génération de l\'objectif. Vous pouvez créer l\'objectif manuellement.');
@@ -114,6 +118,9 @@ const GeminiObjectiveGenerator: React.FC<GeminiObjectiveGeneratorProps> = ({
       } else {
         setError('Erreur inattendue lors de la génération de l\'objectif.');
       }
+      
+      // Don't re-throw the error to prevent console errors
+      return;
     } finally {
       setLoading(false);
     }
