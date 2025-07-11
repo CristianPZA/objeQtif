@@ -495,6 +495,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                       const isDetailExpanded = objectiveDetails[objectiveId] || false;
                       
                       return (
+                        <>
                         <div key={objectiveId} className="bg-gray-50 rounded-lg p-4 border">
                           <div className="mb-3">
                             <div className="flex items-center gap-2 mb-1">
@@ -612,6 +613,7 @@ const ProjectEvaluationsList: React.FC<ProjectEvaluationsListProps> = ({
                           </button>
                         </div>
                       </div>
+                        </>
                     );
                   })}
                 </div>
