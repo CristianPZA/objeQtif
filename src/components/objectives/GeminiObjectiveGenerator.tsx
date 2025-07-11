@@ -35,7 +35,7 @@ const GeminiObjectiveGenerator: React.FC<GeminiObjectiveGeneratorProps> = ({
     
     try {
       // Initialize the Gemini API with your API key
-      const genAI = new GoogleGenerativeAI('AIzaSyDyXGjaqLNqCOSwmqwKzUJcNDkiA8ICRTw');
+      const genAI = new GoogleGenerativeAI('AIzaSyCKEbQA7SLscTsWwZqZ74mZ1KPcQR52040');
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
       
       // Prepare the prompt with user context
