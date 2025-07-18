@@ -111,7 +111,7 @@ const Sidebar = () => {
   return (
     <div className="fixed left-0 top-0 h-screen w-64 bg-gray-900 text-white p-4">
       <div className="flex flex-col items-center mb-8">
-        <h1 className="text-2xl font-bold mb-2">objeQtifs</h1>
+        <h1 className="text-2xl font-bold mb-2">objeQtive</h1>
         <div className="flex items-center gap-2">
           <p className="text-sm text-gray-400">
             {userRole === 'admin' ? t('administration.currentRole.admin') : t('administration.currentRole.employee')}
