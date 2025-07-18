@@ -1,5 +1,5 @@
 /*
-  # Schéma complet pour objeQtifs
+  # Schéma complet pour objeQtive
 
   1. Tables créées
     - `user_profiles` - Profils utilisateurs multi-rôles
