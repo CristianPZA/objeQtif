@@ -114,7 +114,7 @@ const Sidebar = () => {
         <img 
           src="/Logo objeQtive.png" 
           alt="objeQtive" 
-          className="h-12 w-auto mb-2"
+          className="h-28w-auto mb-2"
         />
         <div className="flex items-center gap-2">
           <p className="text-sm text-gray-400">
