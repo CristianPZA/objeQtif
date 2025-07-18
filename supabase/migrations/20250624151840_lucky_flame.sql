@@ -446,7 +446,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
 -- COMMENTAIRES DE DOCUMENTATION
 -- =============================================
 
-COMMENT ON DATABASE postgres IS 'Base de données objeQtifs - Version optimisée et nettoyée';
+COMMENT ON DATABASE postgres IS 'Base de données objeQtive - Version optimisée et nettoyée';
 
 COMMENT ON TABLE user_profiles IS 'Profils utilisateurs avec gestion des rôles et hiérarchie';
 COMMENT ON TABLE projets IS 'Projets clients avec gestion des collaborateurs';
