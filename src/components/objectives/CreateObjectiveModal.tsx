@@ -317,7 +317,10 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
     });
 
     // Au moins un objectif doit être défini (pathway ou personnalisé)
-    return (pathwayValid && objectives.length > 0) || (customValid && customObjectives.length > 0);
+    const hasValidPathwayObjectives = objectives.length > 0 && pathwayValid;
+    const hasValidCustomObjectives = customObjectives.length > 0 && customValid;
+    
+    return hasValidPathwayObjectives || hasValidCustomObjectives;
   };
 
   const handleSubmit = async () => {
@@ -615,13 +618,21 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
             Retour
           </button>
         )}
-        <button
-          onClick={() => setStep('objectives')}
-          disabled={selectedSkills.length === 0}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto"
-        >
-          Définir les objectifs SMART
-        </button>
+        <div className="flex gap-3 ml-auto">
+          <button
+            onClick={() => setStep('objectives')}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+          >
+            Passer (objectifs personnalisés uniquement)
+          </button>
+          <button
+            onClick={() => setStep('objectives')}
+            disabled={selectedSkills.length === 0}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Définir les objectifs SMART
+          </button>
+        </div>
       </div>
     </div>
   );
