@@ -43,6 +43,8 @@ export const getStatusLabel = (status: string, t: any) => {
   }
 };
 
+export const getProjectStatusColor = (statut: string) => {
+  switch (statut) {
     case 'en_cours':
       return 'bg-gray-100 text-gray-800';
     case 'termine':
