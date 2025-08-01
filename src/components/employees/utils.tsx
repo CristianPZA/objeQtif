@@ -19,8 +19,10 @@ export const getStatusColor = (status: string) => {
       return 'bg-blue-100 text-blue-800';
     case 'approved':
       return 'bg-green-100 text-green-800';
-    case 'rejected':
-      return 'bg-red-100 text-red-800';
+    case 'waiting auto evaluation':
+      return 'bg-blue-100 text-blue-800';
+    case 'evaluated':
+      return 'bg-green-100 text-green-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
@@ -28,23 +30,21 @@ export const getStatusColor = (status: string) => {
 
 export const getStatusLabel = (status: string, t: any) => {
   switch (status) {
-    case 'draft':
-      return t('annualObjectives.objectiveStatuses.draft');
     case 'submitted':
       return t('annualObjectives.objectiveStatuses.submitted');
     case 'approved':
       return t('annualObjectives.objectiveStatuses.approved');
-    case 'rejected':
-      return t('annualObjectives.objectiveStatuses.rejected');
+    case 'waiting auto evaluation':
+      return t('annualObjectives.objectiveStatuses.waitingAutoEvaluation');
+    case 'evaluated':
+      return t('annualObjectives.objectiveStatuses.evaluated');
     default:
       return t('common.unknown');
   }
 };
 
-export const getProjectStatusColor = (statut: string) => {
-  switch (statut) {
     case 'en_cours':
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-gray-100 text-gray-800';
     case 'termine':
       return 'bg-green-100 text-green-800';
     case 'suspendu':

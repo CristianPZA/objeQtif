@@ -351,10 +351,10 @@
     "confirmValidation": "Êtes-vous sûr de vouloir valider ces objectifs ? Cette action ne pourra pas être annulée.",
     "validationError": "Erreur lors de la validation des objectifs",
     "objectiveStatuses": {
-      "draft": "Brouillon",
       "submitted": "Soumis",
       "approved": "Approuvé",
-      "rejected": "Rejeté"
+      "waitingAutoEvaluation": "En attente d'auto-évaluation",
+      "evaluated": "Évalué"
     }
   },
   "careerPathways": {

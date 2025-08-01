@@ -237,14 +237,14 @@ const ObjectifsAnnuels = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'draft':
-        return <Clock className="w-4 h-4 text-gray-500" />;
       case 'submitted':
-        return <AlertCircle className="w-4 h-4 text-blue-500" />;
+        return <Clock className="w-4 h-4 text-gray-500" />;
       case 'approved':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'rejected':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case 'waiting auto evaluation':
+        return <AlertCircle className="w-4 h-4 text-blue-500" />;
+      case 'evaluated':
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
       default:
         return <Clock className="w-4 h-4 text-gray-500" />;
     }
@@ -252,14 +252,14 @@ const ObjectifsAnnuels = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'draft':
-        return t('annualObjectives.objectiveStatuses.draft');
       case 'submitted':
         return t('annualObjectives.objectiveStatuses.submitted');
       case 'approved':
         return t('annualObjectives.objectiveStatuses.approved');
-      case 'rejected':
-        return t('annualObjectives.objectiveStatuses.rejected');
+      case 'waiting auto evaluation':
+        return t('annualObjectives.objectiveStatuses.waitingAutoEvaluation');
+      case 'evaluated':
+        return t('annualObjectives.objectiveStatuses.evaluated');
       default:
         return t('common.unknown');
     }
@@ -267,14 +267,14 @@ const ObjectifsAnnuels = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
       case 'submitted':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-gray-100 text-gray-800';
       case 'approved':
         return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
+      case 'waiting auto evaluation':
+        return 'bg-blue-100 text-blue-800';
+      case 'evaluated':
+        return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -403,7 +403,7 @@ const ObjectifsAnnuels = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">{t('annualObjectives.pending')}</p>
               <p className="text-2xl font-bold text-gray-900">
-                {objectives.filter(obj => obj.status === 'submitted').length}
+                {objectives.filter(obj => obj.status === 'waiting auto evaluation').length}
               </p>
             </div>
           </div>

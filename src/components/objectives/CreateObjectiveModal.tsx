@@ -329,7 +329,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       return;
     }
 
-    await saveObjectives('submitted');
+    await saveObjectives('approved');
   };
 
   const handleSaveDraft = async () => {
@@ -338,10 +338,10 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       return;
     }
 
-    await saveObjectives('draft');
+    await saveObjectives('submitted');
   };
 
-  const saveObjectives = async (status: 'draft' | 'submitted') => {
+  const saveObjectives = async (status: 'submitted' | 'approved') => {
     try {
       setSubmitting(true);
       

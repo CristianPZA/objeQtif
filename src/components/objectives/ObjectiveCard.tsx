@@ -35,12 +35,12 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const canDelete = () => {
     // Seuls les admins peuvent supprimer les objectifs
-    return userRole === 'admin' && objective.status === 'draft';
+    return userRole === 'admin' && objective.status === 'submitted';
   };
 
   const canValidate = () => {
     // Seul le propriétaire des objectifs peut les valider, et seulement s'ils sont en brouillon
-    return objective.employee_id === currentUserId && objective.status === 'draft';
+    return objective.employee_id === currentUserId && objective.status === 'submitted';
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -64,7 +64,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
     try {
       const { error } = await supabase
         .from('annual_objectives')
-        .update({ status: 'submitted' })
+        .update({ status: 'approved' })
         .eq('id', objective.id);
 
       if (error) throw error;
@@ -103,14 +103,14 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'draft':
-        return t('annualObjectives.objectiveStatuses.draft');
       case 'submitted':
         return t('annualObjectives.objectiveStatuses.submitted');
       case 'approved':
         return t('annualObjectives.objectiveStatuses.approved');
-      case 'rejected':
-        return t('annualObjectives.objectiveStatuses.rejected');
+      case 'waiting auto evaluation':
+        return t('annualObjectives.objectiveStatuses.waitingAutoEvaluation');
+      case 'evaluated':
+        return t('annualObjectives.objectiveStatuses.evaluated');
       default:
         return t('common.unknown');
     }
@@ -118,14 +118,14 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
       case 'submitted':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-gray-100 text-gray-800';
       case 'approved':
         return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
+      case 'waiting auto evaluation':
+        return 'bg-blue-100 text-blue-800';
+      case 'evaluated':
+        return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
