@@ -647,11 +647,91 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         </p>
       </div>
 
+      {/* Section pour ajouter des compétences du Career Pathway en mode édition */}
+      {selectedObjective && availableSkills.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h4 className="font-semibold text-blue-800 mb-3">Ajouter des compétences du Career Pathway</h4>
+          <p className="text-sm text-blue-700 mb-4">
+            Vous pouvez ajouter des compétences supplémentaires de votre parcours de carrière
+          </p>
+          
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {availableSkills
+              .filter(skill => !selectedSkills.includes(skill.id))
+              .map((skill) => (
+                <div
+                  key={skill.id}
+                  onClick={() => {
+                    setSelectedSkills(prev => [...prev, skill.id]);
+                    // Ajouter immédiatement un objectif vide pour cette compétence
+                    const newObjective: ObjectiveForm = {
+                      skill_id: skill.id,
+                      skill_description: skill.skill_description,
+                      theme_name: skill.development_theme?.name || '',
+                      smart_objective: '',
+                      specific: '',
+                      measurable: '',
+                      achievable: '',
+                      relevant: '',
+                      time_bound: '',
+                      is_custom: false
+                    };
+                    setObjectives(prev => [...prev, newObjective]);
+                  }}
+                  className="p-3 border border-blue-200 rounded-lg hover:border-blue-300 hover:bg-blue-100 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          {skill.development_theme.name}
+                        </span>
+                      </div>
+                      <h5 className="font-medium text-gray-900 text-sm">{skill.skill_description}</h5>
+                      {skill.examples && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          <strong>Exemples:</strong> {skill.examples}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-blue-600 ml-2">
+                      <CheckCircle className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+          
+          {availableSkills.filter(skill => !selectedSkills.includes(skill.id)).length === 0 && (
+            <p className="text-sm text-blue-600 italic">
+              Toutes les compétences disponibles ont déjà été ajoutées
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Objectifs du Career Pathway */}
-      <div className="space-y-8">
+      {objectives.length > 0 && (
+        <div className="space-y-8">
         <h4 className="font-semibold text-gray-800 border-b pb-2">Objectifs basés sur le Career Pathway</h4>
         {objectives.map((objective, index) => (
-          <div key={objective.skill_id} className="border border-gray-200 rounded-lg p-6">
+          <div key={objective.skill_id} className="border border-gray-200 rounded-lg p-6 relative">
+            {/* Bouton pour supprimer un objectif en mode édition */}
+            {selectedObjective && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Supprimer l'objectif et la compétence sélectionnée
+                  setObjectives(prev => prev.filter((_, i) => i !== index));
+                  setSelectedSkills(prev => prev.filter(id => id !== objective.skill_id));
+                }}
+                className="absolute top-4 right-4 text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
+                title="Supprimer cet objectif"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
@@ -748,7 +828,8 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Objectifs personnalisés */}
       <div className="space-y-4">
