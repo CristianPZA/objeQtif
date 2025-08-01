@@ -329,6 +329,19 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       return;
     }
 
+    await saveObjectives('submitted');
+  };
+
+  const handleSaveDraft = async () => {
+    if (!validateObjectives()) {
+      onError('Veuillez remplir tous les champs requis pour chaque objectif');
+      return;
+    }
+
+    await saveObjectives('draft');
+  };
+
+  const saveObjectives = async (status: 'draft' | 'submitted') => {
     try {
       setSubmitting(true);
       
@@ -345,7 +358,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         career_level_id: selectedEmployee.career_level_id,
         selected_themes: selectedSkills, // On stocke les IDs des compétences sélectionnées
         objectives: allObjectives,
-        status: selectedObjective?.status || 'submitted'
+        status: status
       };
 
       let error;
@@ -626,7 +639,10 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
             Passer (objectifs personnalisés uniquement)
           </button>
           <button
-            onClick={() => setStep('objectives')}
+            onClick={() => {
+              initializeObjectives();
+              setStep('objectives');
+            }}
             disabled={selectedSkills.length === 0}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -926,14 +942,24 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         >
           Retour aux compétences
         </button>
-        <button
-          onClick={handleSubmit}
-          disabled={submitting || !validateObjectives()}
-          className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
-        >
-          <Save className="w-4 h-4" />
-          {submitting ? (selectedObjective ? 'Modification...' : 'Création...') : (selectedObjective ? 'Enregistrer les modifications' : 'Créer les objectifs')}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSaveDraft}
+            disabled={submitting || !validateObjectives()}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {submitting ? 'Sauvegarde...' : 'Enregistrer brouillon'}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !validateObjectives()}
+            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
+          >
+            <CheckCircle className="w-4 h-4" />
+            {submitting ? 'Soumission...' : 'Soumettre'}
+          </button>
+        </div>
       </div>
     </div>
   );
