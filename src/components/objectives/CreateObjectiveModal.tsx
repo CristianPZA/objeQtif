@@ -66,13 +66,22 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       
       // Si on est en mode édition et qu'on a des objectifs, initialiser les objectifs
       if (selectedObjective && selectedObjective.objectives) {
-        setObjectives(selectedObjective.objectives);
+        // Séparer les objectifs du career pathway et les objectifs personnalisés
+        const pathwayObjectives = selectedObjective.objectives.filter((obj: any) => !obj.is_custom);
+        const customObjectives = selectedObjective.objectives.filter((obj: any) => obj.is_custom);
+        
+        setObjectives(pathwayObjectives);
+        setCustomObjectives(customObjectives);
+        
+        // Extraire les skill_ids des objectifs du career pathway
+        const skillIds = pathwayObjectives.map((obj: any) => obj.skill_id);
+        setSelectedSkills(skillIds);
       }
     }
   }, [selectedEmployee]);
 
   useEffect(() => {
-    if (selectedSkills.length > 0) {
+    if (selectedSkills.length > 0 && !selectedObjective) {
       initializeObjectives();
     }
   }, [selectedSkills]);
@@ -98,8 +107,6 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
           career_level: selectedObjective.career_level
         };
         setSelectedEmployee(employee);
-        setSelectedSkills(selectedObjective.selected_themes);
-        setObjectives(selectedObjective.objectives);
         setStep('objectives');
       } else {
         setStep('employee');
@@ -110,8 +117,6 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       
       // Si on est en mode édition, passer directement à l'étape des objectifs
       if (isEditing && selectedObjective) {
-        setSelectedSkills(selectedObjective.selected_themes);
-        setObjectives(selectedObjective.objectives);
         setStep('objectives');
       } else {
         setStep('skills');
@@ -206,6 +211,9 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
   };
 
   const initializeObjectives = () => {
+    // Ne pas réinitialiser si on est en mode édition
+    if (selectedObjective) return;
+    
     const newObjectives = selectedSkills.map(skillId => {
       const skill = availableSkills.find(s => s.id === skillId);
       return {
