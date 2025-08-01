@@ -328,6 +328,7 @@
     "title": "Objectifs Annuels",
     "subtitle": "Définissez et suivez vos objectifs de développement professionnel",
     "createAnnualObjectives": "Créer des objectifs annuels",
+    "editCurrentYearObjectives": "Modifier les objectifs de l'année courante",
     "configurationRequired": "Configuration requise",
     "configurationMessage": "Pour créer des objectifs annuels, vous devez avoir un Career Pathway et un niveau de carrière assignés. Contactez votre administrateur ou votre coach pour configurer votre profil.",
     "careerPathway": "Career Pathway",

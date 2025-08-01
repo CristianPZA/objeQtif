@@ -328,6 +328,7 @@
     "title": "Annual Objectives",
     "subtitle": "Define and track your professional development objectives",
     "createAnnualObjectives": "Create annual objectives",
+    "editCurrentYearObjectives": "Edit current year objectives",
     "configurationRequired": "Configuration required",
     "configurationMessage": "To create annual objectives, you must have a Career Pathway and a career level assigned. Contact your administrator or your coach to configure your profile.",
     "careerPathway": "Career Pathway",

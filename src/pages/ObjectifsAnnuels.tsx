@@ -74,6 +74,9 @@ const ObjectifsAnnuels = () => {
   const [evaluationNotifications, setEvaluationNotifications] = useState<Notification[]>([]);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
+  const currentYear = new Date().getFullYear();
+  const currentYearObjective = objectives.find(obj => obj.year === currentYear && obj.employee_id === currentUser?.id);
+
   useEffect(() => {
     checkUserAndFetchObjectives();
   }, []);
@@ -161,6 +164,10 @@ const ObjectifsAnnuels = () => {
   };
 
   const handleCreateObjective = () => {
+    // Si un objectif existe déjà pour l'année courante, on l'édite
+    if (currentYearObjective) {
+      setSelectedObjective(currentYearObjective);
+    }
     setShowCreateModal(true);
   };
 
@@ -290,8 +297,6 @@ const ObjectifsAnnuels = () => {
     );
   };
 
-  const currentYear = new Date().getFullYear();
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -314,7 +319,7 @@ const ObjectifsAnnuels = () => {
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            {t('annualObjectives.createAnnualObjectives')}
+            {currentYearObjective ? t('annualObjectives.editCurrentYearObjectives') : t('annualObjectives.createAnnualObjectives')}
           </button>
         )}
       </div>
@@ -451,7 +456,7 @@ const ObjectifsAnnuels = () => {
                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 mx-auto transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                {t('annualObjectives.createFirstObjectives')}
+                {currentYearObjective ? t('annualObjectives.editCurrentYearObjectives') : t('annualObjectives.createFirstObjectives')}
               </button>
             )}
           </div>
