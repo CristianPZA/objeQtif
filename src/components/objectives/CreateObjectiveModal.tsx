@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Target, BookOpen, User, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Save, Target, BookOpen, User, Calendar, CheckCircle, AlertCircle, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface PathwaySkill {
@@ -53,6 +53,9 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
   const [canSelectEmployee, setCanSelectEmployee] = useState(false);
   const [customObjectives, setCustomObjectives] = useState<ObjectiveForm[]>([]);
   const [objectiveTypeSelection, setObjectiveTypeSelection] = useState<string>('smart');
+
+  // État pour la recherche d'employés
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
 
   const currentYear = new Date().getFullYear();
 
@@ -517,6 +520,15 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
     return null;
   };
 
+  // Filtrer les employés selon le terme de recherche
+  const filteredEmployees = employees.filter(employee => 
+    employee.full_name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+    employee.role.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+    (employee.department && employee.department.toLowerCase().includes(employeeSearchTerm.toLowerCase())) ||
+    (employee.career_pathway?.name && employee.career_pathway.name.toLowerCase().includes(employeeSearchTerm.toLowerCase())) ||
+    (employee.career_level?.name && employee.career_level.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()))
+  );
+
   const renderEmployeeSelection = () => (
     <div className="space-y-4">
       <div className="text-center mb-6">
@@ -525,32 +537,61 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         <p className="text-sm text-gray-600">Choisissez l'employé pour lequel créer des objectifs annuels</p>
       </div>
 
+      {/* Barre de recherche */}
+      <div className="mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Rechercher un employé par nom, rôle, département ou parcours..."
+            value={employeeSearchTerm}
+            onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+        {employeeSearchTerm && (
+          <p className="text-sm text-gray-500 mt-2">
+            {filteredEmployees.length} employé{filteredEmployees.length > 1 ? 's' : ''} trouvé{filteredEmployees.length > 1 ? 's' : ''}
+          </p>
+        )}
+      </div>
+
       <div className="max-h-96 overflow-y-auto space-y-2">
-        {employees.map((employee) => (
-          <div
-            key={employee.id}
-            onClick={() => handleEmployeeSelect(employee)}
-            className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-gray-900">{employee.full_name}</h4>
-                <p className="text-sm text-gray-600">{employee.role} • {employee.department}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                    {employee.career_level?.name}
-                  </span>
-                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                    {employee.career_pathway?.name}
-                  </span>
+        {filteredEmployees.length > 0 ? (
+          filteredEmployees.map((employee) => (
+            <div
+              key={employee.id}
+              onClick={() => handleEmployeeSelect(employee)}
+              className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-gray-900">{employee.full_name}</h4>
+                  <p className="text-sm text-gray-600">{employee.role} • {employee.department}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      {employee.career_level?.name}
+                    </span>
+                    <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                      {employee.career_pathway?.name}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-indigo-600">
+                  <CheckCircle className="w-5 h-5" />
                 </div>
               </div>
-              <div className="text-indigo-600">
-                <CheckCircle className="w-5 h-5" />
-              </div>
             </div>
+          ))
+        ) : (
+          <div
+            className="text-center py-8 text-gray-500"
+          >
+            <User className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+            <p>Aucun employé trouvé</p>
+            <p className="text-sm mt-1">Essayez de modifier votre recherche</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
