@@ -15,6 +15,8 @@ export const getStatusColor = (status: string) => {
   switch (status) {
     case 'draft':
       return 'bg-gray-100 text-gray-800';
+    case 'draft':
+      return 'bg-gray-100 text-gray-800';
     case 'submitted':
       return 'bg-blue-100 text-blue-800';
     case 'approved':
@@ -30,6 +32,8 @@ export const getStatusColor = (status: string) => {
 
 export const getStatusLabel = (status: string, t: any) => {
   switch (status) {
+    case 'draft':
+      return t('annualObjectives.objectiveStatuses.draft');
     case 'submitted':
       return t('annualObjectives.objectiveStatuses.submitted');
     case 'approved':

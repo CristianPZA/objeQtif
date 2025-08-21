@@ -109,6 +109,8 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case 'draft':
+        return t('annualObjectives.objectiveStatuses.draft');
       case 'submitted':
         return t('annualObjectives.objectiveStatuses.submitted');
       case 'approved':
@@ -124,6 +126,8 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'draft':
+        return 'bg-gray-100 text-gray-800';
       case 'draft':
         return 'bg-gray-100 text-gray-800';
       case 'submitted':
