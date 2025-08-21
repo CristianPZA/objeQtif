@@ -55,7 +55,7 @@
     "permissionDenied": "Permission refusée",
     "unknown": "Inconnu",
     "networkError": "Pas de connexion réseau. Vérifiez votre connexion internet.",
-    "connectionError": "Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez."
+    "connectionError": "Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez.",
     "unknown": "Inconnu",
     "preview": "Aperçu",
     "icon": "Icône",

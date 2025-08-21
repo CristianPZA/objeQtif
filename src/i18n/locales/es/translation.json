@@ -395,7 +395,7 @@
     "errorLoadingData": "Error al cargar los datos",
     "unknown": "Desconocido",
     "networkError": "Sin conexión de red. Verifique su conexión a internet.",
-    "connectionError": "No se puede conectar al servidor. Verifique su conexión a internet e intente nuevamente."
+    "connectionError": "No se puede conectar al servidor. Verifique su conexión a internet e intente nuevamente.",
     "errorUpdatingDomain": "Error al modificar el dominio",
     "errorDeletingDomain": "Error al eliminar el dominio",
     "confirmDelete": "¿Está seguro de que desea eliminar el dominio \"{{name}}\"? Esta acción también eliminará todos los temas y competencias asociados.",
