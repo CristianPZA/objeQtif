@@ -5,7 +5,7 @@ import { Plus, Edit3, Trash2, Save, Send, AlertCircle, CheckCircle, Eye, EyeOff 
 import CustomObjectiveForm from '../objectives/CustomObjectiveForm';
 
 interface ObjectivesTabProps {
-  collaborationId: string;
+  collaborationId: string | undefined;
   projectId: string;
   employeeId: string;
   isCurrentUser: boolean;
@@ -55,13 +55,18 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
   }, [collaborationId]);
 
   const loadObjectives = async () => {
+    if (!collaborationId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('objectifs_collaborateurs')
         .select('*')
         .eq('collaboration_id', collaborationId)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
