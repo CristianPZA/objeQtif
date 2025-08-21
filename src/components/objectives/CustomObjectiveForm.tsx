@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Save, Target, Trash2, BookOpen, X } from 'lucide-react';
+import { Plus, Save, Target, Trash2, BookOpen, X, Info, AlertCircle, CheckCircle, Edit, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from 'react-i18next';
 
@@ -14,7 +14,7 @@ interface ObjectiveDetail {
   relevant: string;
   time_bound: string;
   is_custom?: boolean;
-  objective_type?: string; // Type d'objectif personnalisé
+  objective_type?: string;
 }
 
 interface PathwaySkill {
@@ -50,9 +50,22 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [objectiveTypeSelection, setObjectiveTypeSelection] = useState<string>('smart');
+  const [currentEditingIndex, setCurrentEditingIndex] = useState<number | null>(null);
+  const [showSkillsPanel, setShowSkillsPanel] = useState(false);
+  const [expandedObjectives, setExpandedObjectives] = useState<Set<number>>(new Set());
+  const [isDraft, setIsDraft] = useState(false);
+
+  // Grouper les compétences par thème
+  const [skillsByTheme, setSkillsByTheme] = useState<Record<string, PathwaySkill[]>>({});
 
   useEffect(() => {
     fetchUserProfile();
+    
+    // Vérifier si les objectifs existants sont en mode brouillon
+    if (existingObjectives && existingObjectives.length > 0) {
+      // Si on a des objectifs existants, on considère qu'ils sont en mode édition
+      setIsDraft(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -60,6 +73,21 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
       fetchAvailableSkills();
     }
   }, [userProfile]);
+
+  useEffect(() => {
+    // Grouper les compétences par thème
+    const groupedSkills: Record<string, PathwaySkill[]> = {};
+    
+    availableSkills.forEach(skill => {
+      const themeName = skill.development_theme?.name || 'Autres';
+      if (!groupedSkills[themeName]) {
+        groupedSkills[themeName] = [];
+      }
+      groupedSkills[themeName].push(skill);
+    });
+    
+    setSkillsByTheme(groupedSkills);
+  }, [availableSkills]);
 
   const fetchUserProfile = async () => {
     try {
@@ -93,7 +121,6 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     try {
       setLoading(true);
       
-      // First, fetch the development theme IDs for the career pathway
       const { data: themeData, error: themeError } = await supabase
         .from('development_themes')
         .select('id')
@@ -102,16 +129,13 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
 
       if (themeError) throw themeError;
 
-      // Extract the theme IDs into a flat array
       const themeIds = (themeData || []).map(theme => theme.id);
 
       if (themeIds.length === 0) {
         setAvailableSkills([]);
-        onError(t('objectives.noThemesFound'));
         return;
       }
 
-      // Now fetch the pathway skills using the theme IDs
       const { data, error } = await supabase
         .from('pathway_skills')
         .select(`
@@ -129,23 +153,16 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
 
       if (error) throw error;
       
-      // Filtrer les compétences qui ont des thèmes valides
       const validSkills = (data || []).filter(skill => skill.development_theme);
       setAvailableSkills(validSkills);
-      
-      if (validSkills.length === 0) {
-        onError(t('objectives.noSkillsFound'));
-      }
     } catch (err) {
       console.error('Error fetching skills:', err);
-      onError(t('objectives.errorLoadingSkills'));
     } finally {
       setLoading(false);
     }
   };
 
   const addPathwayObjective = (skill: PathwaySkill) => {
-    // Vérifier si cette compétence est déjà dans les objectifs
     const exists = objectives.some(obj => obj.skill_id === skill.id);
     if (exists) {
       onError(t('objectives.skillAlreadyAdded'));
@@ -166,6 +183,8 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     };
 
     setObjectives([...objectives, newObjective]);
+    setCurrentEditingIndex(objectives.length);
+    setShowSkillsPanel(false);
   };
 
   const addCustomObjective = () => {
@@ -180,16 +199,28 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
       relevant: '',
       time_bound: '',
       is_custom: true,
-      objective_type: objectiveTypeSelection // Ajouter le type d'objectif sélectionné
+      objective_type: objectiveTypeSelection
     };
 
     setObjectives([...objectives, newObjective]);
+    setCurrentEditingIndex(objectives.length);
   };
 
   const removeObjective = (index: number) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cet objectif ?')) {
+      return;
+    }
+    
     const updatedObjectives = [...objectives];
     updatedObjectives.splice(index, 1);
     setObjectives(updatedObjectives);
+    
+    // Réajuster l'index d'édition si nécessaire
+    if (currentEditingIndex === index) {
+      setCurrentEditingIndex(null);
+    } else if (currentEditingIndex !== null && currentEditingIndex > index) {
+      setCurrentEditingIndex(currentEditingIndex - 1);
+    }
   };
 
   const updateObjective = (index: number, field: keyof ObjectiveDetail, value: string) => {
@@ -198,12 +229,20 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     setObjectives(updatedObjectives);
   };
 
+  const toggleObjectiveExpansion = (index: number) => {
+    const newExpanded = new Set(expandedObjectives);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedObjectives(newExpanded);
+  };
+
   const validateObjectives = () => {
     return objectives.every(obj => {
-      // Vérifier que la description de compétence est remplie pour tous les objectifs
       if (!obj.skill_description.trim()) return false;
       
-      // Pour les objectifs SMART, vérifier tous les champs SMART
       if (!obj.is_custom || (obj.is_custom && obj.objective_type === 'smart')) {
         return obj.smart_objective.trim() !== '' &&
                obj.specific.trim() !== '' &&
@@ -213,18 +252,22 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
                obj.time_bound.trim() !== '';
       }
       
-      // Pour les objectifs de formation, vérifier seulement l'objectif principal
-      if (obj.is_custom && obj.objective_type === 'formation') {
-        return obj.smart_objective.trim() !== '';
-      }
-      
-      // Pour les objectifs personnalisables, vérifier seulement l'objectif principal
-      if (obj.is_custom && obj.objective_type === 'custom') {
-        return obj.smart_objective.trim() !== '';
-      }
-      
-      return true;
+      return obj.smart_objective.trim() !== '';
     });
+  };
+
+  const validateForDraft = () => {
+    // Pour les brouillons, on vérifie juste qu'il y a au moins un objectif avec une description
+    return objectives.length > 0 && objectives.some(obj => obj.skill_description.trim() !== '');
+  };
+
+  const handleSaveDraft = async () => {
+    if (!validateForDraft()) {
+      onError('Veuillez ajouter au moins un objectif avec une description avant de sauvegarder');
+      return;
+    }
+
+    await saveObjectives(true);
   };
 
   const handleSubmit = async () => {
@@ -238,27 +281,35 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
       return;
     }
 
+    await saveObjectives(false);
+  };
+
+  const saveObjectives = async (asDraft: boolean) => {
     setSubmitting(true);
     setLoading(true);
 
     try {
+      // Ajouter un indicateur de statut aux objectifs
+      const objectivesWithStatus = objectives.map(obj => ({
+        ...obj,
+        status: asDraft ? 'draft' : 'submitted'
+      }));
+
       if (collaboration.objectifs) {
-        // Mettre à jour les objectifs existants
         const { error } = await supabase
           .from('objectifs_collaborateurs')
           .update({
-            objectifs: objectives
+            objectifs: objectivesWithStatus
           })
           .eq('id', collaboration.objectifs.id);
 
         if (error) throw error;
       } else {
-        // Créer de nouveaux objectifs
         const { error } = await supabase
           .from('objectifs_collaborateurs')
           .insert([{
             collaboration_id: collaboration.id,
-            objectifs: objectives
+            objectifs: objectivesWithStatus
           }]);
 
         if (error) throw error;
@@ -273,9 +324,10 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     }
   };
 
-  // Fonction pour rendre les champs SMART en fonction du type d'objectif
   const renderObjectiveFields = (objective: ObjectiveDetail, index: number) => {
-    // Si ce n'est pas un objectif personnalisé ou si c'est un objectif SMART
+    const isEditing = currentEditingIndex === index;
+    const isExpanded = expandedObjectives.has(index);
+
     if (!objective.is_custom || (objective.is_custom && objective.objective_type === 'smart')) {
       return (
         <div className="space-y-4">
@@ -289,108 +341,134 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
               onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
               placeholder={t('objectives.smartObjective')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={!isEditing}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('objectives.specific')} *
-              </label>
-              <textarea
-                rows={2}
-                value={objective.specific}
-                onChange={(e) => updateObjective(index, 'specific', e.target.value)}
-                placeholder={t('objectives.specific')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+          {(isEditing || isExpanded) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('objectives.specific')} *
+                </label>
+                <textarea
+                  rows={2}
+                  value={objective.specific}
+                  onChange={(e) => updateObjective(index, 'specific', e.target.value)}
+                  placeholder={t('objectives.specific')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('objectives.measurable')} *
+                </label>
+                <textarea
+                  rows={2}
+                  value={objective.measurable}
+                  onChange={(e) => updateObjective(index, 'measurable', e.target.value)}
+                  placeholder={t('objectives.measurable')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('objectives.achievable')} *
+                </label>
+                <textarea
+                  rows={2}
+                  value={objective.achievable}
+                  onChange={(e) => updateObjective(index, 'achievable', e.target.value)}
+                  placeholder={t('objectives.achievable')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('objectives.relevant')} *
+                </label>
+                <textarea
+                  rows={2}
+                  value={objective.relevant}
+                  onChange={(e) => updateObjective(index, 'relevant', e.target.value)}
+                  placeholder={t('objectives.relevant')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={!isEditing}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('objectives.measurable')} *
-              </label>
-              <textarea
-                rows={2}
-                value={objective.measurable}
-                onChange={(e) => updateObjective(index, 'measurable', e.target.value)}
-                placeholder={t('objectives.measurable')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('objectives.achievable')} *
-              </label>
-              <textarea
-                rows={2}
-                value={objective.achievable}
-                onChange={(e) => updateObjective(index, 'achievable', e.target.value)}
-                placeholder={t('objectives.achievable')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('objectives.relevant')} *
-              </label>
-              <textarea
-                rows={2}
-                value={objective.relevant}
-                onChange={(e) => updateObjective(index, 'relevant', e.target.value)}
-                placeholder={t('objectives.relevant')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-          </div>
+          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('objectives.timeBound')} *
-            </label>
-            <textarea
-              rows={2}
-              value={objective.time_bound}
-              onChange={(e) => updateObjective(index, 'time_bound', e.target.value)}
-              placeholder={t('objectives.timeBound')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
+          {(isEditing || isExpanded) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('objectives.timeBound')} *
+              </label>
+              <textarea
+                rows={2}
+                value={objective.time_bound}
+                onChange={(e) => updateObjective(index, 'time_bound', e.target.value)}
+                placeholder={t('objectives.timeBound')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                disabled={!isEditing}
+              />
+            </div>
+          )}
         </div>
       );
-    } 
-    // Si c'est un objectif de formation
-    else if (objective.is_custom && objective.objective_type === 'formation') {
+    } else if (objective.is_custom && objective.objective_type === 'formation') {
       return (
         <div className="space-y-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-orange-700">
+                Décrivez la formation que vous souhaitez suivre et ses objectifs.
+              </p>
+            </div>
+          </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Objectif de formation *
             </label>
             <textarea
-              rows={3}
+              rows={4}
               value={objective.smart_objective}
               onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
-              placeholder="Décrivez la formation que vous souhaitez suivre et ses objectifs"
+              placeholder="Décrivez la formation que vous souhaitez suivre, ses objectifs et comment elle contribuera à votre développement professionnel."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={!isEditing}
             />
           </div>
         </div>
       );
-    }
-    // Si c'est un objectif personnalisable simple
-    else if (objective.is_custom && objective.objective_type === 'custom') {
+    } else if (objective.is_custom && objective.objective_type === 'custom') {
       return (
         <div className="space-y-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 mb-3">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-indigo-700">
+                Décrivez librement votre objectif personnel ou professionnel.
+              </p>
+            </div>
+          </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Objectif personnalisé *
             </label>
             <textarea
-              rows={3}
+              rows={4}
               value={objective.smart_objective}
               onChange={(e) => updateObjective(index, 'smart_objective', e.target.value)}
-              placeholder="Décrivez votre objectif personnalisé"
+              placeholder="Décrivez librement votre objectif personnel ou professionnel."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              disabled={!isEditing}
             />
           </div>
         </div>
@@ -400,221 +478,395 @@ const CustomObjectiveForm: React.FC<CustomObjectiveFormProps> = ({
     return null;
   };
 
+  const getObjectiveTypeLabel = (objective: ObjectiveDetail) => {
+    if (!objective.is_custom) return 'Career Pathway';
+    
+    switch (objective.objective_type) {
+      case 'smart': return 'SMART personnalisé';
+      case 'formation': return 'Formation';
+      case 'custom': return 'Personnalisé';
+      default: return 'Personnalisé';
+    }
+  };
+
+  const getObjectiveTypeColor = (objective: ObjectiveDetail) => {
+    if (!objective.is_custom) return 'bg-blue-100 text-blue-800';
+    
+    switch (objective.objective_type) {
+      case 'smart': return 'bg-green-100 text-green-800';
+      case 'formation': return 'bg-orange-100 text-orange-800';
+      case 'custom': return 'bg-indigo-100 text-indigo-800';
+      default: return 'bg-purple-100 text-purple-800';
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {existingObjectives ? t('objectives.editObjectives') : t('objectives.defineObjectives')}
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {t('objectives.defineSMARTObjectives')}
-            </p>
+      <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold">
+                {existingObjectives ? 'Modifier mes objectifs' : 'Définir mes objectifs'}
+              </h2>
+              <p className="text-indigo-100 mt-1">
+                Projet: {collaboration.projet.titre} - {collaboration.projet.nom_client}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:text-gray-200 p-2 rounded-lg hover:bg-white hover:bg-opacity-20 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-6 h-6" />
-          </button>
         </div>
 
-        <div className="p-6">
-          {loading && !submitting ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="flex h-full max-h-[calc(95vh-120px)]">
+          {/* Panneau de gauche: Liste des objectifs */}
+          <div className="w-1/3 border-r border-gray-200 p-6 overflow-y-auto">
+            <div className="space-y-4">
+              {/* Header avec compteur */}
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Mes objectifs ({objectives.length})
+                  </h3>
+                  {isDraft && (
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                      Mode brouillon
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Boutons d'ajout */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => setShowSkillsPanel(true)}
+                  className="w-full px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm flex items-center gap-2"
+                >
+                  <Target className="w-4 h-4" />
+                  Ajouter depuis Career Pathway
+                </button>
+                
+                <div className="flex gap-2">
+                  <select
+                    value={objectiveTypeSelection}
+                    onChange={(e) => setObjectiveTypeSelection(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="smart">SMART</option>
+                    <option value="formation">Formation</option>
+                    <option value="custom">Libre</option>
+                  </select>
+                  <button
+                    onClick={addCustomObjective}
+                    className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Personnalisé
+                  </button>
+                </div>
+              </div>
+
+              {/* Liste des objectifs */}
+              {objectives.length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <Target className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">Aucun objectif défini</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ajoutez des objectifs depuis votre Career Pathway ou créez des objectifs personnalisés
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {objectives.map((objective, index) => {
+                    const isEditing = currentEditingIndex === index;
+                    const isComplete = objective.skill_description.trim() !== '' && objective.smart_objective.trim() !== '';
+                    
+                    return (
+                      <div 
+                        key={index}
+                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          isEditing 
+                            ? 'border-indigo-500 bg-indigo-50 shadow-md' 
+                            : isComplete
+                              ? 'border-green-200 bg-green-50 hover:border-green-300'
+                              : 'border-orange-200 bg-orange-50 hover:border-orange-300'
+                        }`}
+                        onClick={() => setCurrentEditingIndex(isEditing ? null : index)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs px-2 py-1 rounded ${getObjectiveTypeColor(objective)}`}>
+                                {getObjectiveTypeLabel(objective)}
+                              </span>
+                              {isComplete ? (
+                                <CheckCircle className="w-3 h-3 text-green-600" />
+                              ) : (
+                                <AlertCircle className="w-3 h-3 text-orange-600" />
+                              )}
+                            </div>
+                            <h4 className="font-medium text-gray-900 text-sm line-clamp-2">
+                              {objective.skill_description || 'Compétence à définir'}
+                            </h4>
+                            {objective.smart_objective && (
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                {objective.smart_objective}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 ml-2">
+                            {!isEditing && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleObjectiveExpansion(index);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 p-1"
+                                title={expandedObjectives.has(index) ? "Masquer les détails" : "Voir les détails"}
+                              >
+                                {expandedObjectives.has(index) ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeObjective(index);
+                              }}
+                              className="text-red-500 hover:text-red-700 p-1"
+                              title="Supprimer cet objectif"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Informations sur le career pathway */}
-              {userProfile?.career_pathway && userProfile?.career_level && (
+          </div>
+
+          {/* Panneau central: Formulaire d'édition */}
+          <div className="flex-1 p-6 overflow-y-auto">
+            {currentEditingIndex !== null && objectives[currentEditingIndex] ? (
+              <div className="space-y-6">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <BookOpen className="w-5 h-5 text-blue-600" />
+                  <div className="flex items-center gap-3">
+                    <Edit className="w-5 h-5 text-blue-600" />
                     <div>
-                      <h3 className="text-sm font-medium text-blue-800">{t('objectives.yourCareerPathway')}</h3>
+                      <h3 className="text-lg font-semibold text-blue-900">
+                        Édition de l'objectif {currentEditingIndex + 1}
+                      </h3>
                       <p className="text-sm text-blue-700">
-                        {userProfile.career_pathway.name} - {t('annualObjectives.careerLevel')}: {userProfile.career_level.name}
+                        Modifiez les détails de votre objectif de développement
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm text-blue-700">
-                    {t('objectives.careerPathwayInfo')}
-                  </p>
                 </div>
-              )}
 
-              {/* Objectifs actuels */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {t('objectives.myDevelopmentObjectives')} ({objectives.length})
-                  </h3>
-                  <div className="flex gap-2">
-                    {/* Sélection du type d'objectif personnalisé */}
-                    <div className="flex items-center mr-2">
-                      <select
-                        value={objectiveTypeSelection}
-                        onChange={(e) => setObjectiveTypeSelection(e.target.value)}
-                        className="px-3 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                      >
-                        <option value="smart">Objectif SMART</option>
-                        <option value="formation">Objectif de formation</option>
-                        <option value="custom">Objectif personnalisable</option>
-                      </select>
+                {/* Compétence à développer (pour les objectifs personnalisés) */}
+                {objectives[currentEditingIndex].is_custom && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Compétence à développer *
+                    </label>
+                    <input
+                      type="text"
+                      value={objectives[currentEditingIndex].skill_description}
+                      onChange={(e) => updateObjective(currentEditingIndex, 'skill_description', e.target.value)}
+                      placeholder="Ex: Leadership, Communication, Gestion de projet..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                )}
+
+                {/* Compétence sélectionnée (pour les objectifs Career Pathway) */}
+                {!objectives[currentEditingIndex].is_custom && (
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h3 className="font-medium text-gray-900 mb-2">Compétence du Career Pathway</h3>
+                    <p className="text-gray-700">{objectives[currentEditingIndex].skill_description}</p>
+                    <div className="mt-2">
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        {objectives[currentEditingIndex].theme_name}
+                      </span>
                     </div>
+                  </div>
+                )}
+
+                {/* Champs d'objectif selon le type */}
+                {renderObjectiveFields(objectives[currentEditingIndex], currentEditingIndex)}
+
+                {/* Actions pour l'objectif en cours d'édition */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <button
+                    onClick={() => setCurrentEditingIndex(null)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    Fermer l'édition
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex flex-col justify-center items-center text-center">
+                <Target className="h-16 w-16 text-gray-300 mb-4" />
+                <h2 className="text-xl font-semibold text-gray-700 mb-2">Sélectionnez un objectif à modifier</h2>
+                <p className="text-gray-500 max-w-md mb-6">
+                  Cliquez sur un objectif dans la liste de gauche pour le modifier, ou ajoutez de nouveaux objectifs depuis votre Career Pathway ou en mode personnalisé.
+                </p>
+                
+                {objectives.length === 0 && (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setShowSkillsPanel(true)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                      <Target className="w-4 h-4" />
+                      Ajouter depuis Career Pathway
+                    </button>
                     <button
                       onClick={addCustomObjective}
-                      className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm flex items-center gap-1"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
-                      {t('objectives.addCustomObjective')}
+                      Créer un objectif personnalisé
                     </button>
                   </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Panneau de droite: Compétences disponibles */}
+          {showSkillsPanel && (
+            <div className="w-1/3 border-l border-gray-200 p-6 overflow-y-auto bg-gray-50">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Compétences disponibles</h3>
+                  <button
+                    onClick={() => setShowSkillsPanel(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                {objectives.length === 0 ? (
-                  <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                    <Target className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                    <p className="text-gray-600">{t('objectives.noObjectivesDefined')}</p>
-                    <p className="text-sm text-gray-500 mt-2">
-                      {t('objectives.addObjectivesInfo')}
+                {/* Informations sur le career pathway */}
+                {userProfile?.career_pathway && userProfile?.career_level && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Votre parcours</span>
+                    </div>
+                    <p className="text-sm text-blue-700">
+                      {userProfile.career_pathway.name}
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      Niveau: {userProfile.career_level.name}
+                    </p>
+                  </div>
+                )}
+
+                {Object.entries(skillsByTheme).length === 0 ? (
+                  <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
+                    <AlertTriangle className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">Aucune compétence disponible</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Votre parcours de carrière n'est pas configuré
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {objectives.map((objective, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`text-xs px-2 py-1 rounded ${objective.is_custom ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
-                                {objective.theme_name}
-                              </span>
-                              {objective.is_custom && (
-                                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                  {t('objectives.customized')}
-                                </span>
-                              )}
-                              {objective.is_custom && objective.objective_type && (
-                                <span className={`text-xs px-2 py-1 rounded ${
-                                  objective.objective_type === 'smart' ? 'bg-green-100 text-green-800' : 
-                                  objective.objective_type === 'formation' ? 'bg-orange-100 text-orange-800' : 
-                                  'bg-indigo-100 text-indigo-800'
-                                }`}>
-                                  {objective.objective_type === 'smart' ? 'SMART' : 
-                                   objective.objective_type === 'formation' ? 'Formation' : 
-                                   'Personnalisé'}
-                                </span>
-                              )}
-                            </div>
+                  <div className="space-y-4">
+                    {Object.entries(skillsByTheme).map(([themeName, skills]) => (
+                      <div key={themeName} className="bg-white rounded-lg border border-gray-200 p-3">
+                        <h4 className="text-sm font-medium text-gray-800 mb-2 border-b pb-1">
+                          {themeName}
+                        </h4>
+                        <div className="space-y-2">
+                          {skills.map((skill) => {
+                            const isAlreadyAdded = objectives.some(obj => obj.skill_id === skill.id);
                             
-                            {objective.is_custom ? (
-                              <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  {t('objectives.skillToImprove')} *
-                                </label>
-                                <input
-                                  type="text"
-                                  value={objective.skill_description}
-                                  onChange={(e) => updateObjective(index, 'skill_description', e.target.value)}
-                                  placeholder="Ex: Communication client, Gestion de projet..."
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                />
+                            return (
+                              <div 
+                                key={skill.id} 
+                                className={`p-2 rounded border text-sm ${
+                                  isAlreadyAdded
+                                    ? 'border-green-200 bg-green-50 text-green-800'
+                                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer'
+                                }`}
+                                onClick={() => !isAlreadyAdded && addPathwayObjective(skill)}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-900 leading-tight">
+                                      {skill.skill_description}
+                                    </p>
+                                    {skill.examples && (
+                                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                        <strong>Ex:</strong> {skill.examples}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {isAlreadyAdded && (
+                                    <CheckCircle className="w-4 h-4 text-green-600 ml-2 flex-shrink-0" />
+                                  )}
+                                </div>
                               </div>
-                            ) : (
-                              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                {objective.skill_description}
-                              </h3>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => removeObjective(index)}
-                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                            );
+                          })}
                         </div>
-
-                        {renderObjectiveFields(objective, index)}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* Compétences disponibles du career pathway */}
-              {userProfile?.career_pathway && availableSkills.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    {t('objectives.availableSkills')}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {availableSkills.map((skill) => {
-                      const isAlreadySelected = objectives.some(obj => obj.skill_id === skill.id);
-                      
-                      return (
-                        <div 
-                          key={skill.id} 
-                          className={`p-4 border rounded-lg ${
-                            isAlreadySelected 
-                              ? 'border-green-300 bg-green-50' 
-                              : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
-                          } transition-colors`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                  {skill.development_theme.name}
-                                </span>
-                              </div>
-                              <h4 className="font-medium text-gray-900 mb-2">{skill.skill_description}</h4>
-                              {skill.examples && (
-                                <p className="text-sm text-gray-600 mb-1">
-                                  <strong>{t('common.examples')}:</strong> {skill.examples}
-                                </p>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => addPathwayObjective(skill)}
-                              disabled={isAlreadySelected}
-                              className={`px-2 py-1 rounded text-sm ${
-                                isAlreadySelected
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                              }`}
-                            >
-                              {isAlreadySelected ? t('objectives.alreadySelected') : t('objectives.add')}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-6 border-t mt-8">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || objectives.length === 0 || !validateObjectives()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  {submitting ? t('common.loading') : t('objectives.saveObjectives')}
-                </button>
-              </div>
             </div>
           )}
+        </div>
+
+        {/* Footer avec actions */}
+        <div className="p-6 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              {objectives.length > 0 && (
+                <span>
+                  {objectives.filter(obj => obj.skill_description.trim() !== '' && obj.smart_objective.trim() !== '').length} / {objectives.length} objectifs complétés
+                </span>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              
+              <button
+                onClick={handleSaveDraft}
+                disabled={submitting || !validateForDraft()}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {submitting ? 'Sauvegarde...' : 'Enregistrer brouillon'}
+              </button>
+              
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || objectives.length === 0 || !validateObjectives()}
+                className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg flex items-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                {submitting ? t('common.loading') : 'Finaliser et soumettre'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
