@@ -568,6 +568,21 @@ const FicheProjetDetail = () => {
           </div>
         </div>
 
+        {/* Avancement */}
+        <div className="mt-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium text-gray-700">{t('projectSheets.progress')}</span>
+            <span className="text-sm text-gray-600">{collaboration.projet.taux_avancement}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className={`h-3 rounded-full transition-all ${
+                collaboration.projet.statut === 'termine' ? 'bg-green-600' : 'bg-indigo-600'
+              }`}
+              style={{ width: `${collaboration.projet.taux_avancement}%` }}
+            ></div>
+          </div>
+        </div>
       </div>
 
       {/* Onglets */}
