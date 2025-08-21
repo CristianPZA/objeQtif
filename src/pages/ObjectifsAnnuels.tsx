@@ -114,6 +114,11 @@ const ObjectifsAnnuels = () => {
 
   const fetchObjectives = async (userId: string, isAdmin: boolean) => {
     try {
+      // Check network connectivity first
+      if (!navigator.onLine) {
+        throw new Error(t('common.networkError'));
+      }
+
       let query = supabase
         .from('annual_objectives')
         .select(`
@@ -137,7 +142,15 @@ const ObjectifsAnnuels = () => {
       setObjectives(data || []);
     } catch (err) {
       console.error('Error fetching objectives:', err);
-      setError(t('annualObjectives.errorFetchingObjectives'));
+      
+      // Handle different types of errors
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        setError(t('common.connectionError'));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t('annualObjectives.errorFetchingObjectives'));
+      }
     }
   };
 

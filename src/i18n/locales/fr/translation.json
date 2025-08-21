@@ -53,7 +53,9 @@
     "loadingError": "Erreur lors du chargement",
     "profileNotFound": "Profil utilisateur non trouvé",
     "permissionDenied": "Permission refusée",
-    "deletionError": "Erreur lors de la suppression",
+    "unknown": "Inconnu",
+    "networkError": "Pas de connexion réseau. Vérifiez votre connexion internet.",
+    "connectionError": "Impossible de se connecter au serveur. Vérifiez votre connexion internet et réessayez."
     "unknown": "Inconnu",
     "preview": "Aperçu",
     "icon": "Icône",

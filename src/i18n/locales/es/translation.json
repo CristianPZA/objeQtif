@@ -393,7 +393,9 @@
     "loadingError": "Error de carga",
     "domainNotFound": "Dominio de carrera no encontrado",
     "errorLoadingData": "Error al cargar los datos",
-    "errorCreatingDomain": "Error al crear el dominio",
+    "unknown": "Desconocido",
+    "networkError": "Sin conexión de red. Verifique su conexión a internet.",
+    "connectionError": "No se puede conectar al servidor. Verifique su conexión a internet e intente nuevamente."
     "errorUpdatingDomain": "Error al modificar el dominio",
     "errorDeletingDomain": "Error al eliminar el dominio",
     "confirmDelete": "¿Está seguro de que desea eliminar el dominio \"{{name}}\"? Esta acción también eliminará todos los temas y competencias asociados.",
