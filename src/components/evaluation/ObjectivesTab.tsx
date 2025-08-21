@@ -183,7 +183,7 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
           {collaboration.objectifs.objectifs.map((objective: any, index: number) => (
             <div 
               key={index} 
-              className={`bg-gray-50 rounded-lg p-4 border ${objective.is_custom ? 'border-purple-200' : 'border-blue-200'}`}
+              className={`bg-gray-50 rounded-lg p-4 border ${
                 objective.is_custom 
                   ? objective.objective_type === 'formation' 
                     ? 'border-orange-200' 
@@ -191,6 +191,8 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
                       ? 'border-indigo-200' 
                       : 'border-purple-200' 
                   : 'border-blue-200'
+              }`}
+            >
               <div className="mb-2">
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-xs px-2 py-1 rounded ${
@@ -229,26 +231,26 @@ const ObjectivesTab: React.FC<ObjectivesTabProps> = ({
               </p>
               {(!objective.is_custom || (objective.is_custom && objective.objective_type === 'smart')) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs mt-3 pt-3 border-t border-gray-200">
-                <div>
-                  <strong className="text-gray-600">{t('objectives.specific')}:</strong>
-                  <p className="text-gray-700 mt-1">{objective.specific}</p>
-                </div>
-                <div>
-                  <strong className="text-gray-600">{t('objectives.measurable')}:</strong>
-                  <p className="text-gray-700 mt-1">{objective.measurable}</p>
-                </div>
-                <div>
-                  <strong className="text-gray-600">{t('objectives.achievable')}:</strong>
-                  <p className="text-gray-700 mt-1">{objective.achievable}</p>
-                </div>
-                <div>
-                  <strong className="text-gray-600">{t('objectives.relevant')}:</strong>
-                  <p className="text-gray-700 mt-1">{objective.relevant}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <strong className="text-gray-600">{t('objectives.timeBound')}:</strong>
-                  <p className="text-gray-700 mt-1">{objective.time_bound}</p>
-                </div>
+                  <div>
+                    <strong className="text-gray-600">{t('objectives.specific')}:</strong>
+                    <p className="text-gray-700 mt-1">{objective.specific}</p>
+                  </div>
+                  <div>
+                    <strong className="text-gray-600">{t('objectives.measurable')}:</strong>
+                    <p className="text-gray-700 mt-1">{objective.measurable}</p>
+                  </div>
+                  <div>
+                    <strong className="text-gray-600">{t('objectives.achievable')}:</strong>
+                    <p className="text-gray-700 mt-1">{objective.achievable}</p>
+                  </div>
+                  <div>
+                    <strong className="text-gray-600">{t('objectives.relevant')}:</strong>
+                    <p className="text-gray-700 mt-1">{objective.relevant}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <strong className="text-gray-600">{t('objectives.timeBound')}:</strong>
+                    <p className="text-gray-700 mt-1">{objective.time_bound}</p>
+                  </div>
                 </div>
               )}
             </div>
