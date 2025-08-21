@@ -352,6 +352,7 @@
     "confirmValidation": "¿Está seguro de que desea validar estos objetivos? Esta acción no se puede deshacer.",
     "validationError": "Error al validar los objetivos",
     "objectiveStatuses": {
+      "draft": "Borrador",
       "submitted": "Enviado",
       "approved": "Aprobado",
       "waitingAutoEvaluation": "Esperando auto-evaluación",

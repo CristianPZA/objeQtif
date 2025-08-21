@@ -352,6 +352,7 @@
     "confirmValidation": "Are you sure you want to validate these objectives? This action cannot be undone.",
     "validationError": "Error validating objectives",
     "objectiveStatuses": {
+      "draft": "Draft",
       "submitted": "Submitted",
       "approved": "Approved",
       "waitingAutoEvaluation": "Waiting auto evaluation",

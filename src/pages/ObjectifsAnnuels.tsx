@@ -406,9 +406,9 @@ const ObjectifsAnnuels = () => {
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('annualObjectives.pending')}</p>
+              <p className="text-sm font-medium text-gray-600">Brouillons</p>
               <p className="text-2xl font-bold text-gray-900">
-                {objectives.filter(obj => obj.status === 'waiting auto evaluation').length}
+                {objectives.filter(obj => obj.status === 'draft').length}
               </p>
             </div>
           </div>

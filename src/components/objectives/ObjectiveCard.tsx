@@ -35,7 +35,7 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const canDelete = () => {
     // Seuls les admins peuvent supprimer les objectifs
-    return userRole === 'admin' && objective.status === 'submitted';
+    return userRole === 'admin' && (objective.status === 'draft' || objective.status === 'submitted');
   };
 
   const canValidate = () => {
@@ -90,9 +90,15 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
     switch (status) {
       case 'draft':
         return '📝';
+      case 'draft':
+        return '📝';
       case 'submitted':
         return '⏳';
       case 'approved':
+        return '✅';
+      case 'waiting auto evaluation':
+        return '⭐';
+      case 'evaluated':
         return '✅';
       case 'rejected':
         return '❌';
@@ -118,8 +124,10 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'submitted':
+      case 'draft':
         return 'bg-gray-100 text-gray-800';
+      case 'submitted':
+        return 'bg-blue-100 text-blue-800';
       case 'approved':
         return 'bg-green-100 text-green-800';
       case 'waiting auto evaluation':

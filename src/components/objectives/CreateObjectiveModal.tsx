@@ -332,19 +332,21 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
       return;
     }
 
-    await saveObjectives('approved');
-  };
-
-  const handleSaveDraft = async () => {
-    if (!validateObjectives()) {
-      onError('Veuillez remplir tous les champs requis pour chaque objectif');
-      return;
-    }
-
     await saveObjectives('submitted');
   };
 
-  const saveObjectives = async (status: 'submitted' | 'approved') => {
+  const handleSaveDraft = async () => {
+    // Pour les brouillons, on permet de sauvegarder même si tous les champs ne sont pas remplis
+    const allObjectives = [...objectives, ...customObjectives];
+    if (allObjectives.length === 0) {
+      onError('Veuillez ajouter au moins un objectif avant de sauvegarder');
+      return;
+    }
+
+    await saveObjectives('draft');
+  };
+
+  const saveObjectives = async (status: 'draft' | 'submitted') => {
     try {
       setSubmitting(true);
       
@@ -986,7 +988,7 @@ const CreateObjectiveModal: React.FC<CreateObjectiveModalProps> = ({
         <div className="flex gap-3">
           <button
             onClick={handleSaveDraft}
-            disabled={submitting || !validateObjectives()}
+            disabled={submitting || (objectives.length === 0 && customObjectives.length === 0)}
             className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
