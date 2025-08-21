@@ -395,7 +395,7 @@
     "errorLoadingData": "Error loading data",
     "unknown": "Unknown",
     "networkError": "No network connection. Please check your internet connection.",
-    "connectionError": "Unable to connect to server. Please check your internet connection and try again."
+    "connectionError": "Unable to connect to server. Please check your internet connection and try again.",
     "errorUpdatingDomain": "Error updating domain",
     "errorDeletingDomain": "Error deleting domain",
     "confirmDelete": "Are you sure you want to delete the domain \"{{name}}\"? This action will also delete all associated themes and skills.",
